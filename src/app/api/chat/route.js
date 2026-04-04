@@ -4,95 +4,83 @@ import { createClient } from '@supabase/supabase-js';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-// Classify if query is about USCIS/immigration or about local places/life
 function classifyQuery(query) {
   const q = query.toLowerCase();
-  const uscisKeywords = ['uscis', 'форм', 'виза', 'грин', 'карт', 'гражданств', 'натурализ', 'asylum', 'убежищ', 'ead', 'i-', 'n-', 'ds-', 'tps', 'петиц', 'статус', 'кейс', 'receipt', 'иммигра', 'депортац', 'пошлин', 'ssn'];
-  const placesKeywords = ['ресторан', 'бар', 'кафе', 'кофе', 'хайк', 'поесть', 'выпить', 'погулять', 'кино', 'музык', 'концерт', 'место', 'район', 'где ', 'куда', 'жильё', 'аренд', 'снять', 'работ', 'вакансий'];
-
-  const uscisScore = uscisKeywords.filter(k => q.includes(k)).length;
-  const placesScore = placesKeywords.filter(k => q.includes(k)).length;
-
-  if (uscisScore > placesScore) return 'uscis';
-  if (placesScore > uscisScore) return 'places';
+  const uscis = ['uscis','форм','виза','грин','карт','гражданств','натурализ','asylum','убежищ','ead','i-','n-','ds-','tps','петиц','статус','кейс','receipt','иммигра','депортац','пошлин','ssn','документ'];
+  const places = ['ресторан','бар','кафе','кофе','хайк','поесть','выпить','погулять','кино','музык','концерт','место','район','где ','куда','жильё','аренд','снять','работ','вакансий','секретик'];
+  const uScore = uscis.filter(k => q.includes(k)).length;
+  const pScore = places.filter(k => q.includes(k)).length;
+  if (uScore > pScore) return 'uscis';
+  if (pScore > uScore) return 'places';
   return 'general';
 }
 
-// Search user-created places in Supabase
 async function searchPlaces(query) {
-  const { data } = await supabase
-    .from('places')
-    .select('*')
-    .or(`name.ilike.%${query}%,tip.ilike.%${query}%,address.ilike.%${query}%,district.ilike.%${query}%,category.ilike.%${query}%`)
-    .limit(10);
-  return data || [];
+  try {
+    const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2).slice(0, 3);
+    if (!words.length) return [];
+    const cond = words.map(w => `name.ilike.%${w}%,tip.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,category.ilike.%${w}%`).join(',');
+    const { data } = await supabase.from('places').select('*').or(cond).limit(10);
+    return data || [];
+  } catch { return []; }
 }
 
 export async function POST(request) {
   try {
     const { message, history = [] } = await request.json();
+    if (!message || typeof message !== 'string') {
+      return Response.json({ error: 'Пустое сообщение' }, { status: 400 });
+    }
 
     const queryType = classifyQuery(message);
     let context = '';
 
     if (queryType === 'places') {
-      // Search user-submitted places database
       const places = await searchPlaces(message);
       if (places.length > 0) {
-        context = `\n\nДанные из базы мест, добавленных пользователями нашего комьюнити:\n${places.map(p =>
-          `- ${p.name} (${p.district}, ${p.category}): ${p.tip} | Адрес: ${p.address} | Рейтинг: ${p.rating} | Добавил: ${p.added_by}`
+        context = `\n\nДанные из базы мест комьюнити:\n${places.map(p =>
+          `- ${p.name} (${p.district}, ${p.category}): ${p.tip} | Адрес: ${p.address || 'не указан'} | Рейтинг: ${p.rating || 'нет'} | Добавил: ${p.added_by}`
         ).join('\n')}`;
       } else {
-        context = '\n\nВ базе мест комьюнити пока нет подходящих результатов. Скажи пользователю, что наше комьюнити ещё растёт и он может сам добавить место.';
+        context = '\n\nВ базе комьюнити пока нет подходящих мест. Предложи пользователю добавить место самому через раздел "Места".';
       }
     }
 
-    const systemPrompt = `Ты — AI-помощник приложения "СВОИ в LA" для русскоязычных иммигрантов в Лос-Анджелесе.
+    const systemPrompt = `Ты — AI-помощник приложения "МЫ в LA" для русскоязычных иммигрантов в Лос-Анджелесе.
 
 ПРАВИЛА:
-1. Отвечай ТОЛЬКО на вопросы, связанные с:
-   - Иммиграцией, USCIS, визами, грин-картами, гражданством
-   - Жизнью в Лос-Анджелесе: места, районы, рестораны, развлечения
-   - Аренда жилья, поиск работы в LA
-2. Если вопрос НЕ связан с этими темами — вежливо объясни, что ты специализированный помощник и предложи задать релевантный вопрос.
-3. Для USCIS вопросов: давай актуальную информацию, указывай номера форм, примерные сроки и пошлины. ВСЕГДА добавляй дисклеймер, что это информационная помощь, не юридическая консультация.
-4. Для вопросов о местах: отвечай на основе данных из базы комьюнити (если предоставлены ниже). Упоминай кто добавил место и их совет.
-5. Отвечай на русском языке, понятно и по делу. Не будь многословным.
-6. НЕ фантазируй. Если не знаешь — скажи что не знаешь.
+1. Отвечай ТОЛЬКО по темам: иммиграция/USCIS, жизнь в LA (места, районы), жильё, работа.
+2. На другие темы — вежливо объясни что ты специализированный помощник.
+3. USCIS: указывай формы, сроки, пошлины. Добавляй: "Это информационная помощь, не юридическая консультация."
+4. Места: отвечай по данным комьюнити (ниже). Упоминай кто добавил и совет.
+5. Отвечай на русском, коротко и по делу.
+6. НЕ выдумывай. Не знаешь — скажи прямо.
 ${context}`;
 
     const messages = [
-      ...history.map(m => ({ role: m.role, content: m.text })),
+      ...history.slice(-10).filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({ role: m.role, content: m.text })),
       { role: 'user', content: message },
     ];
 
-    const response = await anthropic.messages.create({
+    const requestBody = {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: systemPrompt,
       messages,
-      ...(queryType === 'uscis' ? {
-        tools: [{
-          type: 'web_search_20250305',
-          name: 'web_search',
-          max_uses: 3,
-        }],
-      } : {}),
-    });
+    };
 
-    // Extract text from response (may contain web search results)
-    const text = response.content
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
-      .join('\n');
+    if (queryType === 'uscis') {
+      requestBody.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+    }
 
-    return Response.json({ text, queryType });
+    const response = await anthropic.messages.create(requestBody);
+    const text = response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
 
+    return Response.json({ text: text || 'Не удалось получить ответ.', queryType });
   } catch (error) {
-    console.error('Chat API error:', error);
-    return Response.json(
-      { error: 'Ошибка сервера. Попробуйте позже.' },
-      { status: 500 }
-    );
+    console.error('Chat API error:', error?.message || error);
+    if (error?.status === 401) return Response.json({ error: 'Ошибка API ключа.' }, { status: 500 });
+    if (error?.status === 429) return Response.json({ error: 'Слишком много запросов. Подождите.' }, { status: 429 });
+    return Response.json({ error: 'Ошибка сервера.' }, { status: 500 });
   }
 }

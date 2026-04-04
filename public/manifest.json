@@ -1,7 +1,7 @@
 {
-  "name": "СВОИ в LA",
-  "short_name": "Свои LA",
-  "description": "Помощник для русскоязычных иммигрантов в Лос-Анджелесе",
+  "name": "МЫ в LA",
+  "short_name": "МЫ в LA",
+  "description": "Путеводитель для русскоязычных в Лос-Анджелесе",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F2F2F7",
