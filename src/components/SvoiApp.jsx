@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes } from "../lib/supabase";
+import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto } from "../lib/supabase";
 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
@@ -223,11 +223,15 @@ const SECTIONS = [
 ];
 
 export default function App() {
-  const [scr, setScr] = useState("home");
+  const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
   const [selU, setSelU] = useState(null);
-  const [selD, setSelD] = useState(null);
-  const [selPC, setSelPC] = useState(null);
+  const [selD, setSelD] = useState(() => { try { const d = sessionStorage.getItem('selD'); return d ? JSON.parse(d) : null; } catch { return null; } });
+  const [selPC, setSelPC] = useState(() => { try { const d = sessionStorage.getItem('selPC'); return d ? JSON.parse(d) : null; } catch { return null; } });
   const [selTC, setSelTC] = useState(null);
+  // Save screen state on change
+  useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
+  useEffect(() => { try { sessionStorage.setItem('selD', selD ? JSON.stringify(selD) : ''); } catch {} }, [selD]);
+  useEffect(() => { try { sessionStorage.setItem('selPC', selPC ? JSON.stringify(selPC) : ''); } catch {} }, [selPC]);
   const [exp, setExp] = useState(null);
   const [expF, setExpF] = useState(null);
   const [expTip, setExpTip] = useState(null);
@@ -243,6 +247,7 @@ export default function App() {
   const [np, setNp] = useState({ name:"", cat:"", address:"", tip:"" });
   const [nPhotos, setNPhotos] = useState([]);
   const [editingPlace, setEditingPlace] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [newTip, setNewTip] = useState({ title:"", text:"" });
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
@@ -267,6 +272,27 @@ export default function App() {
   const fileRef = useRef(null);
 
   useEffect(() => setMt(true), []);
+  // Save navigation state to localStorage
+  useEffect(() => {
+    if (mt) {
+      const state = { scr, selDId: selD?.id, selPCId: selPC?.id, selUId: selU?.id, selTCId: selTC?.id, selECId: selEC?.id };
+      try { localStorage.setItem('nav', JSON.stringify(state)); } catch {}
+    }
+  }, [scr, selD, selPC, selU, selTC, selEC, mt]);
+  // Restore navigation on mount
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('nav'));
+      if (saved?.scr) {
+        setScr(saved.scr);
+        if (saved.selDId) setSelD(DISTRICTS.find(d => d.id === saved.selDId) || null);
+        if (saved.selPCId) setSelPC(PLACE_CATS.find(c => c.id === saved.selPCId) || null);
+        if (saved.selUId) setSelU(USCIS_CATS.find(c => c.id === saved.selUId) || null);
+        if (saved.selTCId) setSelTC(TIPS_CATS.find(c => c.id === saved.selTCId) || null);
+        if (saved.selECId) setSelEC(EVENT_CATS.find(c => c.id === saved.selECId) || null);
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     async function init() {
       // Load user
@@ -341,18 +367,36 @@ export default function App() {
   const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
-    if (editingPlace) {
-      const updates = { name:np.name, category:np.cat, address:np.address, tip:np.tip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img };
-      if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
-      setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:[...p.photos, ...nPhotos.map(ph=>ph.preview||"📷")] } : p));
-      setEditingPlace(null);
-    } else {
-      const dbData = { name:np.name, category:np.cat, district:selD.id, address:np.address||'', tip:np.tip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:nPhotos.map(p=>p.preview||"📷") };
-      const { data } = await dbAddPlace(dbData);
-      const newId = data?.[0]?.id || Date.now();
-      setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:np.tip, rating:0, addedBy:user.name, userId:user.id, img:dbData.img, photos:dbData.photos, likes:0, comments:[], fromDB:true }, ...prev]);
-    }
-    setNp({ name:"", cat:"", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
+    setUploading(true);
+    try {
+      // Upload photos to Supabase Storage
+      const uploadedUrls = [];
+      for (const p of nPhotos) {
+        if (p.file) {
+          const url = await uploadPhoto(p.file);
+          if (url) uploadedUrls.push(url);
+          else console.warn('Photo upload failed for:', p.name);
+        } else if (p.preview && p.preview.startsWith('http')) {
+          uploadedUrls.push(p.preview);
+        }
+      }
+      if (editingPlace) {
+        const allPhotos = [...(editingPlace.photos||[]).filter(p => typeof p === 'string' && p.startsWith('http')), ...uploadedUrls];
+        const updates = { name:np.name, category:np.cat, address:np.address, tip:np.tip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
+        if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
+        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:allPhotos } : p));
+        setEditingPlace(null);
+      } else {
+        const dbData = { name:np.name, category:np.cat, district:selD.id, address:np.address||'', tip:np.tip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
+        const { data } = await dbAddPlace(dbData);
+        const newId = data?.[0]?.id || Date.now();
+        setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:np.tip, rating:0, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
+      }
+      setNp({ name:"", cat:"", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
+    } catch(err) {
+      console.error('Add place error:', err);
+      alert('Ошибка при сохранении. Попробуйте ещё раз.');
+    } finally { setUploading(false); }
   };
   const handleDeletePlace = async (placeId) => {
     if (window.confirm("Удалить это место?")) {
@@ -374,7 +418,11 @@ export default function App() {
     setNPhotos([]);
     setShowAdd(true);
   };
-  const handlePhotos = (e) => { const files = Array.from(e.target.files).slice(0,5); setNPhotos(prev => [...prev, ...files.map(f=>({name:f.name,preview:`📷 ${f.name.substring(0,18)}`}))].slice(0,5)); };
+  const handlePhotos = (e) => {
+    const files = Array.from(e.target.files).slice(0, 5);
+    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
+    setNPhotos(prev => [...prev, ...newFiles].slice(0, 5));
+  };
   const handleAddTip = async () => {
     if (!newTip.title || !newTip.text || !user || !selTC) return;
     const dbData = { category:selTC.id, title:newTip.title, text:newTip.text, author:user.name, user_id:user.id };
@@ -510,6 +558,20 @@ export default function App() {
     );
   };
 
+  // Prevent iOS pinch zoom
+  useEffect(() => {
+    const prevent = (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); };
+    const preventGesture = (e) => e.preventDefault();
+    document.addEventListener('touchmove', prevent, { passive: false });
+    document.addEventListener('gesturestart', preventGesture);
+    document.addEventListener('gesturechange', preventGesture);
+    return () => {
+      document.removeEventListener('touchmove', prevent);
+      document.removeEventListener('gesturestart', preventGesture);
+      document.removeEventListener('gesturechange', preventGesture);
+    };
+  }, []);
+
   const cd = { background:T.card, borderRadius:T.r, boxShadow:T.sh, border:`1px solid ${T.borderL}`, transition:"all 0.25s ease" };
   const bk = { background:"none", border:"none", color:T.primary, fontSize:14, fontWeight:500, cursor:"pointer", padding:"12px 0 8px", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 };
   const pl = (a) => ({ padding:"10px 20px", borderRadius:24, border:"none", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", background:a?T.primary:T.primaryLight, color:a?"#fff":T.primary });
@@ -564,7 +626,7 @@ export default function App() {
           {srch.trim().length>=2 ? (<div>{sRes.map((d,i) => (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
             <div style={{ display:"flex", gap:8, marginBottom:6 }}>{d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}<span style={{ fontSize:11, color:T.mid }}>{d.cI} {d.cT}</span></div>
             <div style={{ fontWeight:600, fontSize:14 }}>{d.name}</div><div style={{ fontSize:12, color:T.mid, marginTop:3 }}>{d.desc}</div>
-          </div>))}{sRes.length===0 && <p style={{ fontSize:13, color:T.mid }}>Не найдено</p>}</div>) : (<div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          </div>))}{sRes.length===0 && <p style={{ fontSize:13, color:T.mid }}>Не найдено</p>}</div>) : (<><div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {USCIS_CATS.map(c => (<button key={c.id} onClick={() => { setSelU(c); setScr("uscis-cat"); setExpF(null); }}
               style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
               onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
@@ -572,7 +634,17 @@ export default function App() {
               <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{c.subtitle}</div></div>
               <div style={{ color:T.light }}>›</div>
             </button>))}
-          </div>)}
+          </div>
+          {/* Case status checker */}
+          <div style={{ ...cd, marginTop:14, padding:"18px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}><span style={{ fontSize:20 }}>🔍</span><span style={{ fontWeight:700, fontSize:15 }}>Проверить статус кейса</span></div>
+            <p style={{ fontSize:13, color:T.mid, margin:"0 0 12px" }}>Введите receipt number</p>
+            <div style={{ display:"flex", gap:8 }}>
+              <input placeholder="EAC-XX-XXX-XXXXX" style={{ ...iS, flex:1, width:"auto" }} />
+              <a href="https://egov.uscis.gov/casestatussearchwidget" target="_blank" rel="noopener noreferrer" style={{ ...pl(true), textDecoration:"none", display:"flex", alignItems:"center" }}>Проверить</a>
+            </div>
+          </div>
+          </>)}
         </div>)}
 
         {/* USCIS CAT */}
@@ -683,10 +755,10 @@ export default function App() {
               <textarea value={np.tip} onChange={e=>setNp({...np,tip:e.target.value})} placeholder="Ваш отзыв, совет, рекомендация..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:14 }} />
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotos} style={{ display:"none" }} />
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
-                {nPhotos.map((p,i) => (<div key={i} style={{ padding:"6px 10px", background:T.bg, borderRadius:8, fontSize:12, color:T.mid, display:"flex", gap:4, alignItems:"center" }}>📷 {p.name?.substring(0,12)} <button onClick={()=>setNPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ background:"none", border:"none", color:T.light, cursor:"pointer", padding:0 }}>✕</button></div>))}
+                {nPhotos.map((p,i) => (<div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>{p.preview ? <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", background:T.bg, fontSize:10, color:T.mid, padding:4 }}>📷</div>}<button onClick={()=>setNPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button></div>))}
                 {nPhotos.length<5 && <button onClick={()=>fileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото</button>}
               </div>
-              <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAdd(false);setNPhotos([])}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddPlace} disabled={!np.name||!np.cat||!np.tip} style={{ ...pl(true), flex:2, padding:14, opacity:(!np.name||!np.cat||!np.tip)?0.5:1 }}>{editingPlace ? 'Сохранить' : 'Опубликовать'}</button></div>
+              <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAdd(false);setNPhotos([])}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddPlace} disabled={!np.name||!np.cat||!np.tip||uploading} style={{ ...pl(true), flex:2, padding:14, opacity:(!np.name||!np.cat||!np.tip||uploading)?0.5:1 }}>{uploading ? '⏳ Загрузка...' : editingPlace ? 'Сохранить' : 'Опубликовать'}</button></div>
             </>)}
           </div>
         </div>)}
@@ -716,7 +788,7 @@ export default function App() {
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}><div style={{ fontSize:11, color:T.light }}>от {p.addedBy}</div><span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span></div>
               </div>
               {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8 }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:140, height:85, borderRadius:T.rs, background:T.bg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", padding:8, flexShrink:0 }}><span style={{ fontSize:12, color:T.mid }}>{ph}</span></div>)}</div></div>}
+                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8 }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:140, height:100, borderRadius:T.rs, background:T.bg, border:`1px solid ${T.border}`, overflow:"hidden", flexShrink:0 }}>{typeof ph === 'string' && (ph.startsWith('http') || ph.startsWith('blob:')) ? <img src={ph} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display='none'}} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:8 }}><span style={{ fontSize:12, color:T.mid }}>{String(ph)}</span></div>}</div>)}</div></div>}
                 <div style={{ padding:"14px 16px 12px", display:"flex", gap:8 }}>
                   <button onClick={e=>{e.stopPropagation();handleToggleLike(p.id,"place")}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${isL?"#E74C3C":T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:isL?"#FFF0F0":T.card, color:isL?"#E74C3C":T.mid }}>{isL?"❤️":"🤍"} {p.likes||0}</button>
                   <button onClick={e=>{e.stopPropagation(); if(navigator.share) navigator.share({title:p.name,text:p.tip,url:window.location.href});}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:T.card, color:T.mid }}>📤</button>

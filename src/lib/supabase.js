@@ -39,7 +39,6 @@ export async function updatePlace(id, updates) {
 }
 
 export async function deletePlace(id) {
-  // Delete related comments and likes first
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'place');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'place');
   return supabase.from('places').delete().eq('id', id);
@@ -138,4 +137,26 @@ export async function searchPlaces(query) {
   ).join(',');
   const { data } = await supabase.from('places').select('*').or(conditions).limit(10);
   return data || [];
+}
+
+// ═══ PHOTO UPLOAD ═══
+export async function uploadPhoto(file) {
+  const ext = file.name.split('.').pop();
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+  const filePath = `photos/${fileName}`;
+
+  const { error } = await supabase.storage
+    .from('LAHELPBOT')
+    .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+  if (error) {
+    console.error('Upload error:', error);
+    return null;
+  }
+
+  const { data: urlData } = supabase.storage
+    .from('LAHELPBOT')
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
 }

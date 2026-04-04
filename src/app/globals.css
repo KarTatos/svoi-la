@@ -1,10 +1,14 @@
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
-html { touch-action: manipulation; }
-body { margin: 0; font-family: 'Roboto', -apple-system, 'SF Pro Display', sans-serif; background: #F2F2F7; color: #1A1A1A; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+html { touch-action: manipulation; -ms-touch-action: manipulation; }
+body { margin: 0; font-family: 'Roboto', -apple-system, 'SF Pro Display', sans-serif; background: #F2F2F7; color: #1A1A1A; overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+/* Prevent iOS zoom on input focus — must be 16px minimum */
+input, textarea, select { font-size: 16px !important; touch-action: manipulation; }
 input::placeholder, textarea::placeholder { color: #BBB; }
-input, textarea, select { font-size: 16px !important; }
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-thumb { background: #D5D5D5; border-radius: 3px; }
 button:active { transform: scale(0.97); }
+button { touch-action: manipulation; }
 select { cursor: pointer; }
+/* Prevent double-tap zoom */
+* { touch-action: manipulation; }
 @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
