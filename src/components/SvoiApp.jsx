@@ -259,6 +259,7 @@ export default function App() {
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", cat:"" });
   const [filterDate, setFilterDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [photoViewer, setPhotoViewer] = useState(null);
   const [chat, setChat] = useState([{ role:"assistant", text:"Привет! 👋 Я помощник для русскоязычных в LA. Спрашивай про USCIS, визы, грин-карты." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
@@ -788,7 +789,7 @@ export default function App() {
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}><div style={{ fontSize:11, color:T.light }}>от {p.addedBy}</div><span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span></div>
               </div>
               {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8 }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:140, height:100, borderRadius:T.rs, background:T.bg, border:`1px solid ${T.border}`, overflow:"hidden", flexShrink:0 }}>{typeof ph === 'string' && (ph.startsWith('http') || ph.startsWith('blob:')) ? <img src={ph} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display='none'}} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:8 }}><span style={{ fontSize:12, color:T.mid }}>{String(ph)}</span></div>}</div>)}</div></div>}
+                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8 }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:140, height:100, borderRadius:T.rs, background:T.bg, border:`1px solid ${T.border}`, overflow:"hidden", flexShrink:0 }}>{typeof ph === 'string' && (ph.startsWith('http') || ph.startsWith('blob:')) ? <img src={ph} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", cursor:"zoom-in" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} onError={e=>{e.target.style.display='none'}} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:8 }}><span style={{ fontSize:12, color:T.mid }}>{String(ph)}</span></div>}</div>)}</div></div>}
                 <div style={{ padding:"14px 16px 12px", display:"flex", gap:8 }}>
                   <button onClick={e=>{e.stopPropagation();handleToggleLike(p.id,"place")}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${isL?"#E74C3C":T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:isL?"#FFF0F0":T.card, color:isL?"#E74C3C":T.mid }}>{isL?"❤️":"🤍"} {p.likes||0}</button>
                   <button onClick={e=>{e.stopPropagation(); if(navigator.share) navigator.share({title:p.name,text:p.tip,url:window.location.href});}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:T.card, color:T.mid }}>📤</button>
@@ -1014,6 +1015,12 @@ export default function App() {
           </>)}
         </div>)}
       </main>
+
+      {photoViewer && (
+        <div onClick={() => setPhotoViewer(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.72)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <img src={photoViewer} alt="" style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)" }} />
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse { 0%,100% { opacity:.3; transform:scale(1) } 50% { opacity:1; transform:scale(1.2) } }
