@@ -222,6 +222,28 @@ const SECTIONS = [
   { id:"chat-sec", icon:"💬", title:"AI Чат", desc:"Помощник" },
 ];
 
+const RICH_PREFIX = "__LA_RICH_V1__";
+
+function encodeRichText(text, photos = []) {
+  if (!photos?.length) return text;
+  return `${RICH_PREFIX}${JSON.stringify({ text, photos })}`;
+}
+
+function decodeRichText(raw) {
+  if (typeof raw !== "string" || !raw.startsWith(RICH_PREFIX)) {
+    return { text: raw || "", photos: [] };
+  }
+  try {
+    const parsed = JSON.parse(raw.slice(RICH_PREFIX.length));
+    return {
+      text: parsed?.text || "",
+      photos: Array.isArray(parsed?.photos) ? parsed.photos : [],
+    };
+  } catch {
+    return { text: raw, photos: [] };
+  }
+}
+
 export default function App() {
   const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
   const [selU, setSelU] = useState(null);
@@ -249,6 +271,7 @@ export default function App() {
   const [editingPlace, setEditingPlace] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [newTip, setNewTip] = useState({ title:"", text:"" });
+  const [newTipPhotos, setNewTipPhotos] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -257,8 +280,15 @@ export default function App() {
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", cat:"" });
+  const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [filterDate, setFilterDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
+  const [addrOptionsEvent, setAddrOptionsEvent] = useState([]);
+  const [addrLoadingPlace, setAddrLoadingPlace] = useState(false);
+  const [addrLoadingEvent, setAddrLoadingEvent] = useState(false);
+  const [addrValidPlace, setAddrValidPlace] = useState(false);
+  const [addrValidEvent, setAddrValidEvent] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
   const [chat, setChat] = useState([{ role:"assistant", text:"Привет! 👋 Я помощник для русскоязычных в LA. Спрашивай про USCIS, визы, грин-карты." }]);
   const [inp, setInp] = useState("");
@@ -271,6 +301,8 @@ export default function App() {
   const chatEnd = useRef(null);
   const inpRef = useRef(null);
   const fileRef = useRef(null);
+  const tipFileRef = useRef(null);
+  const eventFileRef = useRef(null);
 
   useEffect(() => setMt(true), []);
   // Save navigation state to localStorage
@@ -313,14 +345,20 @@ export default function App() {
       // Load tips from DB
       const { data: dbTips } = await fetchTips();
       if (dbTips && dbTips.length > 0) {
-        const mapped = dbTips.map(t => ({ id:t.id, cat:t.category, title:t.title, text:t.text, author:t.author, userId:t.user_id, likes:t.likes_count||0, comments:[], fromDB:true }));
+        const mapped = dbTips.map(t => {
+          const rich = decodeRichText(t.text);
+          return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, comments:[], fromDB:true };
+        });
         const titles = new Set(mapped.map(t => t.title));
         setTips([...mapped, ...INIT_TIPS.filter(t => !titles.has(t.title))]);
       }
       // Load events from DB
       const { data: dbEvents } = await fetchEvents();
       if (dbEvents && dbEvents.length > 0) {
-        const mapped = dbEvents.map(e => ({ id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||'', desc:e.description, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments:[], fromDB:true }));
+        const mapped = dbEvents.map(e => {
+          const rich = decodeRichText(e.description);
+          return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||'', desc:rich.text, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments:[], fromDB:true };
+        });
         const titles = new Set(mapped.map(e => e.title));
         setEvents([...mapped, ...INIT_EVENTS.filter(e => !titles.has(e.title))]);
       }
@@ -350,6 +388,48 @@ export default function App() {
     window.open(`https://www.google.com/maps/search/${q}/@${d.lat},${d.lng},14z`, "_blank");
   };
 
+  const fetchAddressSuggestions = async (query) => {
+    const q = (query || "").trim();
+    if (q.length < 3) return [];
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(`${q}, Los Angeles, California`)}`);
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data.map((item) => ({
+        label: item.display_name,
+        value: item.display_name,
+      }));
+    } catch {
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    const q = (np.address || "").trim();
+    if (addrValidPlace) { setAddrOptionsPlace([]); return; }
+    if (q.length < 3) { setAddrOptionsPlace([]); return; }
+    const t = setTimeout(async () => {
+      setAddrLoadingPlace(true);
+      const opts = await fetchAddressSuggestions(q);
+      setAddrOptionsPlace(opts);
+      setAddrLoadingPlace(false);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [np.address, addrValidPlace]);
+
+  useEffect(() => {
+    const q = (newEvent.location || "").trim();
+    if (addrValidEvent) { setAddrOptionsEvent([]); return; }
+    if (q.length < 3) { setAddrOptionsEvent([]); return; }
+    const t = setTimeout(async () => {
+      setAddrLoadingEvent(true);
+      const opts = await fetchAddressSuggestions(q);
+      setAddrOptionsEvent(opts);
+      setAddrLoadingEvent(false);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [newEvent.location, addrValidEvent]);
+
   const handleSend = async (t) => {
     const msg = t || inp.trim(); if (!msg) return;
     setChat(p => [...p, { role:"user", text:msg }]); setInp(""); setTyping(true);
@@ -368,6 +448,10 @@ export default function App() {
   const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
+    if (!np.address.trim() || !addrValidPlace) {
+      alert("Выберите реальный адрес из подсказок.");
+      return;
+    }
     setUploading(true);
     try {
       // Upload photos to Supabase Storage
@@ -410,6 +494,8 @@ export default function App() {
     setEditingPlace(p);
     setNp({ name:p.name, cat:p.cat, address:p.address||"", tip:p.tip });
     setNPhotos([]);
+    setAddrValidPlace(!!(p.address || "").trim());
+    setAddrOptionsPlace([]);
     setShowAdd(true);
   };
   const openAddForm = () => {
@@ -417,6 +503,8 @@ export default function App() {
     setEditingPlace(null);
     setNp({ name:"", cat:selPC?.id||"", address:"", tip:"" });
     setNPhotos([]);
+    setAddrValidPlace(false);
+    setAddrOptionsPlace([]);
     setShowAdd(true);
   };
   const handlePhotos = (e) => {
@@ -424,13 +512,28 @@ export default function App() {
     const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
     setNPhotos(prev => [...prev, ...newFiles].slice(0, 5));
   };
+  const handleTipPhotos = (e) => {
+    const files = Array.from(e.target.files).slice(0, 3);
+    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
+    setNewTipPhotos(prev => [...prev, ...newFiles].slice(0, 3));
+  };
+  const handleEventPhotos = (e) => {
+    const files = Array.from(e.target.files).slice(0, 3);
+    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
+    setNewEventPhotos(prev => [...prev, ...newFiles].slice(0, 3));
+  };
   const handleAddTip = async () => {
     if (!newTip.title || !newTip.text || !user || !selTC) return;
-    const dbData = { category:selTC.id, title:newTip.title, text:newTip.text, author:user.name, user_id:user.id };
+    const uploaded = [];
+    for (const p of newTipPhotos) {
+      const url = await uploadPhoto(p.file);
+      if (url) uploaded.push(url);
+    }
+    const dbData = { category:selTC.id, title:newTip.title, text:encodeRichText(newTip.text, uploaded), author:user.name, user_id:user.id };
     const { data } = await dbAddTip(dbData);
     const newId = data?.[0]?.id || Date.now();
-    setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:newTip.text, likes:0, comments:[], fromDB:true }, ...prev]);
-    setNewTip({ title:"", text:"" }); setShowAddTip(false);
+    setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:newTip.text, photos:uploaded, likes:0, comments:[], fromDB:true }, ...prev]);
+    setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(false);
   };
   const handleAddComment = async (tipId) => {
     if (!newComment.trim() || !user) return;
@@ -471,11 +574,20 @@ export default function App() {
   };
   const handleAddEvent = async () => {
     if (!newEvent.title || !newEvent.date || !newEvent.desc || !newEvent.cat || !user) return;
-    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:newEvent.desc, author:user.name, user_id:user.id };
+    if (!newEvent.location.trim() || !addrValidEvent) {
+      alert("Выберите место из подсказок адреса.");
+      return;
+    }
+    const uploaded = [];
+    for (const p of newEventPhotos) {
+      const url = await uploadPhoto(p.file);
+      if (url) uploaded.push(url);
+    }
+    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(newEvent.desc, uploaded), author:user.name, user_id:user.id };
     const { data } = await dbAddEvent(dbData);
     const newId = data?.[0]?.id || Date.now();
-    setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
-    setNewEvent({ title:"", date:"", location:"", desc:"", cat:"" }); setShowAddEvent(false);
+    setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
+    setNewEvent({ title:"", date:"", location:"", desc:"", cat:"" }); setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
   };
   const handleToggleLike = async (itemId, itemType) => {
     if (!user) { handleLogin(); return; }
@@ -751,7 +863,18 @@ export default function App() {
                 <option value="">Выберите</option>{PLACE_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
               </select>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес</label>
-              <input value={np.address} onChange={e=>setNp({...np,address:e.target.value})} placeholder="Адрес" style={{ ...iS, marginBottom:14 }} />
+              <input value={np.address} onChange={e=>{setNp({...np,address:e.target.value}); setAddrValidPlace(false);}} placeholder="Адрес" style={{ ...iS, marginBottom:6, borderColor:np.address && !addrValidPlace ? "#f5b7b1" : T.border }} />
+              {addrLoadingPlace && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем адрес...</div>}
+              {!addrLoadingPlace && addrOptionsPlace.length > 0 && !addrValidPlace && (
+                <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
+                  {addrOptionsPlace.map((opt, i) => (
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); setAddrValidPlace(true); setAddrOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {np.address && !addrValidPlace && <div style={{ fontSize:12, color:"#E74C3C", marginBottom:10 }}>Выберите адрес из подсказок.</div>}
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Комментарий *</label>
               <textarea value={np.tip} onChange={e=>setNp({...np,tip:e.target.value})} placeholder="Ваш отзыв, совет, рекомендация..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:14 }} />
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotos} style={{ display:"none" }} />
@@ -843,6 +966,13 @@ export default function App() {
               <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
                 <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
                 <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:"pre-wrap" }}>{isE ? tip.text : tip.text.substring(0, 120) + (tip.text.length > 120 ? "..." : "")}</div>
+                {isE && tip.photos?.length > 0 && (
+                  <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4 }}>
+                    {tip.photos.map((ph, pi) => (
+                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0 }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
+                    ))}
+                  </div>
+                )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
                   <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
                   <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
@@ -860,11 +990,11 @@ export default function App() {
               </div>)}
             </div>
           ); })}
-          <button onClick={() => { if (!user) {handleLogin();return;} setShowAddTip(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
+          <button onClick={() => { if (!user) {handleLogin();return;} setNewTipPhotos([]); setShowAddTip(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
         </div>)}
 
         {/* ADD TIP MODAL */}
-        {showAddTip && selTC && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>setShowAddTip(false)}>
+        {showAddTip && selTC && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddTip(false); setNewTipPhotos([]);}}>
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
             <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{selTC.icon} Новый совет · {selTC.title}</h3>
@@ -872,7 +1002,17 @@ export default function App() {
             <input value={newTip.title} onChange={e=>setNewTip({...newTip,title:e.target.value})} placeholder="О чём совет?" style={{ ...iS, marginBottom:14 }} />
             <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Текст *</label>
             <textarea value={newTip.text} onChange={e=>setNewTip({...newTip,text:e.target.value})} placeholder="Поделитесь опытом..." style={{ ...iS, minHeight:120, resize:"vertical", marginBottom:20 }} />
-            <div style={{ display:"flex", gap:10 }}><button onClick={()=>setShowAddTip(false)} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddTip} disabled={!newTip.title||!newTip.text} style={{ ...pl(true), flex:2, padding:14, opacity:(!newTip.title||!newTip.text)?0.5:1 }}>Опубликовать</button></div>
+            <input ref={tipFileRef} type="file" accept="image/*" multiple onChange={handleTipPhotos} style={{ display:"none" }} />
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
+              {newTipPhotos.map((p,i) => (
+                <div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
+                  <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                  <button onClick={()=>setNewTipPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button>
+                </div>
+              ))}
+              {newTipPhotos.length < 3 && <button onClick={()=>tipFileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото (до 3)</button>}
+            </div>
+            <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAddTip(false); setNewTipPhotos([]);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddTip} disabled={!newTip.title||!newTip.text} style={{ ...pl(true), flex:2, padding:14, opacity:(!newTip.title||!newTip.text)?0.5:1 }}>Опубликовать</button></div>
           </div>
         </div>)}
 
@@ -951,6 +1091,13 @@ export default function App() {
                 {ev.location && <div style={{ fontSize:13, color:T.mid }}>📍 {ev.location}</div>}
               </div>
               <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10 }}>{ev.desc}</div>
+              {isEvExp && ev.photos?.length > 0 && (
+                <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4 }}>
+                  {ev.photos.map((ph, pi) => (
+                    <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0 }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
+                  ))}
+                </div>
+              )}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:11, color:T.light }}>от {ev.author}</span>
                 <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
@@ -970,11 +1117,11 @@ export default function App() {
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
-          <button onClick={() => { if (!user) {handleLogin();return;} setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
+          <button onClick={() => { if (!user) {handleLogin();return;} setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
 
         {/* ADD EVENT MODAL */}
-        {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>setShowAddEvent(false)}>
+        {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false);}}>
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
             {!user ? (<div style={{ textAlign:"center", padding:"20px 0" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
@@ -987,11 +1134,31 @@ export default function App() {
               </select>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Дата и время *</label>
               <input type="datetime-local" value={newEvent.date} onChange={e=>setNewEvent({...newEvent,date:e.target.value})} style={{ ...iS, marginBottom:14 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Место</label>
-              <input value={newEvent.location} onChange={e=>setNewEvent({...newEvent,location:e.target.value})} placeholder="Адрес или название места" style={{ ...iS, marginBottom:14 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Место</label>              <input value={newEvent.location} onChange={e=>{setNewEvent({...newEvent,location:e.target.value}); setAddrValidEvent(false);}} placeholder="Адрес или название места" style={{ ...iS, marginBottom:6, borderColor:newEvent.location && !addrValidEvent ? "#f5b7b1" : T.border }} />
+              {addrLoadingEvent && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем место...</div>}
+              {!addrLoadingEvent && addrOptionsEvent.length > 0 && !addrValidEvent && (
+                <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
+                  {addrOptionsEvent.map((opt, i) => (
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNewEvent(prev => ({ ...prev, location: opt.value })); setAddrValidEvent(true); setAddrOptionsEvent([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsEvent.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {newEvent.location && !addrValidEvent && <div style={{ fontSize:12, color:"#E74C3C", marginBottom:10 }}>Выберите реальное место из подсказок.</div>}
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Описание *</label>
               <textarea value={newEvent.desc} onChange={e=>setNewEvent({...newEvent,desc:e.target.value})} placeholder="Подробности..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:20 }} />
-              <div style={{ display:"flex", gap:10 }}><button onClick={()=>setShowAddEvent(false)} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddEvent} disabled={!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat} style={{ ...pl(true), flex:2, padding:14, opacity:(!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat)?0.5:1 }}>Опубликовать</button></div>
+              <input ref={eventFileRef} type="file" accept="image/*" multiple onChange={handleEventPhotos} style={{ display:"none" }} />
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
+                {newEventPhotos.map((p,i) => (
+                  <div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
+                    <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    <button onClick={()=>setNewEventPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button>
+                  </div>
+                ))}
+                {newEventPhotos.length < 3 && <button onClick={()=>eventFileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото (до 3)</button>}
+              </div>
+              <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddEvent} disabled={!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat} style={{ ...pl(true), flex:2, padding:14, opacity:(!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat)?0.5:1 }}>Опубликовать</button></div>
             </>)}
           </div>
         </div>)}
@@ -1036,3 +1203,9 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
+
