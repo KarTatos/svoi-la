@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto } from "../lib/supabase";
+import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto } from "../lib/supabase";
 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
@@ -224,23 +224,25 @@ const SECTIONS = [
 
 const RICH_PREFIX = "__LA_RICH_V1__";
 
-function encodeRichText(text, photos = []) {
-  if (!photos?.length) return text;
-  return `${RICH_PREFIX}${JSON.stringify({ text, photos })}`;
+function encodeRichText(text, photos = [], extra = {}) {
+  const payload = { text, photos: photos || [], ...extra };
+  if (!payload.photos.length && !payload.website) return text;
+  return `${RICH_PREFIX}${JSON.stringify(payload)}`;
 }
 
 function decodeRichText(raw) {
   if (typeof raw !== "string" || !raw.startsWith(RICH_PREFIX)) {
-    return { text: raw || "", photos: [] };
+    return { text: raw || "", photos: [], website: "" };
   }
   try {
     const parsed = JSON.parse(raw.slice(RICH_PREFIX.length));
     return {
       text: parsed?.text || "",
       photos: Array.isArray(parsed?.photos) ? parsed.photos : [],
+      website: parsed?.website || "",
     };
   } catch {
-    return { text: raw, photos: [] };
+    return { text: raw, photos: [], website: "" };
   }
 }
 
@@ -279,8 +281,9 @@ export default function App() {
   const [events, setEvents] = useState(INIT_EVENTS);
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", cat:"" });
+  const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
   const [newEventPhotos, setNewEventPhotos] = useState([]);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
@@ -357,7 +360,7 @@ export default function App() {
       if (dbEvents && dbEvents.length > 0) {
         const mapped = dbEvents.map(e => {
           const rich = decodeRichText(e.description);
-          return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||'', desc:rich.text, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments:[], fromDB:true };
+          return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||'', desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments:[], fromDB:true };
         });
         const titles = new Set(mapped.map(e => e.title));
         setEvents([...mapped, ...INIT_EVENTS.filter(e => !titles.has(e.title))]);
@@ -380,6 +383,10 @@ export default function App() {
 
   const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
   const openMap = (p, t) => { const q = encodeURIComponent(p.address); window.open(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`, "_blank"); setMapP(null); };
+  const openEventMap = (location, t) => {
+    const q = encodeURIComponent(location || "");
+    window.open(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`, "_blank");
+  };
   const openAllOnMap = (placesArr) => {
     // Search for place names on Google Maps centered on the district
     const names = placesArr.map(p => p.name).join(", ");
@@ -466,7 +473,7 @@ export default function App() {
         }
       }
       if (editingPlace) {
-        const allPhotos = [...(editingPlace.photos||[]).filter(p => typeof p === 'string' && p.startsWith('http')), ...uploadedUrls];
+        const allPhotos = uploadedUrls;
         const updates = { name:np.name, category:np.cat, address:np.address, tip:np.tip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
         if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
         setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:allPhotos } : p));
@@ -493,7 +500,7 @@ export default function App() {
   const startEditPlace = (p) => {
     setEditingPlace(p);
     setNp({ name:p.name, cat:p.cat, address:p.address||"", tip:p.tip });
-    setNPhotos([]);
+    setNPhotos((p.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
     setAddrValidPlace(!!(p.address || "").trim());
     setAddrOptionsPlace([]);
     setShowAdd(true);
@@ -521,6 +528,29 @@ export default function App() {
     const files = Array.from(e.target.files).slice(0, 3);
     const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
     setNewEventPhotos(prev => [...prev, ...newFiles].slice(0, 3));
+  };
+  const startEditEvent = (ev) => {
+    setEditingEvent(ev);
+    setNewEvent({
+      title: ev.title || "",
+      date: ev.date ? new Date(ev.date).toISOString().slice(0,16) : "",
+      location: ev.location || "",
+      desc: ev.desc || "",
+      website: ev.website || "",
+      cat: ev.cat || "",
+    });
+    setNewEventPhotos((ev.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
+    setAddrValidEvent(!!(ev.location || "").trim());
+    setAddrOptionsEvent([]);
+    setShowAddEvent(true);
+  };
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm("Удалить событие?")) return;
+    await dbDeleteEvent(eventId);
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    setShowAddEvent(false);
+    setEditingEvent(null);
+    setExp(null);
   };
   const handleAddTip = async () => {
     if (!newTip.title || !newTip.text || !user || !selTC) return;
@@ -580,14 +610,23 @@ export default function App() {
     }
     const uploaded = [];
     for (const p of newEventPhotos) {
-      const url = await uploadPhoto(p.file);
-      if (url) uploaded.push(url);
+      if (p.file) {
+        const url = await uploadPhoto(p.file);
+        if (url) uploaded.push(url);
+      } else if (p.preview && p.preview.startsWith("http")) {
+        uploaded.push(p.preview);
+      }
     }
-    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(newEvent.desc, uploaded), author:user.name, user_id:user.id };
-    const { data } = await dbAddEvent(dbData);
-    const newId = data?.[0]?.id || Date.now();
-    setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
-    setNewEvent({ title:"", date:"", location:"", desc:"", cat:"" }); setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
+    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(newEvent.desc, uploaded, { website: newEvent.website || "" }), author:user.name, user_id:user.id };
+    if (editingEvent) {
+      await dbUpdateEvent(editingEvent.id, dbData);
+      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website:newEvent.website || "", photos:uploaded } : ev));
+    } else {
+      const { data } = await dbAddEvent(dbData);
+      const newId = data?.[0]?.id || Date.now();
+      setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website:newEvent.website || "", photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
+    }
+    setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:"" }); setNewEventPhotos([]); setEditingEvent(null); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
   };
   const handleToggleLike = async (itemId, itemType) => {
     if (!user) { handleLogin(); return; }
@@ -1090,6 +1129,17 @@ export default function App() {
                 <div style={{ fontSize:13, color:T.mid }}>📅 {fmtDate(ev.date)}</div>
                 {ev.location && <div style={{ fontSize:13, color:T.mid }}>📍 {ev.location}</div>}
               </div>
+              {isEvExp && ev.location && (
+                <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                  <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "google");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Google Maps</button>
+                  <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "apple");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Apple Maps</button>
+                </div>
+              )}
+              {isEvExp && ev.website && (
+                <a href={ev.website} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()} style={{ display:"inline-block", fontSize:13, color:T.primary, textDecoration:"none", marginBottom:10 }}>
+                  Сайт мероприятия
+                </a>
+              )}
               <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10 }}>{ev.desc}</div>
               {isEvExp && ev.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4 }}>
@@ -1111,21 +1161,21 @@ export default function App() {
               {renderComments(ev, "event", addEventComment)}
               {user && (user.id === ev.userId || user.name === ev.author) && (
                 <div style={{ padding:"0 16px 16px" }}>
-                  <button onClick={()=>{if(window.confirm("Удалить событие?")){dbDeleteEvent(ev.id).then(()=>setEvents(prev=>prev.filter(e=>e.id!==ev.id)));setExp(null);}}} style={{ width:"100%", padding:"10px 0", borderRadius:24, border:"1.5px solid #fecaca", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, background:"#FFF5F5", color:"#E74C3C" }}>🗑 Удалить событие</button>
+                  <button onClick={(e)=>{e.stopPropagation(); startEditEvent(ev);}} style={{ width:"100%", padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.primary}55`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, background:T.primaryLight, color:T.primary }}>Редактировать событие</button>
                 </div>
               )}
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
-          <button onClick={() => { if (!user) {handleLogin();return;} setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
+          <button onClick={() => { if (!user) {handleLogin();return;} setEditingEvent(null); setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:selEC?.id||"" }); setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
 
         {/* ADD EVENT MODAL */}
-        {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false);}}>
+        {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}}>
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
             {!user ? (<div style={{ textAlign:"center", padding:"20px 0" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
-              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>🎉 Новое событие</h3>
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{editingEvent ? "✏️ Редактировать событие" : "🎉 Новое событие"}</h3>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
               <input value={newEvent.title} onChange={e=>setNewEvent({...newEvent,title:e.target.value})} placeholder="Что за мероприятие?" style={{ ...iS, marginBottom:14 }} />
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Категория *</label>
@@ -1134,7 +1184,8 @@ export default function App() {
               </select>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Дата и время *</label>
               <input type="datetime-local" value={newEvent.date} onChange={e=>setNewEvent({...newEvent,date:e.target.value})} style={{ ...iS, marginBottom:14 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Место</label>              <input value={newEvent.location} onChange={e=>{setNewEvent({...newEvent,location:e.target.value}); setAddrValidEvent(false);}} placeholder="Адрес или название места" style={{ ...iS, marginBottom:6, borderColor:newEvent.location && !addrValidEvent ? "#f5b7b1" : T.border }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Место</label>
+              <input value={newEvent.location} onChange={e=>{setNewEvent({...newEvent,location:e.target.value}); setAddrValidEvent(false);}} placeholder="Адрес или название места" style={{ ...iS, marginBottom:6, borderColor:newEvent.location && !addrValidEvent ? "#f5b7b1" : T.border }} />
               {addrLoadingEvent && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем место...</div>}
               {!addrLoadingEvent && addrOptionsEvent.length > 0 && !addrValidEvent && (
                 <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
@@ -1147,7 +1198,9 @@ export default function App() {
               )}
               {newEvent.location && !addrValidEvent && <div style={{ fontSize:12, color:"#E74C3C", marginBottom:10 }}>Выберите реальное место из подсказок.</div>}
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Описание *</label>
-              <textarea value={newEvent.desc} onChange={e=>setNewEvent({...newEvent,desc:e.target.value})} placeholder="Подробности..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:20 }} />
+              <textarea value={newEvent.desc} onChange={e=>setNewEvent({...newEvent,desc:e.target.value})} placeholder="Подробности..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:14 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Сайт (необязательно)</label>
+              <input value={newEvent.website || ""} onChange={e=>setNewEvent({...newEvent,website:e.target.value})} placeholder="https://..." style={{ ...iS, marginBottom:20 }} />
               <input ref={eventFileRef} type="file" accept="image/*" multiple onChange={handleEventPhotos} style={{ display:"none" }} />
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
                 {newEventPhotos.map((p,i) => (
@@ -1158,7 +1211,11 @@ export default function App() {
                 ))}
                 {newEventPhotos.length < 3 && <button onClick={()=>eventFileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото (до 3)</button>}
               </div>
-              <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddEvent} disabled={!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat} style={{ ...pl(true), flex:2, padding:14, opacity:(!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat)?0.5:1 }}>Опубликовать</button></div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+                {editingEvent && <button onClick={()=>handleDeleteEvent(editingEvent.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+                <button onClick={handleAddEvent} disabled={!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat} style={{ ...pl(true), flex:2, padding:14, opacity:(!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat)?0.5:1 }}>{editingEvent ? "Сохранить" : "Опубликовать"}</button>
+              </div>
             </>)}
           </div>
         </div>)}

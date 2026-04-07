@@ -72,6 +72,11 @@ export async function addEvent(event) {
   return { data, error };
 }
 
+export async function updateEvent(id, updates) {
+  const { data, error } = await supabase.from('events').update(updates).eq('id', id).select();
+  return { data, error };
+}
+
 export async function deleteEvent(id) {
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'event');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'event');
