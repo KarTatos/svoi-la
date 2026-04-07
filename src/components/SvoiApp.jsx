@@ -387,6 +387,25 @@ export default function App() {
     const q = encodeURIComponent(location || "");
     window.open(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`, "_blank");
   };
+  const normalizeExternalUrl = (url) => {
+    const v = (url || "").trim();
+    if (!v) return "";
+    if (/^https?:\/\//i.test(v)) return v;
+    return `https://${v}`;
+  };
+  const handleNativeShare = async ({ title, text, url }) => {
+    const safeUrl = normalizeExternalUrl(url || window.location.href);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url: safeUrl });
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(safeUrl);
+        alert("Ссылка скопирована");
+      }
+    } catch {}
+  };
   const openAllOnMap = (placesArr) => {
     // Search for place names on Google Maps centered on the district
     const names = placesArr.map(p => p.name).join(", ");
@@ -617,14 +636,15 @@ export default function App() {
         uploaded.push(p.preview);
       }
     }
-    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(newEvent.desc, uploaded, { website: newEvent.website || "" }), author:user.name, user_id:user.id };
+    const website = normalizeExternalUrl(newEvent.website || "");
+    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(newEvent.desc, uploaded, { website }), author:user.name, user_id:user.id };
     if (editingEvent) {
       await dbUpdateEvent(editingEvent.id, dbData);
-      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website:newEvent.website || "", photos:uploaded } : ev));
+      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website, photos:uploaded } : ev));
     } else {
       const { data } = await dbAddEvent(dbData);
       const newId = data?.[0]?.id || Date.now();
-      setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website:newEvent.website || "", photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
+      setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website, photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
     }
     setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:"" }); setNewEventPhotos([]); setEditingEvent(null); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
   };
@@ -951,11 +971,17 @@ export default function App() {
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}><div style={{ fontSize:11, color:T.light }}>от {p.addedBy}</div><span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span></div>
               </div>
               {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8 }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:140, height:100, borderRadius:T.rs, background:T.bg, border:`1px solid ${T.border}`, overflow:"hidden", flexShrink:0 }}>{typeof ph === 'string' && (ph.startsWith('http') || ph.startsWith('blob:')) ? <img src={ph} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", cursor:"zoom-in" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} onError={e=>{e.target.style.display='none'}} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:8 }}><span style={{ fontSize:12, color:T.mid }}>{String(ph)}</span></div>}</div>)}</div></div>}
-                <div style={{ padding:"14px 16px 12px", display:"flex", gap:8 }}>
+                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, scrollSnapType:"x mandatory" }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:92, width:92, height:92, borderRadius:12, background:T.bg, border:`1px solid ${T.border}`, overflow:"hidden", flexShrink:0, scrollSnapAlign:"start" }}>{typeof ph === 'string' && (ph.startsWith('http') || ph.startsWith('blob:')) ? <img src={ph} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", cursor:"zoom-in" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} onError={e=>{e.target.style.display='none'}} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:8 }}><span style={{ fontSize:12, color:T.mid }}>{String(ph)}</span></div>}</div>)}</div>{p.photos.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:2 }}>Листайте фото →</div>}</div>}
+                <div style={{ padding:"14px 16px 12px", display:"none", gap:8 }}>
                   <button onClick={e=>{e.stopPropagation();handleToggleLike(p.id,"place")}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${isL?"#E74C3C":T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:isL?"#FFF0F0":T.card, color:isL?"#E74C3C":T.mid }}>{isL?"❤️":"🤍"} {p.likes||0}</button>
                   <button onClick={e=>{e.stopPropagation(); if(navigator.share) navigator.share({title:p.name,text:p.tip,url:window.location.href});}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:T.card, color:T.mid }}>📤</button>
                   <button onClick={e=>{e.stopPropagation();setMapP(isM?null:p.id)}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${isM?T.primary:T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:isM?T.primaryLight:T.card, color:isM?T.primary:T.mid }}>🗺️</button>
+                </div>
+                <div style={{ padding:"14px 16px 12px", display:"flex", gap:14, alignItems:"center" }}>
+                  <button onClick={e=>{e.stopPropagation();handleToggleLike(p.id,"place")}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{p.likes||0}</span></button>
+                  <button onClick={e=>{e.stopPropagation(); setShowComments(`place-${p.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(p.comments||[]).length}</span></button>
+                  <button onClick={e=>{e.stopPropagation();setMapP(isM?null:p.id)}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:isM?T.primary:T.mid, padding:0 }} title="Карта">⌖</button>
+                  <button onClick={e=>{e.stopPropagation(); handleNativeShare({title:p.name,text:p.tip,url:window.location.href});}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                 </div>
                 {/* Comments */}
                 {renderComments(p, "place", addPlaceComment)}
@@ -1006,12 +1032,13 @@ export default function App() {
                 <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
                 <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:"pre-wrap" }}>{isE ? tip.text : tip.text.substring(0, 120) + (tip.text.length > 120 ? "..." : "")}</div>
                 {isE && tip.photos?.length > 0 && (
-                  <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4 }}>
+                  <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                     {tip.photos.map((ph, pi) => (
-                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0 }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
+                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
                     ))}
                   </div>
                 )}
+                {isE && tip.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:2 }}>Листайте фото →</div>}
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
                   <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
                   <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
@@ -1022,8 +1049,13 @@ export default function App() {
                 </div>
               </div>
               {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                <div style={{ padding:"16px 16px 0" }}>
+                <div style={{ padding:"16px 16px 0", display:"none" }}>
                   <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12 }}>{isL ? "❤️ Понравилось" : "🤍 Нравится"}</button>
+                </div>
+                <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
+                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
+                  <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
+                  <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                 </div>
                 {renderComments(tip, "tip", handleAddComment)}
               </div>)}
@@ -1122,7 +1154,7 @@ export default function App() {
               </div>
             )}
           </div>
-          {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL }}>
+          {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const eventWebsite = normalizeExternalUrl(ev.website); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL }}>
             <div onClick={() => setExp(isEvExp?null:`ev-${ev.id}`)} style={{ padding:18, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
               <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>{ev.title}</div>
               <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:10 }}>
@@ -1135,19 +1167,20 @@ export default function App() {
                   <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "apple");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Apple Maps</button>
                 </div>
               )}
-              {isEvExp && ev.website && (
-                <a href={ev.website} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()} style={{ display:"inline-block", fontSize:13, color:T.primary, textDecoration:"none", marginBottom:10 }}>
+              {isEvExp && eventWebsite && (
+                <a href={eventWebsite} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()} style={{ display:"inline-block", fontSize:13, color:T.primary, textDecoration:"none", marginBottom:10 }}>
                   Сайт мероприятия
                 </a>
               )}
               <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10 }}>{ev.desc}</div>
               {isEvExp && ev.photos?.length > 0 && (
-                <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4 }}>
+                <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                   {ev.photos.map((ph, pi) => (
-                    <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0 }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
+                    <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
                   ))}
                 </div>
               )}
+              {isEvExp && ev.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:-6, marginBottom:8 }}>Листайте фото →</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:11, color:T.light }}>от {ev.author}</span>
                 <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
@@ -1158,6 +1191,11 @@ export default function App() {
               </div>
             </div>
             {isEvExp && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
+              <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
+                <button onClick={(e)=>{e.stopPropagation(); handleToggleLike(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`event-${ev.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{ev.likes||0}</span></button>
+                <button onClick={(e)=>{e.stopPropagation(); setShowComments(`event-${ev.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(ev.comments||[]).length}</span></button>
+                <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
+              </div>
               {renderComments(ev, "event", addEventComment)}
               {user && (user.id === ev.userId || user.name === ev.author) && (
                 <div style={{ padding:"0 16px 16px" }}>
