@@ -5,15 +5,15 @@ import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
 const DISTRICTS = [
-  { id:"weho", name:"West Hollywood", emoji:"🌴", desc:"Русские рестораны, ночная жизнь", lat:34.0900, lng:-118.3617 },
-  { id:"hollywood", name:"Hollywood", emoji:"⭐", desc:"Бары, хайкинг, концерты", lat:34.0928, lng:-118.3287 },
-  { id:"glendale", name:"Glendale", emoji:"🏔️", desc:"Армянская кухня, семьи", lat:34.1425, lng:-118.2551 },
-  { id:"dtla", name:"Downtown LA", emoji:"🏙️", desc:"Кофе, книжные, лофты", lat:34.0407, lng:-118.2468 },
-  { id:"valley", name:"Studio City / Valley", emoji:"🎬", desc:"Speakeasy бары", lat:34.1486, lng:-118.3965 },
-  { id:"silverlake", name:"Silver Lake / Los Feliz", emoji:"🎨", desc:"Инди, обсерватория", lat:34.0869, lng:-118.2702 },
-  { id:"westside", name:"Santa Monica / Venice", emoji:"🏖️", desc:"Пляж, каналы", lat:34.0195, lng:-118.4912 },
-  { id:"pasadena", name:"Pasadena", emoji:"🌸", desc:"Водопады, природа", lat:34.1478, lng:-118.1445 },
-  { id:"midcity", name:"Mid-City / Melrose", emoji:"🛍️", desc:"Кино, шоппинг", lat:34.0771, lng:-118.3442 },
+  { id:"weho", name:"West Hollywood", emoji:"🌴", desc:"Restaurants, nightlife", lat:34.0900, lng:-118.3617 },
+  { id:"hollywood", name:"Hollywood", emoji:"⭐", desc:"Bars, hiking, concerts", lat:34.0928, lng:-118.3287 },
+  { id:"glendale", name:"Glendale", emoji:"🏔️", desc:"Family spots, food", lat:34.1425, lng:-118.2551 },
+  { id:"dtla", name:"Downtown LA", emoji:"🏙️", desc:"Coffee, books, lofts", lat:34.0407, lng:-118.2468 },
+  { id:"valley", name:"Studio City / Valley", emoji:"🎬", desc:"Speakeasy bars", lat:34.1486, lng:-118.3965 },
+  { id:"silverlake", name:"Silver Lake / Los Feliz", emoji:"🎨", desc:"Indie, observatory", lat:34.0869, lng:-118.2702 },
+  { id:"westside", name:"Santa Monica / Venice", emoji:"🏖️", desc:"Beach, canals", lat:34.0195, lng:-118.4912 },
+  { id:"pasadena", name:"Pasadena", emoji:"🌸", desc:"Nature, trails", lat:34.1478, lng:-118.1445 },
+  { id:"midcity", name:"Mid-City / Melrose", emoji:"🛍️", desc:"Shopping, cafes", lat:34.0771, lng:-118.3442 },
 ];
 
 const PLACE_CATS = [
@@ -23,23 +23,50 @@ const PLACE_CATS = [
   { id:"hiking", icon:"🥾", title:"Хайкинг", color:"#27AE60" },
   { id:"interesting", icon:"✨", title:"Интересно", color:"#2980B9" },
   { id:"music", icon:"🎵", title:"Музыка", color:"#E91E8C" },
-  { id:"cinema", icon:"🎬", title:"Кино", color:"#E67E22" },
 ];
 
-const INIT_PLACES = [
-  { id:1, cat:"restaurants", district:"weho", name:"Тройка", address:"8826 Sunset Blvd, West Hollywood, CA", tip:"Пельмени. Четверг — живая музыка.", rating:4.8, addedBy:"Мария К.", img:"🥟", photos:["🍽️ Уютный зал"], likes:34, comments:[{id:301,author:"Дима С.",text:"Лучшие пельмени в WeHo!"}] },
-  { id:2, cat:"restaurants", district:"hollywood", name:"Sochi Restaurant", address:"5765 Melrose Ave, Hollywood, CA", tip:"Хинкали 10/10, хачапури огонь.", rating:4.7, addedBy:"Дима С.", img:"🫓", photos:["☀️ Терраса"], likes:28, comments:[] },
-  { id:3, cat:"restaurants", district:"glendale", name:"Ararat", address:"1000 S Glendale Ave, Glendale, CA", tip:"Армянская кухня, огромные порции.", rating:4.6, addedBy:"Артур М.", img:"🍖", photos:[], likes:19, comments:[] },
-  { id:4, cat:"bars", district:"valley", name:"The Other Door", address:"10437 Burbank Blvd, North Hollywood, CA", tip:"Speakeasy, пароль каждую неделю.", rating:4.9, addedBy:"Алекс Р.", img:"🥃", photos:["🥃 Old Fashioned"], likes:52, comments:[{id:302,author:"Лена В.",text:"Пароль спрашивайте в инсте!"}] },
-  { id:5, cat:"bars", district:"hollywood", name:"Davey Wayne's", address:"1611 N El Centro Ave, Hollywood, CA", tip:"Вход через холодильник!", rating:4.7, addedBy:"Лена В.", img:"🪩", photos:[], likes:41, comments:[] },
-  { id:6, cat:"coffee", district:"dtla", name:"Verve Coffee", address:"833 S Spring St, Los Angeles, CA", tip:"Pour-over. Лофт идеальный.", rating:4.8, addedBy:"Саша К.", img:"☕", photos:[], likes:37, comments:[] },
-  { id:7, cat:"hiking", district:"hollywood", name:"Runyon Canyon", address:"2000 N Fuller Ave, Los Angeles, CA", tip:"Правая тропа — виды лучше.", rating:4.4, addedBy:"Макс Д.", img:"⛰️", photos:[], likes:23, comments:[] },
-  { id:8, cat:"hiking", district:"pasadena", name:"Eaton Canyon Falls", address:"1750 N Altadena Dr, Pasadena, CA", tip:"Водопад 12м! Лёгкий маршрут.", rating:4.9, addedBy:"Игорь Н.", img:"💧", photos:[], likes:48, comments:[] },
-  { id:9, cat:"hiking", district:"silverlake", name:"Griffith Observatory", address:"2800 E Observatory Rd, Los Angeles, CA", tip:"На закате обязательно.", rating:4.8, addedBy:"Катя Л.", img:"🌅", photos:[], likes:55, comments:[{id:303,author:"Макс Д.",text:"Парковка бесплатная после 6!"}] },
-  { id:10, cat:"interesting", district:"dtla", name:"The Last Bookstore", address:"453 S Spring St, Los Angeles, CA", tip:"Тоннель из книг.", rating:4.7, addedBy:"Вера П.", img:"📚", photos:[], likes:33, comments:[] },
-  { id:11, cat:"music", district:"hollywood", name:"Hollywood Bowl", address:"2301 N Highland Ave, Los Angeles, CA", tip:"Своё вино можно!", rating:4.9, addedBy:"Наташа Ф.", img:"🎶", photos:[], likes:61, comments:[] },
-  { id:12, cat:"cinema", district:"midcity", name:"New Beverly Cinema", address:"7165 Beverly Blvd, Los Angeles, CA", tip:"Тарантино выбирает фильмы. $12.", rating:4.9, addedBy:"Кирилл М.", img:"🎞️", photos:[], likes:44, comments:[] },
+const PLACE_CAT_IDS = new Set(PLACE_CATS.map((c) => c.id));
+
+const BASE_INIT_PLACES = [
+  { id:1, cat:"restaurants", district:"weho", name:"Тройка", address:"8826 Sunset Blvd, West Hollywood, CA", tip:"Пельмени. Четверг — живая музыка.", addedBy:"Мария К.", img:"🥟", photos:["🍽️ Уютный зал"], likes:34, comments:[{id:301,author:"Дима С.",text:"Лучшие пельмени в WeHo!"}] },
+  { id:2, cat:"restaurants", district:"hollywood", name:"Sochi Restaurant", address:"5765 Melrose Ave, Hollywood, CA", tip:"Хинкали 10/10, хачапури огонь.", addedBy:"Дима С.", img:"🫓", photos:["☀️ Терраса"], likes:28, comments:[] },
+  { id:3, cat:"restaurants", district:"glendale", name:"Ararat", address:"1000 S Glendale Ave, Glendale, CA", tip:"Армянская кухня, огромные порции.", addedBy:"Артур М.", img:"🍖", photos:[], likes:19, comments:[] },
+  { id:4, cat:"bars", district:"valley", name:"The Other Door", address:"10437 Burbank Blvd, North Hollywood, CA", tip:"Speakeasy, пароль каждую неделю.", addedBy:"Алекс Р.", img:"🥃", photos:["🥃 Old Fashioned"], likes:52, comments:[{id:302,author:"Лена В.",text:"Пароль спрашивайте в инсте!"}] },
+  { id:5, cat:"bars", district:"hollywood", name:"Davey Wayne's", address:"1611 N El Centro Ave, Hollywood, CA", tip:"Вход через холодильник!", addedBy:"Лена В.", img:"🪩", photos:[], likes:41, comments:[] },
+  { id:6, cat:"coffee", district:"dtla", name:"Verve Coffee", address:"833 S Spring St, Los Angeles, CA", tip:"Pour-over. Лофт идеальный.", addedBy:"Саша К.", img:"☕", photos:[], likes:37, comments:[] },
+  { id:7, cat:"hiking", district:"hollywood", name:"Runyon Canyon", address:"2000 N Fuller Ave, Los Angeles, CA", tip:"Правая тропа — виды лучше.", addedBy:"Макс Д.", img:"⛰️", photos:[], likes:23, comments:[] },
+  { id:8, cat:"hiking", district:"pasadena", name:"Eaton Canyon Falls", address:"1750 N Altadena Dr, Pasadena, CA", tip:"Водопад 12м! Лёгкий маршрут.", addedBy:"Игорь Н.", img:"💧", photos:[], likes:48, comments:[] },
+  { id:9, cat:"hiking", district:"silverlake", name:"Griffith Observatory", address:"2800 E Observatory Rd, Los Angeles, CA", tip:"На закате обязательно.", addedBy:"Катя Л.", img:"🌅", photos:[], likes:55, comments:[{id:303,author:"Макс Д.",text:"Парковка бесплатная после 6!"}] },
+  { id:10, cat:"interesting", district:"dtla", name:"The Last Bookstore", address:"453 S Spring St, Los Angeles, CA", tip:"Тоннель из книг.", addedBy:"Вера П.", img:"📚", photos:[], likes:33, comments:[] },
+  { id:11, cat:"music", district:"hollywood", name:"Hollywood Bowl", address:"2301 N Highland Ave, Los Angeles, CA", tip:"Своё вино можно!", addedBy:"Наташа Ф.", img:"🎶", photos:[], likes:61, comments:[] },
 ];
+
+const WEHO_STREETS = [
+  "Sunset Blvd",
+  "Santa Monica Blvd",
+  "Melrose Ave",
+  "La Cienega Blvd",
+  "Fairfax Ave",
+  "Beverly Blvd",
+];
+
+const WEHO_PREVIEW_PLACES = PLACE_CATS.flatMap((cat, catIndex) =>
+  Array.from({ length: 15 }, (_, i) => ({
+    id: 20000 + catIndex * 100 + i,
+    cat: cat.id,
+    district: "weho",
+    name: `${cat.title} ${i + 1}`,
+    address: `${1000 + catIndex * 100 + i * 3} ${WEHO_STREETS[i % WEHO_STREETS.length]}, West Hollywood, CA`,
+    tip: `Популярное место в категории "${cat.title}".`,
+    addedBy: "Demo",
+    img: cat.icon,
+    photos: [],
+    likes: 0,
+    comments: [],
+  }))
+);
+
+const INIT_PLACES = [...BASE_INIT_PLACES, ...WEHO_PREVIEW_PLACES];
 
 const USCIS_CATS = [
   { id:"greencard", icon:"🪪", title:"Грин-карта", subtitle:"Получение, продление, условия", docs:[
@@ -251,6 +278,7 @@ export default function App() {
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useState(() => { try { const d = sessionStorage.getItem('selD'); return d ? JSON.parse(d) : null; } catch { return null; } });
   const [selPC, setSelPC] = useState(() => { try { const d = sessionStorage.getItem('selPC'); return d ? JSON.parse(d) : null; } catch { return null; } });
+  const [selPlace, setSelPlace] = useState(null);
   const [selTC, setSelTC] = useState(null);
   // Save screen state on change
   useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
@@ -293,7 +321,7 @@ export default function App() {
   const [addrValidPlace, setAddrValidPlace] = useState(false);
   const [addrValidEvent, setAddrValidEvent] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
-  const [chat, setChat] = useState([{ role:"assistant", text:"Привет! 👋 Я помощник для русскоязычных в LA. Спрашивай про USCIS, визы, грин-карты." }]);
+  const [chat, setChat] = useState([{ role:"assistant", text:"Привет! 👋 Я помощник. Спрашивай про USCIS, визы, грин-карты." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
@@ -311,10 +339,10 @@ export default function App() {
   // Save navigation state to localStorage
   useEffect(() => {
     if (mt) {
-      const state = { scr, selDId: selD?.id, selPCId: selPC?.id, selUId: selU?.id, selTCId: selTC?.id, selECId: selEC?.id };
+      const state = { scr, selDId: selD?.id, selPCId: selPC?.id, selPlaceId: selPlace?.id, selUId: selU?.id, selTCId: selTC?.id, selECId: selEC?.id };
       try { localStorage.setItem('nav', JSON.stringify(state)); } catch {}
     }
-  }, [scr, selD, selPC, selU, selTC, selEC, mt]);
+  }, [scr, selD, selPC, selPlace, selU, selTC, selEC, mt]);
   // Restore navigation on mount
   useEffect(() => {
     try {
@@ -323,6 +351,7 @@ export default function App() {
         setScr(saved.scr);
         if (saved.selDId) setSelD(DISTRICTS.find(d => d.id === saved.selDId) || null);
         if (saved.selPCId) setSelPC(PLACE_CATS.find(c => c.id === saved.selPCId) || null);
+        if (saved.selPlaceId) setSelPlace(INIT_PLACES.find(p => p.id === saved.selPlaceId) || null);
         if (saved.selUId) setSelU(USCIS_CATS.find(c => c.id === saved.selUId) || null);
         if (saved.selTCId) setSelTC(TIPS_CATS.find(c => c.id === saved.selTCId) || null);
         if (saved.selECId) setSelEC(EVENT_CATS.find(c => c.id === saved.selECId) || null);
@@ -341,9 +370,11 @@ export default function App() {
       // Load places from DB, merge with initial
       const { data: dbPlaces } = await fetchPlaces();
       if (dbPlaces && dbPlaces.length > 0) {
-        const mapped = dbPlaces.map(p => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||'', tip:p.tip, rating:p.rating||0, addedBy:p.added_by, userId:p.user_id, img:p.img||'📍', photos:p.photos||[], likes:p.likes_count||0, fromDB:true }));
+        const mapped = dbPlaces
+          .map(p => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||'', tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||'📍', photos:p.photos||[], likes:p.likes_count||0, fromDB:true }))
+          .filter((p) => PLACE_CAT_IDS.has(p.cat));
         const names = new Set(mapped.map(p => p.name));
-        setPlaces([...mapped, ...INIT_PLACES.filter(p => !names.has(p.name))]);
+        setPlaces([...mapped, ...INIT_PLACES.filter(p => PLACE_CAT_IDS.has(p.cat) && !names.has(p.name))]);
       }
       // Load tips from DB
       const { data: dbTips } = await fetchTips();
@@ -381,7 +412,13 @@ export default function App() {
   }, []);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
+  const openAddressInMaps = (address) => {
+    const value = (address || "").trim();
+    if (!value) return;
+    const q = encodeURIComponent(value);
+    window.open(`geo:0,0?q=${q}`, "_blank");
+  };
   const openMap = (p, t) => { const q = encodeURIComponent(p.address); window.open(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`, "_blank"); setMapP(null); };
   const openEventMap = (location, t) => {
     const q = encodeURIComponent(location || "");
@@ -414,17 +451,30 @@ export default function App() {
     window.open(`https://www.google.com/maps/search/${q}/@${d.lat},${d.lng},14z`, "_blank");
   };
 
+  const toShortAddress = (item) => {
+    const a = item?.address || {};
+    const number = a.house_number || "";
+    const street = a.road || a.pedestrian || a.footway || a.path || a.neighbourhood || "";
+    const city = a.city || a.town || a.village || a.hamlet || a.suburb || "Los Angeles";
+    const state = a.state_code || a.state || "CA";
+    const line = [number, street].filter(Boolean).join(" ").trim();
+    if (line) return `${line}, ${city}, ${state}`;
+    return [city, state].filter(Boolean).join(", ");
+  };
   const fetchAddressSuggestions = async (query) => {
     const q = (query || "").trim();
     if (q.length < 3) return [];
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(`${q}, Los Angeles, California`)}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&accept-language=en&q=${encodeURIComponent(`${q}, Los Angeles, California`)}`);
       const data = await res.json();
       if (!Array.isArray(data)) return [];
-      return data.map((item) => ({
-        label: item.display_name,
-        value: item.display_name,
-      }));
+      return data.map((item) => {
+        const short = toShortAddress(item);
+        return {
+          label: short,
+          value: short,
+        };
+      });
     } catch {
       return [];
     }
@@ -496,12 +546,13 @@ export default function App() {
         const updates = { name:np.name, category:np.cat, address:np.address, tip:np.tip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
         if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
         setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:allPhotos } : p));
+        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:allPhotos } : prev);
         setEditingPlace(null);
       } else {
         const dbData = { name:np.name, category:np.cat, district:selD.id, address:np.address||'', tip:np.tip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
         const { data } = await dbAddPlace(dbData);
         const newId = data?.[0]?.id || Date.now();
-        setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:np.tip, rating:0, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
+        setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:np.tip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
       }
       setNp({ name:"", cat:"", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
     } catch(err) {
@@ -513,6 +564,10 @@ export default function App() {
     if (window.confirm("Удалить это место?")) {
       await dbDeletePlace(placeId);
       setPlaces(prev => prev.filter(p => p.id !== placeId));
+      if (selPlace?.id === placeId) {
+        setSelPlace(null);
+        setScr("places-cat");
+      }
       setExp(null);
     }
   };
@@ -666,8 +721,9 @@ export default function App() {
   const ansTest = (i) => { setTAns(p => [...p, { correct: i === tShuf[tQ].correctIdx }]); if (tQ+1 >= tShuf.length) setTDone(true); else setTQ(tQ+1); };
 
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
-  const dPlaces = selD ? places.filter(p=>p.district===selD.id) : [];
+  const dPlaces = selD ? places.filter(p=>p.district===selD.id && PLACE_CAT_IDS.has(p.cat)) : [];
   const cPlaces = selPC ? dPlaces.filter(p=>p.cat===selPC.id) : [];
+  const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || selPlace) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
   const catEvents = selEC ? events.filter(e=>{
     if (e.cat !== selEC.id) return false;
@@ -685,6 +741,10 @@ export default function App() {
       return dt.toLocaleDateString("ru-RU", { weekday:"short", day:"numeric", month:"long", year:"numeric" }) + ", " + dt.toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
     } catch { return d; }
   };
+
+  useEffect(() => {
+    if (scr === "place-item" && !activePlace) setScr("places-cat");
+  }, [scr, activePlace]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -946,59 +1006,78 @@ export default function App() {
           </div>
         </div>)}
 
-        {/* PLACES IN CATEGORY — with "Show all on map" */}
+        {/* PLACES IN CATEGORY */}
         {scr==="places-cat" && selPC && selD && (<div>
-          <button onClick={() => { setScr("district"); setSelPC(null); setExp(null); }} style={bk}>← {selD.name}</button>
+          <button onClick={() => { setScr("district"); setSelPC(null); setSelPlace(null); }} style={bk}>← {selD.name}</button>
           <div style={{ display:"flex", alignItems:"center", gap:12, margin:"4px 0 12px" }}>
             <div style={{ width:44, height:44, borderRadius:12, background:`${selPC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{selPC.icon}</div>
             <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selPC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selD.name} · {cPlaces.length} мест</p></div>
           </div>
-          {/* Show all on map */}
           {cPlaces.length > 0 && (
             <button onClick={() => openAllOnMap(cPlaces)} style={{ ...pl(true), width:"100%", padding:"12px 0", display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontSize:13, marginBottom:16 }}>🗺️ Показать все на карте</button>
           )}
-          {cPlaces.map((p, i) => { const isE = exp===p.id; const isM = mapP===p.id; const isL = liked[`place-${p.id}`]; return (
-            <div key={p.id} style={{ ...cd, overflow:"hidden", marginBottom:12, borderColor:isE?T.primary+"40":T.borderL }}>
-              <div onClick={() => { setExp(isE?null:p.id); setMapP(null); }} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+          {cPlaces.map((p) => (
+            <button key={p.id} onClick={() => { setSelPlace(p); setScr("place-item"); }} style={{ ...cd, width:"100%", overflow:"hidden", marginBottom:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", borderColor:T.borderL }}>
+              <div style={{ padding:16 }}>
                 <div style={{ display:"flex", gap:14 }}>
                   <div style={{ width:50, height:50, borderRadius:14, background:`${selPC.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>{p.img}</div>
                   <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between" }}><div style={{ fontWeight:700, fontSize:16 }}>{p.name}</div>{p.rating>0&&<div style={{ fontSize:13, color:T.primary, fontWeight:700 }}>★ {p.rating}</div>}</div>
-                    <div style={{ fontSize:12, color:T.mid, marginTop:3 }}>📍 {p.address||selD.name}</div>
+                    <div style={{ fontWeight:700, fontSize:16 }}>{p.name}</div>
+                    <button onClick={(e)=>{ e.stopPropagation(); openAddressInMaps(p.address || selD.name); }} style={{ background:"none", border:"none", padding:0, marginTop:3, color:T.mid, fontSize:12, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline", textAlign:"left" }}>
+                      📍 {p.address || selD.name}
+                    </button>
                   </div>
                 </div>
                 <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:13, color:T.mid }}>💡 {p.tip}</div></div>
-                <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}><div style={{ fontSize:11, color:T.light }}>от {p.addedBy}</div><span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span></div>
+                <div style={{ marginTop:10, fontSize:11, color:T.light }}>от {p.addedBy}</div>
               </div>
-              {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                {p.photos?.length>0 && <div style={{ padding:"14px 16px 0" }}><div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, scrollSnapType:"x mandatory" }}>{p.photos.map((ph,pi)=><div key={pi} style={{ minWidth:92, width:92, height:92, borderRadius:12, background:T.bg, border:`1px solid ${T.border}`, overflow:"hidden", flexShrink:0, scrollSnapAlign:"start" }}>{typeof ph === 'string' && (ph.startsWith('http') || ph.startsWith('blob:')) ? <img src={ph} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", cursor:"zoom-in" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} onError={e=>{e.target.style.display='none'}} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:8 }}><span style={{ fontSize:12, color:T.mid }}>{String(ph)}</span></div>}</div>)}</div>{p.photos.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:2 }}>Листайте фото →</div>}</div>}
-                <div style={{ padding:"14px 16px 12px", display:"none", gap:8 }}>
-                  <button onClick={e=>{e.stopPropagation();handleToggleLike(p.id,"place")}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${isL?"#E74C3C":T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:isL?"#FFF0F0":T.card, color:isL?"#E74C3C":T.mid }}>{isL?"❤️":"🤍"} {p.likes||0}</button>
-                  <button onClick={e=>{e.stopPropagation(); if(navigator.share) navigator.share({title:p.name,text:p.tip,url:window.location.href});}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:T.card, color:T.mid }}>📤</button>
-                  <button onClick={e=>{e.stopPropagation();setMapP(isM?null:p.id)}} style={{ flex:1, padding:"11px 0", borderRadius:24, border:`1.5px solid ${isM?T.primary:T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:13, fontWeight:600, background:isM?T.primaryLight:T.card, color:isM?T.primary:T.mid }}>🗺️</button>
-                </div>
-                <div style={{ padding:"14px 16px 12px", display:"flex", gap:14, alignItems:"center" }}>
-                  <button onClick={e=>{e.stopPropagation();handleToggleLike(p.id,"place")}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{p.likes||0}</span></button>
-                  <button onClick={e=>{e.stopPropagation(); setShowComments(`place-${p.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(p.comments||[]).length}</span></button>
-                  <button onClick={e=>{e.stopPropagation();setMapP(isM?null:p.id)}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:isM?T.primary:T.mid, padding:0 }} title="Карта">⌖</button>
-                  <button onClick={e=>{e.stopPropagation(); handleNativeShare({title:p.name,text:p.tip,url:window.location.href});}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
-                </div>
-                {/* Comments */}
-                {renderComments(p, "place", addPlaceComment)}
-                {/* Edit/Delete — only for author */}
-                {user && (user.id === p.userId || user.name === p.addedBy) && (
-                  <div style={{ padding:"0 16px 16px", display:"flex", gap:8 }}>
-                    <button onClick={e=>{e.stopPropagation();startEditPlace(p)}} style={{ flex:1, padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:T.card, color:T.mid }}>✏️ Редактировать</button>
-                    <button onClick={e=>{e.stopPropagation();handleDeletePlace(p.id)}} style={{ flex:1, padding:"10px 0", borderRadius:24, border:"1.5px solid #fecaca", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:"#FFF5F5", color:"#E74C3C" }}>🗑 Удалить</button>
-                  </div>
-                )}
-                {isM && <div style={{ padding:"0 16px 16px" }}><div style={{ background:T.bg, borderRadius:T.r, border:`1px solid ${T.border}`, overflow:"hidden" }}>
-                  {[{t:"google",i:"🌐",n:"Google Maps"},{t:"apple",i:"🍎",n:"Apple Maps"}].map(m=>(<button key={m.t} onClick={e=>{e.stopPropagation();openMap(p,m.t)}} style={{ width:"100%", padding:"12px 14px", background:T.card, border:"none", borderBottom:m.t==="google"?`1px solid ${T.borderL}`:"none", display:"flex", alignItems:"center", gap:12, cursor:"pointer", fontFamily:"inherit", color:T.text, fontSize:14 }} onMouseEnter={e=>{e.currentTarget.style.background=T.primaryLight}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}><span>{m.i}</span><span style={{ fontWeight:600 }}>{m.n}</span><span style={{ marginLeft:"auto", color:T.light }}>→</span></button>))}
-                </div></div>}
-              </div>)}
-            </div>
-          ); })}
+            </button>
+          ))}
           <button onClick={() => { openAddForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить</button>
+        </div>)}
+
+        {/* PLACE ITEM PAGE */}
+        {scr==="place-item" && activePlace && selPC && selD && (<div>
+          <button onClick={() => { setScr("places-cat"); setExp(null); }} style={bk}>← {selPC.title}</button>
+          <div style={{ ...cd, overflow:"hidden", borderColor:T.borderL }}>
+            <div style={{ padding:16 }}>
+              <div style={{ display:"flex", gap:14, marginBottom:12 }}>
+                <div style={{ width:56, height:56, borderRadius:14, background:`${selPC.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>{activePlace.img}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:20, lineHeight:1.2 }}>{activePlace.name}</div>
+                  <button onClick={() => openAddressInMaps(activePlace.address || selD.name)} style={{ background:"none", border:"none", padding:0, marginTop:5, color:T.mid, fontSize:13, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline", textAlign:"left" }}>
+                    📍 {activePlace.address || selD.name}
+                  </button>
+                  <div style={{ marginTop:5, fontSize:12, color:T.light }}>от {activePlace.addedBy}</div>
+                </div>
+              </div>
+              <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6 }}>💡 {activePlace.tip}</div></div>
+
+              {activePlace.photos?.length > 0 && (
+                <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
+                  {activePlace.photos.map((ph, pi) => (
+                    <img key={pi} src={ph} alt="" style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => setPhotoViewer(ph)} />
+                  ))}
+                </div>
+              )}
+              {activePlace.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginBottom:10 }}>Листайте фото →</div>}
+
+              <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
+                <button onClick={() => handleToggleLike(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`place-${activePlace.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`place-${activePlace.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activePlace.likes||0}</span></button>
+                <button onClick={()=> setShowComments(`place-${activePlace.id}`)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(activePlace.comments||[]).length}</span></button>
+                <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
+              </div>
+
+              {renderComments(activePlace, "place", addPlaceComment)}
+
+              {user && (user.id === activePlace.userId || user.name === activePlace.addedBy) && (
+                <div style={{ paddingTop:4, display:"flex", gap:8 }}>
+                  <button onClick={()=>startEditPlace(activePlace)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:T.card, color:T.mid }}>✏️ Редактировать</button>
+                  <button onClick={()=>handleDeletePlace(activePlace.id)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:"1.5px solid #fecaca", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:"#FFF5F5", color:"#E74C3C" }}>🗑 Удалить</button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>)}
 
         {/* TIPS */}
