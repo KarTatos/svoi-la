@@ -250,6 +250,19 @@ const SECTIONS = [
 ];
 
 const RICH_PREFIX = "__LA_RICH_V1__";
+const CARD_TEXT_MAX = 500;
+
+function limitCardText(text = "") {
+  const normalized = String(text || "");
+  return normalized.length > CARD_TEXT_MAX ? `${normalized.slice(0, CARD_TEXT_MAX)}…` : normalized;
+}
+
+const twoLineClampStyle = {
+  overflow: "hidden",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+};
 
 function encodeRichText(text, photos = [], extra = {}) {
   const payload = { text, photos: photos || [], ...extra };
@@ -325,6 +338,7 @@ export default function App() {
   const [addrValidPlace, setAddrValidPlace] = useState(false);
   const [addrValidEvent, setAddrValidEvent] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
+  const [photoZoom, setPhotoZoom] = useState(1);
   const [chat, setChat] = useState([{ role:"assistant", text:"Привет! 👋 Я помощник. Спрашивай про USCIS, визы, грин-карты." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
@@ -342,6 +356,8 @@ export default function App() {
   const leafletMapRef = useRef(null);
   const markerLayerRef = useRef(null);
   const geocodeCacheRef = useRef({});
+  const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
+  const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
 
   useEffect(() => setMt(true), []);
   // Save navigation state to localStorage
@@ -501,6 +517,35 @@ export default function App() {
       ? `https://www.google.com/maps/dir/?api=1&destination=${destination}`
       : `https://maps.apple.com/?daddr=${destination}`;
     window.open(url, "_blank");
+  };
+  const openPhotoViewer = (photos, startIndex = 0) => {
+    const normalized = (Array.isArray(photos) ? photos : [])
+      .filter((ph) => typeof ph === "string")
+      .filter((ph) => /^(https?:\/\/|blob:|data:image\/)/i.test(ph));
+    if (!normalized.length) return;
+    const safeIndex = Math.max(0, Math.min(startIndex, normalized.length - 1));
+    setPhotoViewer({ photos: normalized, index: safeIndex });
+    setPhotoZoom(1);
+  };
+  const closePhotoViewer = () => {
+    setPhotoViewer(null);
+    setPhotoZoom(1);
+  };
+  const goPrevPhoto = () => {
+    setPhotoViewer((prev) => {
+      if (!prev || prev.photos.length < 2) return prev;
+      const nextIndex = (prev.index - 1 + prev.photos.length) % prev.photos.length;
+      return { ...prev, index: nextIndex };
+    });
+    setPhotoZoom(1);
+  };
+  const goNextPhoto = () => {
+    setPhotoViewer((prev) => {
+      if (!prev || prev.photos.length < 2) return prev;
+      const nextIndex = (prev.index + 1) % prev.photos.length;
+      return { ...prev, index: nextIndex };
+    });
+    setPhotoZoom(1);
   };
 
   const LA_COUNTY_BBOX = { left: -119.05, right: -117.40, top: 34.95, bottom: 33.30 };
@@ -670,6 +715,72 @@ export default function App() {
     leafletMapRef.current.flyTo([selectedMapPlace.lat, selectedMapPlace.lng], 15, { duration: 0.4 });
   }, [selectedMapPlace]);
 
+  useEffect(() => {
+    if (!photoViewer) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [photoViewer]);
+
+  const getTouchDistance = (touches) => {
+    if (!touches || touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  };
+  const onPhotoTouchStart = (e) => {
+    if (!photoViewer) return;
+    if (e.touches.length >= 2) {
+      photoPinchRef.current.baseDistance = getTouchDistance(e.touches);
+      photoPinchRef.current.baseZoom = photoZoom;
+      photoSwipeRef.current.active = false;
+      return;
+    }
+    if (e.touches.length === 1) {
+      photoSwipeRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        active: true,
+      };
+    }
+  };
+  const onPhotoTouchMove = (e) => {
+    if (!photoViewer) return;
+    if (e.touches.length >= 2) {
+      e.preventDefault();
+      const baseDistance = photoPinchRef.current.baseDistance || getTouchDistance(e.touches);
+      const distance = getTouchDistance(e.touches);
+      if (!baseDistance || !distance) return;
+      const nextZoom = Math.max(1, Math.min(4, (photoPinchRef.current.baseZoom || 1) * (distance / baseDistance)));
+      setPhotoZoom(nextZoom);
+    }
+  };
+  const onPhotoTouchEnd = (e) => {
+    if (!photoViewer) return;
+    if (e.touches.length >= 2) return;
+    if (!photoSwipeRef.current.active) return;
+    if (photoZoom > 1.02) {
+      photoSwipeRef.current.active = false;
+      return;
+    }
+    const changed = e.changedTouches?.[0];
+    if (!changed) {
+      photoSwipeRef.current.active = false;
+      return;
+    }
+    const dx = changed.clientX - photoSwipeRef.current.startX;
+    const dy = changed.clientY - photoSwipeRef.current.startY;
+    photoSwipeRef.current.active = false;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) goNextPhoto();
+    else goPrevPhoto();
+  };
+
   const handleSend = async (t) => {
     const msg = t || inp.trim(); if (!msg) return;
     setChat(p => [...p, { role:"user", text:msg }]); setInp(""); setTyping(true);
@@ -723,6 +834,7 @@ export default function App() {
     }
     setUploading(true);
     try {
+      const safeTip = limitCardText(np.tip).trim();
       // Upload photos to Supabase Storage
       const uploadedUrls = [];
       for (const p of nPhotos) {
@@ -736,16 +848,16 @@ export default function App() {
       }
       if (editingPlace) {
         const allPhotos = uploadedUrls;
-        const updates = { name:np.name, category:np.cat, address:np.address, tip:np.tip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
+        const updates = { name:np.name, category:np.cat, address:np.address, tip:safeTip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
         if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
-        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:allPhotos } : p));
-        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, address:np.address, tip:np.tip, img:updates.img, photos:allPhotos } : prev);
+        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : p));
+        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : prev);
         setEditingPlace(null);
       } else {
-        const dbData = { name:np.name, category:np.cat, district:selD.id, address:np.address||'', tip:np.tip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
+        const dbData = { name:np.name, category:np.cat, district:selD.id, address:np.address||'', tip:safeTip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
         const { data } = await dbAddPlace(dbData);
         const newId = data?.[0]?.id || Date.now();
-        setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:np.tip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
+        setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:safeTip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
       }
       setNp({ name:"", cat:"", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
     } catch(err) {
@@ -821,15 +933,16 @@ export default function App() {
   };
   const handleAddTip = async () => {
     if (!newTip.title || !newTip.text || !user || !selTC) return;
+    const safeTipText = limitCardText(newTip.text).trim();
     const uploaded = [];
     for (const p of newTipPhotos) {
       const url = await uploadPhoto(p.file);
       if (url) uploaded.push(url);
     }
-    const dbData = { category:selTC.id, title:newTip.title, text:encodeRichText(newTip.text, uploaded), author:user.name, user_id:user.id };
+    const dbData = { category:selTC.id, title:newTip.title, text:encodeRichText(safeTipText, uploaded), author:user.name, user_id:user.id };
     const { data } = await dbAddTip(dbData);
     const newId = data?.[0]?.id || Date.now();
-    setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:newTip.text, photos:uploaded, likes:0, comments:[], fromDB:true }, ...prev]);
+    setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:safeTipText, photos:uploaded, likes:0, comments:[], fromDB:true }, ...prev]);
     setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(false);
   };
   const handleAddComment = async (tipId) => {
@@ -884,15 +997,16 @@ export default function App() {
         uploaded.push(p.preview);
       }
     }
+    const safeEventDesc = limitCardText(newEvent.desc).trim();
     const website = normalizeExternalUrl(newEvent.website || "");
-    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(newEvent.desc, uploaded, { website }), author:user.name, user_id:user.id };
+    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(safeEventDesc, uploaded, { website }), author:user.name, user_id:user.id };
     if (editingEvent) {
       await dbUpdateEvent(editingEvent.id, dbData);
-      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website, photos:uploaded } : ev));
+      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:safeEventDesc, website, photos:uploaded } : ev));
     } else {
       const { data } = await dbAddEvent(dbData);
       const newId = data?.[0]?.id || Date.now();
-      setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:newEvent.desc, website, photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
+      setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:safeEventDesc, website, photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
     }
     setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:"" }); setNewEventPhotos([]); setEditingEvent(null); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
   };
@@ -1188,7 +1302,8 @@ export default function App() {
               )}
               {np.address && !addrValidPlace && <div style={{ fontSize:12, color:"#E74C3C", marginBottom:10 }}>Выберите адрес из подсказок.</div>}
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Комментарий *</label>
-              <textarea value={np.tip} onChange={e=>setNp({...np,tip:e.target.value})} placeholder="Ваш отзыв, совет, рекомендация..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:14 }} />
+              <textarea value={np.tip} maxLength={CARD_TEXT_MAX} onChange={e=>setNp({...np,tip:e.target.value.slice(0, CARD_TEXT_MAX)})} placeholder="Ваш отзыв, совет, рекомендация..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:6 }} />
+              <div style={{ fontSize:11, color:T.light, marginBottom:12, textAlign:"right" }}>{np.tip.length}/{CARD_TEXT_MAX}</div>
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotos} style={{ display:"none" }} />
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
                 {nPhotos.map((p,i) => (<div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>{p.preview ? <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", background:T.bg, fontSize:10, color:T.mid, padding:4 }}>📷</div>}<button onClick={()=>setNPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button></div>))}
@@ -1212,7 +1327,7 @@ export default function App() {
           {cPlaces.map((p) => (
             <button key={p.id} onClick={() => { setSelPlace(p); setScr("place-item"); }} style={{ ...cd, width:"100%", overflow:"hidden", marginBottom:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", borderColor:T.borderL }}>
               <div style={{ padding:16 }}>
-                <div style={{ display:"flex", gap:14 }}>
+                <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
                   <div style={{ width:50, height:50, borderRadius:14, background:`${selPC.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>{p.img}</div>
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:16 }}>{p.name}</div>
@@ -1220,8 +1335,13 @@ export default function App() {
                       📍 {p.address || selD.name}
                     </button>
                   </div>
+                  <div style={{ minWidth:64, display:"flex", justifyContent:"flex-end" }}>
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}>
+                      {liked[`place-${p.id}`] ? "♥" : "♡"} {p.likes || 0}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:13, color:T.mid }}>💡 {p.tip}</div></div>
+                <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ ...twoLineClampStyle, fontSize:13, color:T.mid }}>💡 {limitCardText(p.tip)}</div></div>
                 <div style={{ marginTop:10, fontSize:11, color:T.light }}>от {p.addedBy}</div>
               </div>
             </button>
@@ -1234,7 +1354,7 @@ export default function App() {
           <button onClick={() => { setScr("places-cat"); setExp(null); }} style={bk}>← {selPC.title}</button>
           <div style={{ ...cd, overflow:"hidden", borderColor:T.borderL }}>
             <div style={{ padding:16 }}>
-              <div style={{ display:"flex", gap:14, marginBottom:12 }}>
+              <div style={{ display:"flex", gap:14, marginBottom:12, alignItems:"flex-start" }}>
                 <div style={{ width:56, height:56, borderRadius:14, background:`${selPC.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>{activePlace.img}</div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:700, fontSize:20, lineHeight:1.2 }}>{activePlace.name}</div>
@@ -1243,13 +1363,18 @@ export default function App() {
                   </button>
                   <div style={{ marginTop:5, fontSize:12, color:T.light }}>от {activePlace.addedBy}</div>
                 </div>
+                <div style={{ minWidth:64, display:"flex", justifyContent:"flex-end" }}>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}>
+                    {liked[`place-${activePlace.id}`] ? "♥" : "♡"} {activePlace.likes || 0}
+                  </span>
+                </div>
               </div>
               <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6 }}>💡 {activePlace.tip}</div></div>
 
               {activePlace.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                   {activePlace.photos.map((ph, pi) => (
-                    <img key={pi} src={ph} alt="" style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => setPhotoViewer(ph)} />
+                    <img key={pi} src={ph} alt="" style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => openPhotoViewer(activePlace.photos, pi)} />
                   ))}
                 </div>
               )}
@@ -1302,11 +1427,11 @@ export default function App() {
             <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
               <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
                 <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
-                <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:"pre-wrap" }}>{isE ? tip.text : tip.text.substring(0, 120) + (tip.text.length > 120 ? "..." : "")}</div>
+                <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal" }}>{limitCardText(tip.text)}</div>
                 {isE && tip.photos?.length > 0 && (
                   <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                     {tip.photos.map((ph, pi) => (
-                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
+                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); openPhotoViewer(tip.photos, pi);}} />
                     ))}
                   </div>
                 )}
@@ -1344,7 +1469,8 @@ export default function App() {
             <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Заголовок *</label>
             <input value={newTip.title} onChange={e=>setNewTip({...newTip,title:e.target.value})} placeholder="О чём совет?" style={{ ...iS, marginBottom:14 }} />
             <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Текст *</label>
-            <textarea value={newTip.text} onChange={e=>setNewTip({...newTip,text:e.target.value})} placeholder="Поделитесь опытом..." style={{ ...iS, minHeight:120, resize:"vertical", marginBottom:20 }} />
+            <textarea value={newTip.text} maxLength={CARD_TEXT_MAX} onChange={e=>setNewTip({...newTip,text:e.target.value.slice(0, CARD_TEXT_MAX)})} placeholder="Поделитесь опытом..." style={{ ...iS, minHeight:120, resize:"vertical", marginBottom:6 }} />
+            <div style={{ fontSize:11, color:T.light, marginBottom:14, textAlign:"right" }}>{newTip.text.length}/{CARD_TEXT_MAX}</div>
             <input ref={tipFileRef} type="file" accept="image/*" multiple onChange={handleTipPhotos} style={{ display:"none" }} />
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
               {newTipPhotos.map((p,i) => (
@@ -1444,11 +1570,11 @@ export default function App() {
                   Сайт мероприятия
                 </a>
               )}
-              <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10 }}>{ev.desc}</div>
+              <div style={{ ...(!isEvExp ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10 }}>{limitCardText(ev.desc)}</div>
               {isEvExp && ev.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                   {ev.photos.map((ph, pi) => (
-                    <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); setPhotoViewer(ph);}} />
+                    <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); openPhotoViewer(ev.photos, pi);}} />
                   ))}
                 </div>
               )}
@@ -1508,7 +1634,8 @@ export default function App() {
               )}
               {newEvent.location && !addrValidEvent && <div style={{ fontSize:12, color:"#E74C3C", marginBottom:10 }}>Выберите реальное место из подсказок.</div>}
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Описание *</label>
-              <textarea value={newEvent.desc} onChange={e=>setNewEvent({...newEvent,desc:e.target.value})} placeholder="Подробности..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:14 }} />
+              <textarea value={newEvent.desc} maxLength={CARD_TEXT_MAX} onChange={e=>setNewEvent({...newEvent,desc:e.target.value.slice(0, CARD_TEXT_MAX)})} placeholder="Подробности..." style={{ ...iS, minHeight:80, resize:"vertical", marginBottom:6 }} />
+              <div style={{ fontSize:11, color:T.light, marginBottom:12, textAlign:"right" }}>{newEvent.desc.length}/{CARD_TEXT_MAX}</div>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Сайт (необязательно)</label>
               <input value={newEvent.website || ""} onChange={e=>setNewEvent({...newEvent,website:e.target.value})} placeholder="https://..." style={{ ...iS, marginBottom:20 }} />
               <input ref={eventFileRef} type="file" accept="image/*" multiple onChange={handleEventPhotos} style={{ display:"none" }} />
@@ -1591,8 +1718,32 @@ export default function App() {
       )}
 
       {photoViewer && (
-        <div onClick={() => setPhotoViewer(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.72)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-          <img src={photoViewer} alt="" style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)" }} />
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16, touchAction:"none" }}>
+          <button onClick={closePhotoViewer} style={{ position:"absolute", top:14, right:14, width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:18, cursor:"pointer", zIndex:2 }}>×</button>
+          {photoViewer.photos.length > 1 && (
+            <>
+              <button onClick={goPrevPhoto} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:2 }}>‹</button>
+              <button onClick={goNextPhoto} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:2 }}>›</button>
+            </>
+          )}
+          <div
+            onTouchStart={onPhotoTouchStart}
+            onTouchMove={onPhotoTouchMove}
+            onTouchEnd={onPhotoTouchEnd}
+            style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", touchAction:"none" }}
+          >
+            <img
+              src={photoViewer.photos[photoViewer.index]}
+              alt=""
+              draggable={false}
+              style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)", transform:`scale(${photoZoom})`, transformOrigin:"center center", transition:photoZoom === 1 ? "transform 0.2s ease" : "none", userSelect:"none", WebkitUserSelect:"none" }}
+            />
+          </div>
+          {photoViewer.photos.length > 1 && (
+            <div style={{ position:"absolute", bottom:14, left:"50%", transform:"translateX(-50%)", color:"#fff", fontSize:12, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(255,255,255,0.25)", padding:"5px 10px", borderRadius:999 }}>
+              {photoViewer.index + 1} / {photoViewer.photos.length}
+            </div>
+          )}
         </div>
       )}
 
