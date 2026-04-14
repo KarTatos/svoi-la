@@ -1369,7 +1369,7 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6 }}>💡 {activePlace.tip}</div></div>
+              <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6, whiteSpace:"pre-wrap", overflowWrap:"anywhere", wordBreak:"break-word" }}>💡 {limitCardText(activePlace.tip)}</div></div>
 
               {activePlace.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
@@ -1427,7 +1427,7 @@ export default function App() {
             <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
               <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
                 <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
-                <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal" }}>{limitCardText(tip.text)}</div>
+                <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
                 {isE && tip.photos?.length > 0 && (
                   <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                     {tip.photos.map((ph, pi) => (
@@ -1570,7 +1570,7 @@ export default function App() {
                   Сайт мероприятия
                 </a>
               )}
-              <div style={{ ...(!isEvExp ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10 }}>{limitCardText(ev.desc)}</div>
+              <div style={{ ...(!isEvExp ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10, whiteSpace:isEvExp ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(ev.desc)}</div>
               {isEvExp && ev.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                   {ev.photos.map((ph, pi) => (
