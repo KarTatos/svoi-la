@@ -288,6 +288,10 @@ export default function App() {
   const [expF, setExpF] = useState(null);
   const [expTip, setExpTip] = useState(null);
   const [mapP, setMapP] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapPlaces, setMapPlaces] = useState([]);
+  const [selectedMapPlace, setSelectedMapPlace] = useState(null);
+  const [mapLoading, setMapLoading] = useState(false);
   const [liked, setLiked] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
@@ -334,6 +338,10 @@ export default function App() {
   const fileRef = useRef(null);
   const tipFileRef = useRef(null);
   const eventFileRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const leafletMapRef = useRef(null);
+  const markerLayerRef = useRef(null);
+  const geocodeCacheRef = useRef({});
 
   useEffect(() => setMt(true), []);
   // Save navigation state to localStorage
@@ -412,7 +420,7 @@ export default function App() {
   }, []);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
   const openAddressInMaps = (address) => {
     const value = (address || "").trim();
     if (!value) return;
@@ -443,14 +451,59 @@ export default function App() {
       }
     } catch {}
   };
-  const openAllOnMap = (placesArr) => {
-    // Search for place names on Google Maps centered on the district
-    const names = placesArr.map(p => p.name).join(", ");
-    const d = selD;
-    const q = encodeURIComponent(names);
-    window.open(`https://www.google.com/maps/search/${q}/@${d.lat},${d.lng},14z`, "_blank");
+  const ensureLeafletCss = () => {
+    if (document.getElementById("leaflet-css")) return;
+    const link = document.createElement("link");
+    link.id = "leaflet-css";
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(link);
+  };
+  const geocodePlace = async (place) => {
+    const key = `${place.name || ""}|${place.address || ""}`;
+    if (geocodeCacheRef.current[key]) return geocodeCacheRef.current[key];
+    const query = encodeURIComponent(`${place.address || place.name}, Los Angeles County, California`);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&addressdetails=1&q=${query}`);
+      const data = await res.json();
+      if (!Array.isArray(data) || !data[0]) return null;
+      const lat = Number(data[0].lat);
+      const lng = Number(data[0].lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      const coords = { lat, lng };
+      geocodeCacheRef.current[key] = coords;
+      return coords;
+    } catch {
+      return null;
+    }
+  };
+  const openAllOnMap = async (placesArr) => {
+    setShowMapModal(true);
+    setMapLoading(true);
+    setMapPlaces([]);
+    setSelectedMapPlace(null);
+    const limited = placesArr.slice(0, 40);
+    const resolved = await Promise.all(
+      limited.map(async (p) => {
+        const coords = await geocodePlace(p);
+        return coords ? { ...p, ...coords } : null;
+      }),
+    );
+    const withCoords = resolved.filter(Boolean);
+    setMapPlaces(withCoords);
+    setSelectedMapPlace(withCoords[0] || null);
+    setMapLoading(false);
+  };
+  const openRouteForPlace = (place, provider) => {
+    if (!place) return;
+    const destination = encodeURIComponent(place.address || `${place.lat},${place.lng}`);
+    const url = provider === "google"
+      ? `https://www.google.com/maps/dir/?api=1&destination=${destination}`
+      : `https://maps.apple.com/?daddr=${destination}`;
+    window.open(url, "_blank");
   };
 
+  const LA_COUNTY_BBOX = { left: -119.05, right: -117.40, top: 34.95, bottom: 33.30 };
   const toShortAddress = (item) => {
     const a = item?.address || {};
     const number = a.house_number || "";
@@ -461,20 +514,72 @@ export default function App() {
     if (line) return `${line}, ${city}, ${state}`;
     return [city, state].filter(Boolean).join(", ");
   };
+  const isLosAngelesCountyResult = (item) => {
+    const a = item?.address || {};
+    const county = String(a.county || "").toLowerCase();
+    if (county.includes("los angeles")) return true;
+    const lat = Number(item?.lat);
+    const lon = Number(item?.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return lon >= LA_COUNTY_BBOX.left && lon <= LA_COUNTY_BBOX.right && lat <= LA_COUNTY_BBOX.top && lat >= LA_COUNTY_BBOX.bottom;
+    }
+    return false;
+  };
+  const placeDisplayName = (item) => {
+    const named = item?.namedetails?.name || item?.name || "";
+    return String(named || "").trim();
+  };
   const fetchAddressSuggestions = async (query) => {
     const q = (query || "").trim();
     if (q.length < 3) return [];
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&accept-language=en&q=${encodeURIComponent(`${q}, Los Angeles, California`)}`);
+      const params = new URLSearchParams({
+        format: "json",
+        addressdetails: "1",
+        namedetails: "1",
+        limit: "12",
+        "accept-language": "en",
+        countrycodes: "us",
+        bounded: "1",
+        viewbox: `${LA_COUNTY_BBOX.left},${LA_COUNTY_BBOX.top},${LA_COUNTY_BBOX.right},${LA_COUNTY_BBOX.bottom}`,
+        q: `${q}, Los Angeles County, California`,
+      });
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
       const data = await res.json();
       if (!Array.isArray(data)) return [];
-      return data.map((item) => {
-        const short = toShortAddress(item);
-        return {
-          label: short,
-          value: short,
-        };
-      });
+      const qLower = q.toLowerCase();
+      const hasDigits = /\d/.test(q);
+      const cleaned = data
+        .filter(isLosAngelesCountyResult)
+        .map((item) => {
+          const short = toShortAddress(item);
+          const place = placeDisplayName(item);
+          const placeLower = place.toLowerCase();
+          const shortLower = short.toLowerCase();
+          const hasStreetNumber = Boolean(item?.address?.house_number);
+          const hasRoad = Boolean(item?.address?.road || item?.address?.pedestrian || item?.address?.footway || item?.address?.path);
+          let score = 0;
+          if (shortLower.startsWith(qLower)) score += 5;
+          if (shortLower.includes(qLower)) score += 2;
+          if (place && placeLower.includes(qLower)) score += 4;
+          if (hasStreetNumber) score += 3;
+          if (hasRoad) score += 2;
+          if (!hasDigits && place && !hasStreetNumber) score += 2; // query by place name
+          const label = place && !shortLower.includes(placeLower) ? `${place} — ${short}` : short;
+          return { label, value: short, score };
+        })
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6);
+      const uniq = [];
+      const seen = new Set();
+      for (const item of cleaned) {
+        const key = `${item.value}|${item.label}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        uniq.push({ label: item.label, value: item.value });
+      }
+      return uniq;
     } catch {
       return [];
     }
@@ -506,11 +611,99 @@ export default function App() {
     return () => clearTimeout(t);
   }, [newEvent.location, addrValidEvent]);
 
+  useEffect(() => {
+    if (!showMapModal) {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+        markerLayerRef.current = null;
+      }
+      return;
+    }
+    if (!mapContainerRef.current || mapLoading || !mapPlaces.length) return;
+    let disposed = false;
+    const init = async () => {
+      ensureLeafletCss();
+      const L = (await import("leaflet")).default;
+      if (disposed) return;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
+
+      if (!leafletMapRef.current) {
+        const map = L.map(mapContainerRef.current, { zoomControl: true });
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors",
+        }).addTo(map);
+        leafletMapRef.current = map;
+        markerLayerRef.current = L.layerGroup().addTo(map);
+      }
+
+      const map = leafletMapRef.current;
+      const layer = markerLayerRef.current;
+      layer.clearLayers();
+
+      mapPlaces.forEach((p) => {
+        const marker = L.marker([p.lat, p.lng]).addTo(layer);
+        marker.bindPopup(`<b>${p.name}</b><br/>${p.address || ""}`);
+        marker.on("click", () => setSelectedMapPlace(p));
+        if (selectedMapPlace?.id === p.id) marker.openPopup();
+      });
+
+      const markers = layer.getLayers();
+      if (markers.length) {
+        const bounds = L.featureGroup(markers).getBounds();
+        map.fitBounds(bounds.pad(0.2));
+      } else if (selD) {
+        map.setView([selD.lat, selD.lng], 13);
+      }
+      setTimeout(() => map.invalidateSize(), 80);
+    };
+    init();
+    return () => { disposed = true; };
+  }, [showMapModal, mapLoading, mapPlaces, selectedMapPlace, selD]);
+
+  useEffect(() => {
+    if (!selectedMapPlace || !leafletMapRef.current) return;
+    leafletMapRef.current.flyTo([selectedMapPlace.lat, selectedMapPlace.lng], 15, { duration: 0.4 });
+  }, [selectedMapPlace]);
+
   const handleSend = async (t) => {
     const msg = t || inp.trim(); if (!msg) return;
     setChat(p => [...p, { role:"user", text:msg }]); setInp(""); setTyping(true);
     try {
-      const res = await fetch("/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ message:msg, history:chat.slice(-10) }) });
+      const appData = {
+        places: places.slice(0, 250).map((p) => ({
+          id: p.id,
+          name: p.name,
+          district: p.district,
+          cat: p.cat,
+          address: p.address,
+          tip: p.tip,
+          likes: p.likes || 0,
+        })),
+        tips: tips.slice(0, 120).map((t) => ({
+          id: t.id,
+          title: t.title,
+          cat: t.cat,
+          text: t.text,
+        })),
+        events: events.slice(0, 120).map((e) => ({
+          id: e.id,
+          title: e.title,
+          cat: e.cat,
+          location: e.location,
+          date: e.date,
+          desc: e.desc,
+        })),
+      };
+      const res = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ message:msg, history:chat.slice(-10), appData }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error);
       setChat(p => [...p, { role:"assistant", text:data.text||"Нет ответа." }]);
@@ -1356,6 +1549,46 @@ export default function App() {
           </>)}
         </div>)}
       </main>
+
+      {showMapModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:280, display:"flex", alignItems:"center", justifyContent:"center", padding:12 }} onClick={() => setShowMapModal(false)}>
+          <div style={{ ...cd, width:"100%", maxWidth:980, height:"90vh", borderRadius:18, overflow:"hidden", display:"grid", gridTemplateRows:"auto 1fr auto" }} onClick={(e)=>e.stopPropagation()}>
+            <div style={{ padding:"12px 14px", borderBottom:`1px solid ${T.borderL}`, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+              <div style={{ fontWeight:700, fontSize:15 }}>Карта мест · {selPC?.title || "Категория"}</div>
+              <button onClick={() => setShowMapModal(false)} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:10, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit", color:T.mid }}>Закрыть</button>
+            </div>
+
+            <div style={{ position:"relative", background:"#ECEFF3" }}>
+              {mapLoading && (
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, background:"rgba(255,255,255,0.65)", color:T.mid, fontSize:14 }}>
+                  Загружаем карту и точки...
+                </div>
+              )}
+              {!mapLoading && mapPlaces.length === 0 && (
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, color:T.mid, fontSize:14 }}>
+                  Не удалось найти координаты для точек в этой категории.
+                </div>
+              )}
+              <div ref={mapContainerRef} style={{ width:"100%", height:"100%" }} />
+            </div>
+
+            <div style={{ borderTop:`1px solid ${T.borderL}`, padding:12, background:T.card }}>
+              {selectedMapPlace ? (
+                <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", gap:8 }}>
+                  <div style={{ flex:"1 1 280px" }}>
+                    <div style={{ fontWeight:700, fontSize:14 }}>{selectedMapPlace.name}</div>
+                    <div style={{ fontSize:12, color:T.mid }}>{selectedMapPlace.address || selD?.name}</div>
+                  </div>
+                  <button onClick={() => openRouteForPlace(selectedMapPlace, "google")} style={{ ...pl(false), padding:"10px 12px" }}>Google маршрут</button>
+                  <button onClick={() => openRouteForPlace(selectedMapPlace, "apple")} style={{ ...pl(false), padding:"10px 12px" }}>Apple маршрут</button>
+                </div>
+              ) : (
+                <div style={{ fontSize:12, color:T.mid }}>Нажмите на точку на карте, чтобы построить маршрут.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {photoViewer && (
         <div onClick={() => setPhotoViewer(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.72)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>

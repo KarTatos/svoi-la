@@ -1,103 +1,290 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@supabase/supabase-js";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-function classifyQuery(query) {
-  const q = query.toLowerCase();
-  const uscis = ['uscis','форм','виза','грин','карт','гражданств','натурализ','asylum','убежищ','ead','i-','n-','ds-','tps','петиц','статус','кейс','receipt','иммигра','депортац','пошлин','ssn','документ'];
-  const places = ['ресторан','бар','кафе','кофе','хайк','поесть','выпить','погулять','кино','музык','концерт','место','район','где ','куда','жильё','аренд','снять','работ','вакансий','секретик','совет','событи','мероприят'];
-  const uScore = uscis.filter(k => q.includes(k)).length;
-  const pScore = places.filter(k => q.includes(k)).length;
-  if (uScore > pScore) return 'uscis';
-  if (pScore > uScore) return 'places';
-  return 'general';
+const RICH_PREFIX = "__LA_RICH_V1__";
+
+const DISTRICT_ALIASES = {
+  weho: ["weho", "west hollywood", "вест голливуд", "уэст голливуд"],
+  hollywood: ["hollywood", "голливуд", "голивуд"],
+  glendale: ["glendale", "глендейл"],
+  dtla: ["dtla", "downtown la", "downtown", "даунтаун", "центр ла"],
+  valley: ["valley", "studio city", "north hollywood", "долина", "студио сити", "норт холливуд"],
+  silverlake: ["silver lake", "los feliz", "сильвер лейк", "лос фелиз"],
+  westside: ["westside", "santa monica", "venice", "санта моника", "венис"],
+  pasadena: ["pasadena", "пасадена"],
+  midcity: ["mid-city", "midcity", "melrose", "мид сити", "мелроуз"],
+};
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[ё]/g, "е")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-async function searchInternalData(query) {
+function decodeRichText(raw) {
+  if (typeof raw !== "string" || !raw.startsWith(RICH_PREFIX)) return { text: raw || "", photos: [], website: "" };
   try {
-    const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2).slice(0, 3);
+    const parsed = JSON.parse(raw.slice(RICH_PREFIX.length));
+    return {
+      text: parsed?.text || "",
+      photos: Array.isArray(parsed?.photos) ? parsed.photos : [],
+      website: parsed?.website || "",
+    };
+  } catch {
+    return { text: raw || "", photos: [], website: "" };
+  }
+}
+
+function classifyQuery(query) {
+  const q = normalizeText(query);
+  const uscisKeywords = [
+    "uscis", "форма", "виза", "грин", "карта", "гражданство", "натурализац", "asylum",
+    "убежищ", "ead", "i-", "n-", "ds-", "tps", "петици", "статус", "кейс", "receipt",
+    "иммигра", "депортац", "пошлин", "ssn", "документ",
+  ];
+  const localKeywords = [
+    "ресторан", "бар", "кафе", "кофе", "хайк", "поесть", "погулять", "куда", "мест",
+    "район", "событи", "мероприят", "совет", "жиль", "аренд", "работ", "вакан",
+  ];
+  const uScore = uscisKeywords.filter((k) => q.includes(k)).length;
+  const lScore = localKeywords.filter((k) => q.includes(k)).length;
+  if (uScore > lScore) return "uscis";
+  if (lScore > uScore) return "local";
+  return "general";
+}
+
+function detectDistrictFromQuery(query) {
+  const q = normalizeText(query);
+  for (const [districtId, aliases] of Object.entries(DISTRICT_ALIASES)) {
+    if (aliases.some((alias) => q.includes(alias))) return districtId;
+  }
+  return null;
+}
+
+function scoreByQuery(item, query) {
+  const q = normalizeText(query);
+  if (!q) return 0;
+  const hay = normalizeText(
+    `${item.name || ""} ${item.title || ""} ${item.category || item.cat || ""} ${item.district || ""} ${item.address || ""} ${item.tip || ""} ${item.text || ""} ${item.desc || ""} ${item.location || ""}`,
+  );
+  if (!hay) return 0;
+  const words = q.split(" ").filter((w) => w.length >= 2);
+  let score = 0;
+  for (const w of words) {
+    if (hay.includes(w)) score += 1;
+    if ((item.name || item.title || "").toLowerCase().includes(w)) score += 2;
+    if ((item.district || "").toLowerCase().includes(w)) score += 2;
+  }
+  return score;
+}
+
+function formatPlaceLine(place) {
+  return `- ${place.name} (${place.district || "unknown district"}, ${place.cat || place.category || "category"}) — ${place.tip || "без описания"} | Адрес: ${place.address || "не указан"}`;
+}
+
+function sanitizeClientData(appData) {
+  if (!appData || typeof appData !== "object") return { places: [], tips: [], events: [] };
+  const places = Array.isArray(appData.places) ? appData.places : [];
+  const tips = Array.isArray(appData.tips) ? appData.tips : [];
+  const events = Array.isArray(appData.events) ? appData.events : [];
+  return {
+    places: places
+      .slice(0, 250)
+      .map((p) => ({
+        id: p.id,
+        name: p.name || "",
+        district: p.district || "",
+        cat: p.cat || p.category || "",
+        address: p.address || "",
+        tip: p.tip || "",
+        likes: Number(p.likes || 0),
+      }))
+      .filter((p) => p.name),
+    tips: tips
+      .slice(0, 120)
+      .map((t) => ({
+        id: t.id,
+        title: t.title || "",
+        category: t.cat || t.category || "",
+        text: t.text || "",
+      }))
+      .filter((t) => t.title),
+    events: events
+      .slice(0, 120)
+      .map((e) => ({
+        id: e.id,
+        title: e.title || "",
+        category: e.cat || e.category || "",
+        location: e.location || "",
+        date: e.date || "",
+        desc: e.desc || e.description || "",
+      }))
+      .filter((e) => e.title),
+  };
+}
+
+async function fetchSupabaseDataFallback(query) {
+  try {
+    const q = normalizeText(query);
+    const words = q.split(" ").filter((w) => w.length >= 3).slice(0, 4);
     if (!words.length) return { places: [], tips: [], events: [] };
-    const cond = words.map(w => `name.ilike.%${w}%,tip.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,category.ilike.%${w}%`).join(',');
-    
-    const { data: places } = await supabase.from('places').select('*').or(cond).limit(10);
-    
-    const tipCond = words.map(w => `title.ilike.%${w}%,text.ilike.%${w}%,category.ilike.%${w}%`).join(',');
-    const { data: tips } = await supabase.from('tips').select('*').or(tipCond).limit(5);
-    
-    const evCond = words.map(w => `title.ilike.%${w}%,description.ilike.%${w}%,location.ilike.%${w}%`).join(',');
-    const { data: events } = await supabase.from('events').select('*').or(evCond).limit(5);
-    
-    return { places: places || [], tips: tips || [], events: events || [] };
-  } catch { return { places: [], tips: [], events: [] }; }
+
+    const placeCond = words.map((w) => `name.ilike.%${w}%,tip.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,category.ilike.%${w}%`).join(",");
+    const tipCond = words.map((w) => `title.ilike.%${w}%,text.ilike.%${w}%,category.ilike.%${w}%`).join(",");
+    const eventCond = words.map((w) => `title.ilike.%${w}%,description.ilike.%${w}%,location.ilike.%${w}%,category.ilike.%${w}%`).join(",");
+
+    const [{ data: places }, { data: tips }, { data: events }] = await Promise.all([
+      supabase.from("places").select("*").or(placeCond).limit(30),
+      supabase.from("tips").select("*").or(tipCond).limit(20),
+      supabase.from("events").select("*").or(eventCond).limit(20),
+    ]);
+
+    return {
+      places: (places || []).map((p) => ({
+        id: p.id,
+        name: p.name || "",
+        district: p.district || "",
+        cat: p.category || "",
+        address: p.address || "",
+        tip: p.tip || "",
+        likes: Number(p.likes_count || 0),
+      })),
+      tips: (tips || []).map((t) => {
+        const rich = decodeRichText(t.text);
+        return {
+          id: t.id,
+          title: t.title || "",
+          category: t.category || "",
+          text: rich.text || "",
+        };
+      }),
+      events: (events || []).map((e) => {
+        const rich = decodeRichText(e.description);
+        return {
+          id: e.id,
+          title: e.title || "",
+          category: e.category || "",
+          location: e.location || "",
+          date: e.date || "",
+          desc: rich.text || "",
+        };
+      }),
+    };
+  } catch {
+    return { places: [], tips: [], events: [] };
+  }
+}
+
+function buildLocalContext(message, data) {
+  const districtId = detectDistrictFromQuery(message);
+
+  let places = data.places.slice();
+  if (districtId) places = places.filter((p) => normalizeText(p.district) === districtId);
+
+  const scoredPlaces = places
+    .map((p) => ({ ...p, _score: scoreByQuery(p, message) }))
+    .sort((a, b) => b._score - a._score || b.likes - a.likes)
+    .slice(0, 12);
+
+  const fallbackPlaces = data.places
+    .map((p) => ({ ...p, _score: scoreByQuery(p, message) }))
+    .sort((a, b) => b._score - a._score || b.likes - a.likes)
+    .slice(0, 12);
+
+  const bestPlaces = scoredPlaces.length ? scoredPlaces : fallbackPlaces;
+
+  const tips = data.tips
+    .map((t) => ({ ...t, _score: scoreByQuery(t, message) }))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 6);
+
+  const events = data.events
+    .map((e) => ({ ...e, _score: scoreByQuery(e, message) }))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 6);
+
+  const parts = [];
+  if (bestPlaces.length) {
+    parts.push(`Места (${bestPlaces.length}):\n${bestPlaces.map(formatPlaceLine).join("\n")}`);
+  }
+  if (tips.length) {
+    parts.push(`Советы:\n${tips.map((t) => `- ${t.title} (${t.category}): ${String(t.text || "").slice(0, 180)}`).join("\n")}`);
+  }
+  if (events.length) {
+    parts.push(`События:\n${events.map((e) => `- ${e.title} (${e.category}) ${e.date ? `— ${e.date}` : ""} ${e.location ? `в ${e.location}` : ""}: ${String(e.desc || "").slice(0, 160)}`).join("\n")}`);
+  }
+
+  return {
+    hasData: parts.length > 0,
+    context: parts.join("\n\n"),
+    districtId,
+  };
 }
 
 export async function POST(request) {
   try {
-    const { message, history = [] } = await request.json();
-    if (!message || typeof message !== 'string') {
-      return Response.json({ error: 'Пустое сообщение' }, { status: 400 });
+    const { message, history = [], appData = null } = await request.json();
+    if (!message || typeof message !== "string") {
+      return Response.json({ error: "Пустое сообщение" }, { status: 400 });
     }
 
     const queryType = classifyQuery(message);
-    let context = '';
 
-    if (queryType === 'places' || queryType === 'general') {
-      const { places, tips, events } = await searchInternalData(message);
-      const parts = [];
-      if (places.length > 0) {
-        parts.push('Места из базы комьюнити:\n' + places.map(p =>
-          `- ${p.name} (${p.district}, ${p.category}): ${p.tip} | Адрес: ${p.address || 'не указан'} | Добавил: ${p.added_by}`
-        ).join('\n'));
-      }
-      if (tips.length > 0) {
-        parts.push('Советы из базы:\n' + tips.map(t =>
-          `- ${t.title}: ${t.text.substring(0, 200)} | Автор: ${t.author}`
-        ).join('\n'));
-      }
-      if (events.length > 0) {
-        parts.push('События:\n' + events.map(e =>
-          `- ${e.title} (${e.date}) в ${e.location || 'не указано'}: ${e.description.substring(0, 150)} | Автор: ${e.author}`
-        ).join('\n'));
-      }
-      if (parts.length > 0) {
-        context = '\n\nДанные из приложения "МЫ в LA":\n' + parts.join('\n\n');
-      } else {
-        context = '\n\nВ базе приложения пока нет подходящих данных. Предложи пользователю добавить информацию через соответствующий раздел.';
-      }
-    }
+    const clientData = sanitizeClientData(appData);
+    const hasClientData = clientData.places.length || clientData.tips.length || clientData.events.length;
+    const fallbackData = hasClientData ? { places: [], tips: [], events: [] } : await fetchSupabaseDataFallback(message);
+    const mergedData = {
+      places: [...clientData.places, ...fallbackData.places],
+      tips: [...clientData.tips, ...fallbackData.tips],
+      events: [...clientData.events, ...fallbackData.events],
+    };
 
-    const systemPrompt = `Ты — AI-помощник приложения "МЫ в LA" для русскоязычных иммигрантов в Лос-Анджелесе.
+    const localContext = buildLocalContext(message, mergedData);
+    const localDataBlock = localContext.hasData
+      ? `\n\nДАННЫЕ ПРИЛОЖЕНИЯ (используй только их для рекомендаций):\n${localContext.context}`
+      : "\n\nДАННЫЕ ПРИЛОЖЕНИЯ: подходящих записей не найдено.";
 
-ПРАВИЛА:
-1. Отвечай ТОЛЬКО по темам: иммиграция/USCIS, жизнь в LA (места, районы), жильё, работа, события.
-2. На другие темы — вежливо объясни что ты специализированный помощник.
-3. USCIS: отвечай на основе своих знаний о формах, сроках, пошлинах. Добавляй: "Это информационная помощь, не юридическая консультация. Проверяйте актуальную информацию на uscis.gov"
-4. Места, советы, события: отвечай ТОЛЬКО на основе данных из приложения (предоставлены ниже). Если данных нет — скажи что в базе пока нет информации и предложи добавить.
-5. Отвечай на русском, коротко и по делу.
-6. НЕ выдумывай. НЕ ищи в интернете. Только свои знания по USCIS + данные приложения.
-${context}`;
+    const systemPrompt = `Ты — AI-помощник приложения "Мы в LA".
+
+Правила:
+1. Никогда не используй слово "русскоязычные" или его формы.
+2. Отвечай только по темам: USCIS/иммиграция, места в LA, события, советы, жилье, работа.
+3. Если вопрос про места/события/советы, отвечай строго на основе данных приложения ниже.
+4. Если данных недостаточно, честно скажи об этом и предложи добавить запись в соответствующий раздел.
+5. Отвечай кратко, по делу, на русском.
+6. Для USCIS добавляй дисклеймер: "Это информационная помощь, не юридическая консультация. Проверяйте актуальные правила на uscis.gov".${localDataBlock}`;
 
     const messages = [
-      ...history.slice(-10).filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({ role: m.role, content: m.text })),
-      { role: 'user', content: message },
+      ...history
+        .slice(-10)
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: m.text })),
+      { role: "user", content: message },
     ];
 
-    // NO web_search — only Claude knowledge + internal DB
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       system: systemPrompt,
       messages,
     });
 
-    const text = response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-    return Response.json({ text: text || 'Не удалось получить ответ.', queryType });
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("\n")
+      .trim();
+
+    return Response.json({ text: text || "Не удалось получить ответ.", queryType, localDataUsed: localContext.hasData });
   } catch (error) {
-    console.error('Chat API error:', error?.message || error);
-    if (error?.status === 401) return Response.json({ error: 'Ошибка API ключа.' }, { status: 500 });
-    if (error?.status === 429) return Response.json({ error: 'Слишком много запросов. Подождите.' }, { status: 429 });
-    return Response.json({ error: 'Ошибка сервера.' }, { status: 500 });
+    console.error("Chat API error:", error?.message || error);
+    if (error?.status === 401) return Response.json({ error: "Ошибка API ключа." }, { status: 500 });
+    if (error?.status === 429) return Response.json({ error: "Слишком много запросов. Подождите." }, { status: 429 });
+    return Response.json({ error: "Ошибка сервера." }, { status: 500 });
   }
 }
