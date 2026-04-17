@@ -39,20 +39,12 @@ export async function updatePlace(id, updates) {
 }
 
 export async function deletePlace(id) {
-  // Try direct place delete first. In many installs RLS allows this, while
-  // engagement rows may have stricter rules.
-  const placeFirst = await supabase.from('places').delete().eq('id', id);
-  if (!placeFirst.error) {
-    // Best-effort cleanup for setups without FK cascades.
-    await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'place');
-    await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'place');
-    return placeFirst;
-  }
-
-  // Fallback order for setups that require removing related rows first.
+  const { error, count } = await supabase.from('places').delete({ count: 'exact' }).eq('id', id);
+  if (error) return { error, count };
+  if (!count) return { error: { message: 'Delete denied: place not removed from DB' }, count: 0 };
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'place');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'place');
-  return supabase.from('places').delete().eq('id', id);
+  return { error: null, count };
 }
 
 // ═══ TIPS ═══
@@ -72,16 +64,12 @@ export async function updateTip(id, updates) {
 }
 
 export async function deleteTip(id) {
-  const tipFirst = await supabase.from('tips').delete().eq('id', id);
-  if (!tipFirst.error) {
-    await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'tip');
-    await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'tip');
-    return tipFirst;
-  }
-
+  const { error, count } = await supabase.from('tips').delete({ count: 'exact' }).eq('id', id);
+  if (error) return { error, count };
+  if (!count) return { error: { message: 'Delete denied: tip not removed from DB' }, count: 0 };
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'tip');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'tip');
-  return supabase.from('tips').delete().eq('id', id);
+  return { error: null, count };
 }
 
 // ═══ EVENTS ═══
@@ -101,16 +89,12 @@ export async function updateEvent(id, updates) {
 }
 
 export async function deleteEvent(id) {
-  const eventFirst = await supabase.from('events').delete().eq('id', id);
-  if (!eventFirst.error) {
-    await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'event');
-    await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'event');
-    return eventFirst;
-  }
-
+  const { error, count } = await supabase.from('events').delete({ count: 'exact' }).eq('id', id);
+  if (error) return { error, count };
+  if (!count) return { error: { message: 'Delete denied: event not removed from DB' }, count: 0 };
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'event');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'event');
-  return supabase.from('events').delete().eq('id', id);
+  return { error: null, count };
 }
 
 // ═══ COMMENTS ═══
