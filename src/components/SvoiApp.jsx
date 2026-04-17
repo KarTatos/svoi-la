@@ -261,6 +261,8 @@ export default function App() {
   const [selPC, setSelPC] = useState(() => { try { const d = sessionStorage.getItem('selPC'); return d ? JSON.parse(d) : null; } catch { return null; } });
   const [selPlace, setSelPlace] = useState(null);
   const [selTC, setSelTC] = useState(null);
+  const [tipsSearchInput, setTipsSearchInput] = useState("");
+  const [tipsSearchApplied, setTipsSearchApplied] = useState("");
   // Save screen state on change
   useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
   useEffect(() => { try { sessionStorage.setItem('selD', selD ? JSON.stringify(selD) : ''); } catch {} }, [selD]);
@@ -463,7 +465,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -714,6 +716,22 @@ export default function App() {
     }, 280);
     return () => clearTimeout(t);
   }, [np.address, addrValidPlace]);
+
+  useEffect(() => {
+    const q = (np.name || "").trim();
+    if (!showAdd || !selD) return;
+    if (q.length < 3) return;
+    if ((np.address || "").trim() && addrValidPlace) return;
+    let canceled = false;
+    const t = setTimeout(async () => {
+      const opts = await fetchAddressSuggestions(q);
+      if (canceled || !opts.length) return;
+      setNp((prev) => ({ ...prev, address: opts[0].value }));
+      setAddrValidPlace(true);
+      setAddrOptionsPlace([]);
+    }, 320);
+    return () => { canceled = true; clearTimeout(t); };
+  }, [np.name, showAdd, selD, addrValidPlace, np.address]);
 
   useEffect(() => {
     const q = (newEvent.location || "").trim();
@@ -1345,6 +1363,19 @@ export default function App() {
   });
   const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || null) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
+  const tipsQuery = tipsSearchApplied.trim().toLowerCase();
+  const tipsSearchResults = tipsQuery
+    ? tips.filter((t) => {
+        const catTitle = TIPS_CATS.find((c) => c.id === t.cat)?.title || "";
+        const hay = `${t.title || ""} ${t.text || ""} ${t.author || ""} ${catTitle}`.toLowerCase();
+        return hay.includes(tipsQuery);
+      })
+    : [];
+  const applyTipsSearch = () => {
+    setTipsSearchApplied(tipsSearchInput.trim());
+    setSelTC(null);
+    setExpTip(null);
+  };
   const catEvents = selEC ? events.filter(e=>{
     if (e.cat !== selEC.id) return false;
     if (filterDate) {
@@ -1601,7 +1632,7 @@ export default function App() {
               <select value={np.cat} onChange={e=>setNp({...np,cat:e.target.value})} style={{ ...iS, marginBottom:14, appearance:"none", color:np.cat?T.text:T.light }}>
                 <option value="">Выберите</option>{PLACE_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
               </select>
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес</label>
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
               <input value={np.address} onChange={e=>{setNp({...np,address:e.target.value}); setAddrValidPlace(false);}} placeholder="Адрес" style={{ ...iS, marginBottom:6, borderColor:np.address && !addrValidPlace ? "#f5b7b1" : T.border }} />
               {addrLoadingPlace && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем адрес...</div>}
               {!addrLoadingPlace && addrOptionsPlace.length > 0 && !addrValidPlace && (
@@ -1636,9 +1667,8 @@ export default function App() {
           </div>
           {cPlaces.length > 0 && (
             <div style={{ ...cd, padding:0, overflow:"hidden", marginBottom:12 }}>
-              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:12, color:T.mid, fontWeight:600 }}>Мини-карта рядом с вами</span>
-                {userCoords ? <span style={{ fontSize:11, color:T.light }}>Вы на карте: ●</span> : <span style={{ fontSize:11, color:T.light }}>Геолокация недоступна</span>}
+              <div style={{ padding:"8px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
+                <button onClick={() => openAllOnMap(cPlacesSorted)} style={{ ...pl(false), padding:"6px 10px", fontSize:12 }}>⤢ Открыть карту</button>
               </div>
               <div style={{ position:"relative", height:220, background:"#ECEFF3" }}>
                 {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
@@ -1651,14 +1681,11 @@ export default function App() {
 
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10, gap:8 }}>
             <button
-              onClick={() => {
-                if (placeSortField === "name") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
-                else { setPlaceSortField("name"); setPlaceSortDir("asc"); }
-              }}
+              onClick={() => openAllOnMap(cPlacesSorted)}
               style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
-              title="Сортировать по названию"
+              title="Открыть карту на весь экран"
             >
-              🔤 {placeSortField === "name" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              🗺 ⤢
             </button>
             <button
               onClick={() => {
@@ -1751,17 +1778,64 @@ export default function App() {
           <button onClick={goHome} style={bk}>← Главная</button>
           <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 4px" }}>💡 Советы по жизни в LA</h2>
           <p style={{ fontSize:13, color:T.mid, margin:"0 0 16px" }}>Опыт от своих — лайфхаки, чаевые, банки, врачи</p>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {TIPS_CATS.map((c, i) => { const cnt = tips.filter(t=>t.cat===c.id).length; return (
-              <button key={c.id} onClick={() => { setSelTC(c); }}
-                style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-                <div style={{ width:48, height:48, borderRadius:T.rs, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{c.icon}</div>
-                <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{c.desc}</div></div>
-                {cnt > 0 && <span style={{ fontSize:13, fontWeight:700, color:T.primary }}>{cnt}</span>}
-              </button>
-            ); })}
+          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+            <input
+              value={tipsSearchInput}
+              onChange={(e)=>setTipsSearchInput(e.target.value)}
+              placeholder="Поиск по советам"
+              style={{ ...iS, flex:1, marginBottom:0 }}
+            />
+            <button onClick={applyTipsSearch} style={{ ...pl(false), minWidth:44, padding:"0 12px", fontSize:16 }}>🔍</button>
           </div>
+          {tipsQuery ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {tipsSearchResults.length === 0 && (
+                <div style={{ ...cd, padding:16, fontSize:13, color:T.mid }}>Ничего не найдено по запросу: “{tipsSearchApplied}”</div>
+              )}
+              {tipsSearchResults.map((tip) => {
+                const isE = expTip === tip.id;
+                const isL = liked[`tip-${tip.id}`];
+                const catTitle = TIPS_CATS.find((c) => c.id === tip.cat)?.title || "";
+                return (
+                  <div key={tip.id} style={{ ...cd, marginBottom:0, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
+                    <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+                      <div style={{ fontSize:11, color:T.light, marginBottom:4 }}>{catTitle}</div>
+                      <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
+                      <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
+                        <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
+                        <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
+                          <span>❤️ {tip.likes||0}</span>
+                          <span>💬 {(tip.comments||[]).length}</span>
+                          <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
+                        </div>
+                      </div>
+                    </div>
+                    {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
+                      <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
+                        <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
+                        <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">↤</button>
+                      </div>
+                      {renderComments(tip, "tip", handleAddComment)}
+                    </div>)}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {TIPS_CATS.map((c, i) => { const cnt = tips.filter(t=>t.cat===c.id).length; return (
+                <button key={c.id} onClick={() => { setSelTC(c); }}
+                  style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
+                  onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
+                  <div style={{ width:48, height:48, borderRadius:T.rs, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{c.icon}</div>
+                  <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{c.desc}</div></div>
+                  {cnt > 0 && <span style={{ fontSize:13, fontWeight:700, color:T.primary }}>{cnt}</span>}
+                </button>
+              ); })}
+            </div>
+          )}
         </div>)}
 
         {/* TIPS CATEGORY */}
