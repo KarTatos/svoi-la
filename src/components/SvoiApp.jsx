@@ -515,6 +515,37 @@ export default function App() {
     link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
     document.head.appendChild(link);
   };
+  const activateLeafletFallback = async (message = "Google Maps недоступны, включена резервная карта.") => {
+    const L = (await import("leaflet")).default;
+    ensureLeafletCss();
+    setMapProvider("leaflet");
+    setMapError(message);
+    setRouteInfo(null);
+    setRouteLoading(false);
+
+    if (!leafletMapRef.current) {
+      leafletMapRef.current = L.map(mapContainerRef.current, { zoomControl: true });
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      }).addTo(leafletMapRef.current);
+      leafletLayerRef.current = L.layerGroup().addTo(leafletMapRef.current);
+    }
+
+    const map = leafletMapRef.current;
+    const layer = leafletLayerRef.current;
+    layer.clearLayers();
+    mapPlaces.forEach((p) => {
+      const marker = L.marker([p.lat, p.lng]).addTo(layer);
+      marker.on("click", () => setSelectedMapPlace(p));
+    });
+    const markers = layer.getLayers();
+    if (markers.length) {
+      const bounds = L.featureGroup(markers).getBounds();
+      map.fitBounds(bounds.pad(0.2));
+    } else if (selD) {
+      map.setView([selD.lat, selD.lng], 13);
+    }
+  };
   const geocodePlace = async (place) => {
     const key = `${place.name || ""}|${place.address || ""}`;
     if (geocodeCacheRef.current[key]) return geocodeCacheRef.current[key];
@@ -769,36 +800,8 @@ export default function App() {
         }
       } catch (e) {
         try {
-          const L = (await import("leaflet")).default;
           if (disposed) return;
-          ensureLeafletCss();
-          setMapProvider("leaflet");
-          setMapError("Google Maps недоступны, включена резервная карта.");
-          setRouteInfo(null);
-          setRouteLoading(false);
-
-          if (!leafletMapRef.current) {
-            leafletMapRef.current = L.map(mapContainerRef.current, { zoomControl: true });
-            L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-              attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-            }).addTo(leafletMapRef.current);
-            leafletLayerRef.current = L.layerGroup().addTo(leafletMapRef.current);
-          }
-
-          const map = leafletMapRef.current;
-          const layer = leafletLayerRef.current;
-          layer.clearLayers();
-          mapPlaces.forEach((p) => {
-            const marker = L.marker([p.lat, p.lng]).addTo(layer);
-            marker.on("click", () => setSelectedMapPlace(p));
-          });
-          const markers = layer.getLayers();
-          if (markers.length) {
-            const bounds = L.featureGroup(markers).getBounds();
-            map.fitBounds(bounds.pad(0.2));
-          } else if (selD) {
-            map.setView([selD.lat, selD.lng], 13);
-          }
+          await activateLeafletFallback("Google Maps недоступны, включена резервная карта.");
         } catch {
           setMapError("Не удалось загрузить карту. Проверьте ключ Google Maps.");
         }
@@ -819,6 +822,25 @@ export default function App() {
       leafletMapRef.current.flyTo([selectedMapPlace.lat, selectedMapPlace.lng], 15, { duration: 0.35 });
     }
   }, [selectedMapPlace, mapProvider]);
+
+  useEffect(() => {
+    if (!showMapModal || mapProvider !== "google" || mapLoading) return;
+    if (!mapContainerRef.current) return;
+    let canceled = false;
+    const t = setTimeout(async () => {
+      if (canceled || !mapContainerRef.current) return;
+      const text = (mapContainerRef.current.textContent || "").toLowerCase();
+      const hasGoogleError = text.includes("didn't load google maps correctly") || text.includes("something went wrong");
+      if (hasGoogleError) {
+        try {
+          await activateLeafletFallback("Google Maps временно недоступны, показана резервная карта.");
+        } catch {
+          setMapError("Не удалось загрузить карту. Проверьте ключ Google Maps.");
+        }
+      }
+    }, 1200);
+    return () => { canceled = true; clearTimeout(t); };
+  }, [showMapModal, mapProvider, mapLoading, mapPlaces]);
 
   useEffect(() => {
     if (mapProvider !== "google") return;
