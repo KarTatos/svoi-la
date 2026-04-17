@@ -27,46 +27,14 @@ const PLACE_CATS = [
 
 const PLACE_CAT_IDS = new Set(PLACE_CATS.map((c) => c.id));
 
-const BASE_INIT_PLACES = [
-  { id:1, cat:"restaurants", district:"weho", name:"Тройка", address:"8826 Sunset Blvd, West Hollywood, CA", tip:"Пельмени. Четверг — живая музыка.", addedBy:"Мария К.", img:"🥟", photos:["🍽️ Уютный зал"], likes:34, comments:[{id:301,author:"Дима С.",text:"Лучшие пельмени в WeHo!"}] },
-  { id:2, cat:"restaurants", district:"hollywood", name:"Sochi Restaurant", address:"5765 Melrose Ave, Hollywood, CA", tip:"Хинкали 10/10, хачапури огонь.", addedBy:"Дима С.", img:"🫓", photos:["☀️ Терраса"], likes:28, comments:[] },
-  { id:3, cat:"restaurants", district:"glendale", name:"Ararat", address:"1000 S Glendale Ave, Glendale, CA", tip:"Армянская кухня, огромные порции.", addedBy:"Артур М.", img:"🍖", photos:[], likes:19, comments:[] },
-  { id:4, cat:"bars", district:"valley", name:"The Other Door", address:"10437 Burbank Blvd, North Hollywood, CA", tip:"Speakeasy, пароль каждую неделю.", addedBy:"Алекс Р.", img:"🥃", photos:["🥃 Old Fashioned"], likes:52, comments:[{id:302,author:"Лена В.",text:"Пароль спрашивайте в инсте!"}] },
-  { id:5, cat:"bars", district:"hollywood", name:"Davey Wayne's", address:"1611 N El Centro Ave, Hollywood, CA", tip:"Вход через холодильник!", addedBy:"Лена В.", img:"🪩", photos:[], likes:41, comments:[] },
-  { id:6, cat:"coffee", district:"dtla", name:"Verve Coffee", address:"833 S Spring St, Los Angeles, CA", tip:"Pour-over. Лофт идеальный.", addedBy:"Саша К.", img:"☕", photos:[], likes:37, comments:[] },
-  { id:7, cat:"hiking", district:"hollywood", name:"Runyon Canyon", address:"2000 N Fuller Ave, Los Angeles, CA", tip:"Правая тропа — виды лучше.", addedBy:"Макс Д.", img:"⛰️", photos:[], likes:23, comments:[] },
-  { id:8, cat:"hiking", district:"pasadena", name:"Eaton Canyon Falls", address:"1750 N Altadena Dr, Pasadena, CA", tip:"Водопад 12м! Лёгкий маршрут.", addedBy:"Игорь Н.", img:"💧", photos:[], likes:48, comments:[] },
-  { id:9, cat:"hiking", district:"silverlake", name:"Griffith Observatory", address:"2800 E Observatory Rd, Los Angeles, CA", tip:"На закате обязательно.", addedBy:"Катя Л.", img:"🌅", photos:[], likes:55, comments:[{id:303,author:"Макс Д.",text:"Парковка бесплатная после 6!"}] },
-  { id:10, cat:"interesting", district:"dtla", name:"The Last Bookstore", address:"453 S Spring St, Los Angeles, CA", tip:"Тоннель из книг.", addedBy:"Вера П.", img:"📚", photos:[], likes:33, comments:[] },
-  { id:11, cat:"music", district:"hollywood", name:"Hollywood Bowl", address:"2301 N Highland Ave, Los Angeles, CA", tip:"Своё вино можно!", addedBy:"Наташа Ф.", img:"🎶", photos:[], likes:61, comments:[] },
+const INIT_PLACES = [
+  { id:1, cat:"restaurants", district:"hollywood", name:"République", address:"624 S La Brea Ave, Los Angeles, CA", tip:"Французская кухня и известная пекарня в историческом здании.", addedBy:"Admin", img:"🍽️", photos:[], likes:34, comments:[] },
+  { id:2, cat:"bars", district:"weho", name:"Employees Only", address:"7953 Santa Monica Blvd, West Hollywood, CA", tip:"Коктейльный бар в стиле speakeasy с классическим меню.", addedBy:"Admin", img:"🍸", photos:[], likes:41, comments:[] },
+  { id:3, cat:"coffee", district:"dtla", name:"Verve Coffee Roasters", address:"833 S Spring St, Los Angeles, CA", tip:"Спешелти-кофе и много мест для работы в центре города.", addedBy:"Admin", img:"☕", photos:[], likes:37, comments:[] },
+  { id:4, cat:"hiking", district:"hollywood", name:"Runyon Canyon Park", address:"2000 N Fuller Ave, Los Angeles, CA", tip:"Популярный городской хайк с панорамными видами на LA.", addedBy:"Admin", img:"🥾", photos:[], likes:23, comments:[] },
+  { id:5, cat:"interesting", district:"dtla", name:"The Last Bookstore", address:"453 S Spring St, Los Angeles, CA", tip:"Книжный с арт-инсталляциями и фотозонами в DTLA.", addedBy:"Admin", img:"✨", photos:[], likes:33, comments:[] },
+  { id:6, cat:"music", district:"hollywood", name:"Hollywood Bowl", address:"2301 N Highland Ave, Los Angeles, CA", tip:"Одна из главных концертных площадок LA под открытым небом.", addedBy:"Admin", img:"🎵", photos:[], likes:61, comments:[] },
 ];
-
-const WEHO_STREETS = [
-  "Sunset Blvd",
-  "Santa Monica Blvd",
-  "Melrose Ave",
-  "La Cienega Blvd",
-  "Fairfax Ave",
-  "Beverly Blvd",
-];
-
-const WEHO_PREVIEW_PLACES = PLACE_CATS.flatMap((cat, catIndex) =>
-  Array.from({ length: 15 }, (_, i) => ({
-    id: 20000 + catIndex * 100 + i,
-    cat: cat.id,
-    district: "weho",
-    name: `${cat.title} ${i + 1}`,
-    address: `${1000 + catIndex * 100 + i * 3} ${WEHO_STREETS[i % WEHO_STREETS.length]}, West Hollywood, CA`,
-    tip: `Популярное место в категории "${cat.title}".`,
-    addedBy: "Demo",
-    img: cat.icon,
-    photos: [],
-    likes: 0,
-    comments: [],
-  }))
-);
-
-const INIT_PLACES = [...BASE_INIT_PLACES, ...WEHO_PREVIEW_PLACES];
 
 const USCIS_CATS = [
   { id:"greencard", icon:"🪪", title:"Грин-карта", subtitle:"Получение, продление, условия", docs:[
@@ -308,6 +276,11 @@ export default function App() {
   const [mapError, setMapError] = useState("");
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [placeSort, setPlaceSort] = useState("likes");
+  const [miniMapLoading, setMiniMapLoading] = useState(false);
+  const [miniMapError, setMiniMapError] = useState("");
+  const [miniMapPlaces, setMiniMapPlaces] = useState([]);
+  const [userCoords, setUserCoords] = useState(null);
   const [liked, setLiked] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
@@ -356,8 +329,12 @@ export default function App() {
   const tipFileRef = useRef(null);
   const eventFileRef = useRef(null);
   const mapContainerRef = useRef(null);
+  const miniMapContainerRef = useRef(null);
   const googleMapRef = useRef(null);
+  const miniGoogleMapRef = useRef(null);
   const googleMarkersRef = useRef([]);
+  const miniGoogleMarkersRef = useRef([]);
+  const miniGoogleUserMarkerRef = useRef(null);
   const googleDirectionsRendererRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
   const geocodeCacheRef = useRef({});
@@ -442,16 +419,24 @@ export default function App() {
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
   const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
+  const openExternalUrl = (url) => {
+    if (!url) return;
+    try {
+      window.location.href = url;
+    } catch {
+      window.open(url, "_self");
+    }
+  };
   const openAddressInMaps = (address) => {
     const value = (address || "").trim();
     if (!value) return;
     const q = encodeURIComponent(value);
-    window.open(`geo:0,0?q=${q}`, "_blank");
+    openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${q}`);
   };
-  const openMap = (p, t) => { const q = encodeURIComponent(p.address); window.open(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`, "_blank"); setMapP(null); };
+  const openMap = (p, t) => { const q = encodeURIComponent(p.address); openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`); setMapP(null); };
   const openEventMap = (location, t) => {
     const q = encodeURIComponent(location || "");
-    window.open(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`, "_blank");
+    openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`);
   };
   const normalizeExternalUrl = (url) => {
     const v = (url || "").trim();
@@ -547,7 +532,7 @@ export default function App() {
     const url = provider === "google"
       ? `https://www.google.com/maps/dir/?api=1&destination=${destination}`
       : `https://maps.apple.com/?daddr=${destination}`;
-    window.open(url, "_blank");
+    openExternalUrl(url);
   };
   const openPhotoViewer = (photos, startIndex = 0) => {
     const normalized = (Array.isArray(photos) ? photos : [])
@@ -699,7 +684,6 @@ export default function App() {
       try {
         const maps = await ensureGoogleMapsApi();
         if (disposed || !maps) return;
-        setMapError("");
 
         if (!googleMapRef.current) {
           googleMapRef.current = new maps.Map(mapContainerRef.current, {
@@ -750,7 +734,7 @@ export default function App() {
           map.setZoom(13);
         }
       } catch (e) {
-        setMapError("Google Maps не загрузились. Проверьте ключ, Billing и разрешённые домены (HTTP referrers).");
+        setMapError("Не удалось загрузить Google Maps. Проверьте API key и ограничения.");
       }
     };
     init();
@@ -803,6 +787,126 @@ export default function App() {
   }, [showMapModal, selectedMapPlace]);
 
   useEffect(() => {
+    if (scr !== "places-cat" || !selPC || !selD) {
+      setMiniMapPlaces([]);
+      setMiniMapError("");
+      setMiniMapLoading(false);
+      return;
+    }
+    let canceled = false;
+    const categoryPlaces = places.filter((p) => p.district === selD.id && p.cat === selPC.id && PLACE_CAT_IDS.has(p.cat));
+
+    const loadMiniMapPlaces = async () => {
+      setMiniMapLoading(true);
+      setMiniMapError("");
+      try {
+        const resolved = await Promise.all(categoryPlaces.slice(0, 40).map(async (p) => {
+          const coords = await geocodePlace(p);
+          return coords ? { ...p, ...coords } : null;
+        }));
+        if (canceled) return;
+        setMiniMapPlaces(resolved.filter(Boolean));
+      } catch {
+        if (canceled) return;
+        setMiniMapPlaces([]);
+        setMiniMapError("Не удалось загрузить мини-карту.");
+      } finally {
+        if (!canceled) setMiniMapLoading(false);
+      }
+    };
+
+    loadMiniMapPlaces();
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (canceled) return;
+          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          if (canceled) return;
+          setUserCoords(null);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 120000 },
+      );
+    } else {
+      setUserCoords(null);
+    }
+
+    return () => { canceled = true; };
+  }, [scr, selPC, selD, places]);
+
+  useEffect(() => {
+    if (scr !== "places-cat" || !selPC || !miniMapContainerRef.current || miniMapLoading || !miniMapPlaces.length) return;
+    let disposed = false;
+    const initMiniMap = async () => {
+      try {
+        const maps = await ensureGoogleMapsApi();
+        if (disposed || !maps) return;
+
+        if (!miniGoogleMapRef.current) {
+          miniGoogleMapRef.current = new maps.Map(miniMapContainerRef.current, {
+            zoom: 13,
+            center: selD ? { lat: selD.lat, lng: selD.lng } : { lat: 34.09, lng: -118.33 },
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            gestureHandling: "greedy",
+            styles: [
+              { elementType: "geometry", stylers: [{ color: "#f7f7f8" }] },
+              { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+              { featureType: "poi", stylers: [{ visibility: "off" }] },
+              { featureType: "transit", stylers: [{ visibility: "off" }] },
+              { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+              { featureType: "water", elementType: "geometry", stylers: [{ color: "#eaf0f8" }] },
+            ],
+          });
+        }
+
+        const map = miniGoogleMapRef.current;
+        miniGoogleMarkersRef.current.forEach((m) => m.setMap(null));
+        miniGoogleMarkersRef.current = [];
+        if (miniGoogleUserMarkerRef.current) miniGoogleUserMarkerRef.current.setMap(null);
+
+        const bounds = new maps.LatLngBounds();
+        miniMapPlaces.forEach((p) => {
+          const marker = new maps.Marker({
+            position: { lat: p.lat, lng: p.lng },
+            map,
+            title: p.name,
+          });
+          marker.addListener("click", () => { setSelPlace(p); setScr("place-item"); });
+          miniGoogleMarkersRef.current.push(marker);
+          bounds.extend(marker.getPosition());
+        });
+
+        if (userCoords) {
+          miniGoogleUserMarkerRef.current = new maps.Marker({
+            position: userCoords,
+            map,
+            title: "Вы",
+            icon: {
+              path: maps.SymbolPath.CIRCLE,
+              scale: 7,
+              fillColor: "#1F7AE0",
+              fillOpacity: 1,
+              strokeColor: "#fff",
+              strokeWeight: 2,
+            },
+          });
+          bounds.extend(userCoords);
+        }
+
+        if (!bounds.isEmpty()) map.fitBounds(bounds, 40);
+      } catch {
+        setMiniMapError("Google Maps недоступны для мини-карты.");
+      }
+    };
+    initMiniMap();
+    return () => { disposed = true; };
+  }, [scr, selPC, selD, miniMapLoading, miniMapPlaces, userCoords]);
+
+  useEffect(() => {
     if (!photoViewer) return;
     const prevOverflow = document.body.style.overflow;
     const prevTouchAction = document.body.style.touchAction;
@@ -813,15 +917,6 @@ export default function App() {
       document.body.style.touchAction = prevTouchAction;
     };
   }, [photoViewer]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const prev = window.gm_authFailure;
-    window.gm_authFailure = () => {
-      setMapError("Google Maps key отклонён. Нужны: активный Billing, включённый Maps JavaScript API и корректный HTTP referrer для домена.");
-    };
-    return () => { window.gm_authFailure = prev; };
-  }, []);
 
   const getTouchDistance = (touches) => {
     if (!touches || touches.length < 2) return 0;
@@ -1126,6 +1221,18 @@ export default function App() {
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
   const dPlaces = selD ? places.filter(p=>p.district===selD.id && PLACE_CAT_IDS.has(p.cat)) : [];
   const cPlaces = selPC ? dPlaces.filter(p=>p.cat===selPC.id) : [];
+  const calcDistanceKm = (a, b) => {
+    const R = 6371;
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+    const s1 = Math.sin(dLat / 2) ** 2;
+    const s2 = Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s1 + s2));
+  };
+  const cPlacesSorted = [...cPlaces].sort((a, b) => {
+    if (placeSort === "name") return (a.name || "").localeCompare(b.name || "", "en", { sensitivity: "base" });
+    return (b.likes || 0) - (a.likes || 0);
+  });
   const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || selPlace) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
   const catEvents = selEC ? events.filter(e=>{
@@ -1418,9 +1525,28 @@ export default function App() {
             <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selPC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selD.name} · {cPlaces.length} мест</p></div>
           </div>
           {cPlaces.length > 0 && (
-            <button onClick={() => openAllOnMap(cPlaces)} style={{ ...pl(true), width:"100%", padding:"12px 0", display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontSize:13, marginBottom:16 }}>🗺️ Показать все на карте</button>
+            <div style={{ ...cd, padding:0, overflow:"hidden", marginBottom:12 }}>
+              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:12, color:T.mid, fontWeight:600 }}>Мини-карта рядом с вами</span>
+                {userCoords ? <span style={{ fontSize:11, color:T.light }}>Вы на карте: ●</span> : <span style={{ fontSize:11, color:T.light }}>Геолокация недоступна</span>}
+              </div>
+              <div style={{ position:"relative", height:220, background:"#ECEFF3" }}>
+                {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
+                {!miniMapLoading && miniMapError && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"#C0392B", padding:12, textAlign:"center" }}>{miniMapError}</div>}
+                {!miniMapLoading && !miniMapError && miniMapPlaces.length === 0 && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:T.mid, padding:12, textAlign:"center" }}>Для этой категории пока нет точек с координатами.</div>}
+                <div ref={miniMapContainerRef} style={{ width:"100%", height:"100%" }} />
+              </div>
+            </div>
           )}
-          {cPlaces.map((p) => (
+
+          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10 }}>
+            <select value={placeSort} onChange={(e)=>setPlaceSort(e.target.value)} style={{ ...iS, width:"auto", padding:"8px 12px", fontSize:12, borderRadius:10 }}>
+              <option value="likes">Сортировка: по лайкам</option>
+              <option value="name">Сортировка: по названию</option>
+            </select>
+          </div>
+
+          {cPlacesSorted.map((p) => (
             <button key={p.id} onClick={() => { setSelPlace(p); setScr("place-item"); }} style={{ ...cd, width:"100%", overflow:"hidden", marginBottom:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", borderColor:T.borderL }}>
               <div style={{ padding:16 }}>
                 <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
@@ -1788,7 +1914,7 @@ export default function App() {
                 </div>
               )}
               {!mapLoading && mapError && (
-                <div style={{ position:"absolute", top:10, left:10, right:10, zIndex:3, color:"#C0392B", fontSize:12, padding:"8px 10px", textAlign:"center", background:"rgba(255,255,255,0.92)", border:"1px solid #f2c2c2", borderRadius:10 }}>
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, color:"#C0392B", fontSize:14, padding:16, textAlign:"center", background:"rgba(255,255,255,0.8)" }}>
                   {mapError}
                 </div>
               )}
