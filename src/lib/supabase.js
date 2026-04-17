@@ -5,37 +5,6 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function deleteOwnedItemThroughApi(id, table, itemType) {
-  try {
-    const { error: directError, count } = await supabase.from(table).delete({ count: "exact" }).eq("id", id);
-    if (!directError && count && count > 0) {
-      await supabase.from("comments").delete().eq("item_id", id).eq("item_type", itemType);
-      await supabase.from("likes").delete().eq("item_id", id).eq("item_type", itemType);
-      return { error: null };
-    }
-
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) return { error: { message: "Not authenticated" } };
-
-    const res = await fetch("/api/content/delete", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ id, table, itemType }),
-    });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return { error: { message: payload?.error || "Delete failed" } };
-    }
-    return { error: null };
-  } catch (err) {
-    return { error: { message: err?.message || "Delete failed" } };
-  }
-}
-
 // ═══ AUTH ═══
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
@@ -70,7 +39,11 @@ export async function updatePlace(id, updates) {
 }
 
 export async function deletePlace(id) {
-  return deleteOwnedItemThroughApi(id, "places", "place");
+  const { error } = await supabase.from('places').delete().eq('id', id);
+  if (error) return { error };
+  await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'place');
+  await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'place');
+  return { error: null };
 }
 
 // ═══ TIPS ═══
@@ -90,7 +63,11 @@ export async function updateTip(id, updates) {
 }
 
 export async function deleteTip(id) {
-  return deleteOwnedItemThroughApi(id, "tips", "tip");
+  const { error } = await supabase.from('tips').delete().eq('id', id);
+  if (error) return { error };
+  await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'tip');
+  await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'tip');
+  return { error: null };
 }
 
 // ═══ EVENTS ═══
@@ -110,7 +87,11 @@ export async function updateEvent(id, updates) {
 }
 
 export async function deleteEvent(id) {
-  return deleteOwnedItemThroughApi(id, "events", "event");
+  const { error } = await supabase.from('events').delete().eq('id', id);
+  if (error) return { error };
+  await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'event');
+  await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'event');
+  return { error: null };
 }
 
 // ═══ COMMENTS ═══
