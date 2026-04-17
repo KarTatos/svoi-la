@@ -308,7 +308,6 @@ export default function App() {
   const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [addrOptionsEvent, setAddrOptionsEvent] = useState([]);
   const [addrLoadingPlace, setAddrLoadingPlace] = useState(false);
@@ -339,6 +338,7 @@ export default function App() {
   const miniGoogleUserMarkerRef = useRef(null);
   const googleDirectionsRendererRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
+  const datePickerRef = useRef(null);
   const googleAutocompleteRef = useRef(null);
   const googlePlacesServiceRef = useRef(null);
   const geocodeCacheRef = useRef({});
@@ -463,7 +463,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); setShowDatePicker(false); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -482,6 +482,11 @@ export default function App() {
   const openEventMap = (location, t) => {
     const q = encodeURIComponent(location || "");
     openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`);
+  };
+  const openFilterDatePicker = () => {
+    const input = datePickerRef.current;
+    if (!input) return;
+    input.showPicker();
   };
   const normalizeExternalUrl = (url) => {
     const v = (url || "").trim();
@@ -1864,38 +1869,36 @@ export default function App() {
           </div>
           {/* Date filter bar */}
           <div style={{ marginBottom:16 }}>
-            <div style={{ display:"flex", gap:6, alignItems:"stretch" }}>
-              <div style={{ display:"flex", gap:6, overflowX:"auto", flex:1, paddingBottom:4, scrollSnapType:"x mandatory" }}>
-                <button onClick={() => setFilterDate(null)}
-                  style={{ padding:"8px 14px", borderRadius:12, border:`1.5px solid ${!filterDate?T.primary:T.border}`, background:!filterDate?T.primary:T.card, color:!filterDate?"#fff":T.mid, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
-                  Все
-                </button>
-                {Array.from({length:7}, (_,i) => {
-                  const d = new Date(); d.setDate(d.getDate()+i);
-                  const dayNames = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
-                  const isActive = filterDate && new Date(filterDate).toDateString() === d.toDateString();
-                  const isToday = i === 0;
-                  return (
-                    <button key={i} onClick={() => setFilterDate(isActive ? null : d.toISOString())}
-                      style={{ padding:"6px 10px", borderRadius:12, border:`1.5px solid ${isActive?T.primary:T.border}`, background:isActive?T.primary:T.card, color:isActive?"#fff":T.text, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", flexShrink:0, minWidth:46, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                      <span style={{ fontSize:10, color:isActive?"#fff":T.light, fontWeight:400 }}>{isToday?"Сегодня":dayNames[d.getDay()]}</span>
-                      <span style={{ fontSize:15, fontWeight:700 }}>{d.getDate()}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(9, minmax(0, 1fr))", gap:6, alignItems:"stretch" }}>
+              <button onClick={() => setFilterDate(null)}
+                style={{ padding:"6px 6px", borderRadius:12, border:`1.5px solid ${!filterDate?T.primary:T.border}`, background:!filterDate?T.primary:T.card, color:!filterDate?"#fff":T.mid, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", minWidth:0 }}>
+                Все
+              </button>
+              {Array.from({length:7}, (_,i) => {
+                const d = new Date(); d.setDate(d.getDate()+i);
+                const dayNames = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+                const isActive = filterDate && new Date(filterDate).toDateString() === d.toDateString();
+                const isToday = i === 0;
+                return (
+                  <button key={i} onClick={() => setFilterDate(isActive ? null : d.toISOString())}
+                    style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${isActive?T.primary:T.border}`, background:isActive?T.primary:T.card, color:isActive?"#fff":T.text, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", minWidth:0, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:2, justifyContent:"center" }}>
+                    <span style={{ fontSize:9, color:isActive?"#fff":T.light, fontWeight:400, lineHeight:1 }}>{isToday?"Сег":dayNames[d.getDay()]}</span>
+                    <span style={{ fontSize:14, fontWeight:700, lineHeight:1 }}>{d.getDate()}</span>
+                  </button>
+                );
+              })}
               {/* Calendar picker — always visible */}
-              <div style={{ position:"relative", flexShrink:0 }}>
-                <button onClick={() => setShowDatePicker(!showDatePicker)}
-                  style={{ padding:"6px 12px", borderRadius:12, border:`1.5px solid ${showDatePicker?T.primary:T.border}`, background:showDatePicker?T.primaryLight:T.card, color:T.mid, fontSize:16, cursor:"pointer", fontFamily:"inherit", width:46, height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <div style={{ position:"relative", minWidth:0 }}>
+                <button onClick={openFilterDatePicker}
+                  style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${T.border}`, background:T.card, color:T.mid, fontSize:15, cursor:"pointer", fontFamily:"inherit", width:"100%", height:"100%", minHeight:42, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   📅
                 </button>
-                {showDatePicker && (
-                  <div style={{ position:"absolute", top:"100%", right:0, marginTop:4, zIndex:50 }}>
-                    <input type="date" autoFocus onChange={e=>{setFilterDate(e.target.value+"T00:00"); setShowDatePicker(false);}}
-                      style={{ ...iS, width:200, padding:"12px", boxShadow:T.shH, fontSize:16 }} />
-                  </div>
-                )}
+                <input
+                  ref={datePickerRef}
+                  type="date"
+                  onChange={(e)=>{ if (e.target.value) setFilterDate(e.target.value+"T00:00"); }}
+                  style={{ position:"absolute", width:1, height:1, opacity:0, pointerEvents:"none" }}
+                />
               </div>
             </div>
             {filterDate && (
