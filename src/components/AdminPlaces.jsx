@@ -158,10 +158,37 @@ export default function AdminPlaces() {
 
   async function deletePlace(id) {
     if (!window.confirm("Delete this place?")) return;
-    setDeleting(id);
+    setDeleting(String(id));
     setError("");
     try {
-      await dbDeletePlace(id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (token) {
+        const res = await fetch("/api/admin/places", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ id }),
+        });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          const serverError = String(payload?.error || "");
+          const canFallback =
+            !serverError ||
+            serverError.includes("not configured") ||
+            serverError.includes("Missing access token") ||
+            serverError.includes("Invalid token") ||
+            serverError.includes("Forbidden");
+          if (!canFallback) throw new Error(serverError || "Delete failed");
+          const { error } = await dbDeletePlace(id);
+          if (error) throw new Error(error.message || "Delete failed");
+        }
+      } else {
+        const { error } = await dbDeletePlace(id);
+        if (error) throw new Error(error.message || "Delete failed");
+      }
       await loadAll();
     } catch (err) {
       setError(err?.message || "Delete failed");
@@ -265,8 +292,8 @@ export default function AdminPlaces() {
                   <td style={td}>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => openEdit(p)} style={smallBtn}>Edit</button>
-                      <button onClick={() => deletePlace(p.id)} disabled={deleting === p.id} style={smallBtnDanger}>
-                        {deleting === p.id ? "Deleting..." : "Delete"}
+                      <button onClick={() => deletePlace(p.id)} disabled={deleting === String(p.id)} style={smallBtnDanger}>
+                        {deleting === String(p.id) ? "Deleting..." : "Delete"}
                       </button>
                     </div>
                   </td>

@@ -338,6 +338,8 @@ export default function App() {
   const miniGoogleUserMarkerRef = useRef(null);
   const googleDirectionsRendererRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
+  const googleAutocompleteRef = useRef(null);
+  const googlePlacesServiceRef = useRef(null);
   const geocodeCacheRef = useRef({});
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
@@ -481,7 +483,7 @@ export default function App() {
       script.id = "google-maps-js";
       script.async = true;
       script.defer = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}&libraries=places`;
       script.onerror = () => {
         googleMapsLoaderRef.current = null;
         reject(new Error("Failed to load Google Maps script"));
@@ -565,81 +567,87 @@ export default function App() {
     setPhotoZoom(1);
   };
 
-  const LA_COUNTY_BBOX = { left: -119.05, right: -117.40, top: 34.95, bottom: 33.30 };
-  const toShortAddress = (item) => {
-    const a = item?.address || {};
-    const number = a.house_number || "";
-    const street = a.road || a.pedestrian || a.footway || a.path || a.neighbourhood || "";
-    const city = a.city || a.town || a.village || a.hamlet || a.suburb || "Los Angeles";
-    const state = a.state_code || a.state || "CA";
-    const line = [number, street].filter(Boolean).join(" ").trim();
+  const getGoogleComponent = (components, type, mode = "long") => {
+    const found = (components || []).find((c) => (c.types || []).includes(type));
+    if (!found) return "";
+    return mode === "short" ? (found.short_name || "") : (found.long_name || "");
+  };
+  const shortAddressFromGoogle = (components, fallback = "") => {
+    const streetNumber = getGoogleComponent(components, "street_number");
+    const route = getGoogleComponent(components, "route");
+    const city =
+      getGoogleComponent(components, "locality") ||
+      getGoogleComponent(components, "sublocality_level_1") ||
+      getGoogleComponent(components, "postal_town") ||
+      "Los Angeles";
+    const state = getGoogleComponent(components, "administrative_area_level_1", "short") || "CA";
+    const line = [streetNumber, route].filter(Boolean).join(" ").trim();
     if (line) return `${line}, ${city}, ${state}`;
-    return [city, state].filter(Boolean).join(", ");
-  };
-  const isLosAngelesCountyResult = (item) => {
-    const a = item?.address || {};
-    const county = String(a.county || "").toLowerCase();
-    if (county.includes("los angeles")) return true;
-    const lat = Number(item?.lat);
-    const lon = Number(item?.lon);
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      return lon >= LA_COUNTY_BBOX.left && lon <= LA_COUNTY_BBOX.right && lat <= LA_COUNTY_BBOX.top && lat >= LA_COUNTY_BBOX.bottom;
+    if (fallback) {
+      const parts = String(fallback).split(",").map((p) => p.trim()).filter(Boolean);
+      return parts.slice(0, 3).join(", ");
     }
-    return false;
+    return `${city}, ${state}`;
   };
-  const placeDisplayName = (item) => {
-    const named = item?.namedetails?.name || item?.name || "";
-    return String(named || "").trim();
+  const ensureGooglePlacesServices = async () => {
+    const maps = await ensureGoogleMapsApi();
+    if (!maps?.places) throw new Error("Google Places library is not available");
+    if (!googleAutocompleteRef.current) {
+      googleAutocompleteRef.current = new maps.places.AutocompleteService();
+    }
+    if (!googlePlacesServiceRef.current) {
+      const el = document.createElement("div");
+      googlePlacesServiceRef.current = new maps.places.PlacesService(el);
+    }
+    return { maps, autocomplete: googleAutocompleteRef.current, placesService: googlePlacesServiceRef.current };
   };
+  const getGooglePredictions = (autocomplete, input) => new Promise((resolve) => {
+    const center = { lat: 34.0522, lng: -118.2437 };
+    const req = {
+      input,
+      componentRestrictions: { country: "us" },
+      locationBias: new window.google.maps.Circle({ center, radius: 90000 }).getBounds(),
+    };
+    autocomplete.getPlacePredictions(req, (predictions, status) => {
+      const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
+      resolve(ok ? predictions || [] : []);
+    });
+  });
+  const getGooglePlaceDetails = (placesService, placeId) => new Promise((resolve) => {
+    placesService.getDetails(
+      { placeId, fields: ["name", "formatted_address", "address_components"] },
+      (result, status) => {
+        const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
+        resolve(ok ? result : null);
+      },
+    );
+  });
   const fetchAddressSuggestions = async (query) => {
     const q = (query || "").trim();
     if (q.length < 3) return [];
     try {
-      const params = new URLSearchParams({
-        format: "json",
-        addressdetails: "1",
-        namedetails: "1",
-        limit: "12",
-        "accept-language": "en",
-        countrycodes: "us",
-        bounded: "1",
-        viewbox: `${LA_COUNTY_BBOX.left},${LA_COUNTY_BBOX.top},${LA_COUNTY_BBOX.right},${LA_COUNTY_BBOX.bottom}`,
-        q: `${q}, Los Angeles County, California`,
-      });
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      const qLower = q.toLowerCase();
-      const hasDigits = /\d/.test(q);
-      const cleaned = data
-        .filter(isLosAngelesCountyResult)
-        .map((item) => {
-          const short = toShortAddress(item);
-          const place = placeDisplayName(item);
-          const placeLower = place.toLowerCase();
-          const shortLower = short.toLowerCase();
-          const hasStreetNumber = Boolean(item?.address?.house_number);
-          const hasRoad = Boolean(item?.address?.road || item?.address?.pedestrian || item?.address?.footway || item?.address?.path);
-          let score = 0;
-          if (shortLower.startsWith(qLower)) score += 5;
-          if (shortLower.includes(qLower)) score += 2;
-          if (place && placeLower.includes(qLower)) score += 4;
-          if (hasStreetNumber) score += 3;
-          if (hasRoad) score += 2;
-          if (!hasDigits && place && !hasStreetNumber) score += 2; // query by place name
-          const label = place && !shortLower.includes(placeLower) ? `${place} — ${short}` : short;
-          return { label, value: short, score };
-        })
-        .filter((x) => x.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 6);
+      const { autocomplete, placesService } = await ensureGooglePlacesServices();
+      const predictions = await getGooglePredictions(autocomplete, q);
+      const top = predictions.slice(0, 6);
+      const detailed = await Promise.all(
+        top.map(async (pred) => {
+          const details = pred?.place_id ? await getGooglePlaceDetails(placesService, pred.place_id) : null;
+          const short = shortAddressFromGoogle(details?.address_components, details?.formatted_address || pred?.description || "");
+          const placeName = details?.name || pred?.structured_formatting?.main_text || "";
+          const label = placeName && !short.toLowerCase().includes(String(placeName).toLowerCase())
+            ? `${placeName} — ${short}`
+            : short;
+          return { label, value: short };
+        }),
+      );
       const uniq = [];
       const seen = new Set();
-      for (const item of cleaned) {
+      for (const item of detailed) {
+        if (!item?.value) continue;
         const key = `${item.value}|${item.label}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        uniq.push({ label: item.label, value: item.value });
+        uniq.push(item);
       }
       return uniq;
     } catch {
