@@ -318,7 +318,7 @@ export default function App() {
   const [addrValidEvent, setAddrValidEvent] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
   const [photoZoom, setPhotoZoom] = useState(1);
-  const [chat, setChat] = useState([{ role:"assistant", text:"Привет! 👋 Я помощник. Спрашивай про USCIS, визы, грин-карты." }]);
+  const [chat, setChat] = useState([{ role:"assistant", text:"ну чего тебе?" }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
@@ -786,6 +786,12 @@ export default function App() {
         }
 
         const map = googleMapRef.current;
+        map.setOptions({
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
+        maps.event.trigger(map, "resize");
         googleMarkersRef.current.forEach((m) => m.setMap(null));
         googleMarkersRef.current = [];
 
@@ -801,12 +807,21 @@ export default function App() {
           bounds.extend(marker.getPosition());
         });
 
-        if (!bounds.isEmpty()) {
+        const hasBounds = !bounds.isEmpty();
+        if (hasBounds) {
           map.fitBounds(bounds, 70);
         } else if (selD) {
           map.setCenter({ lat: selD.lat, lng: selD.lng });
           map.setZoom(13);
         }
+        setTimeout(() => {
+          maps.event.trigger(map, "resize");
+          if (hasBounds) map.fitBounds(bounds, 70);
+          else if (selD) {
+            map.setCenter({ lat: selD.lat, lng: selD.lng });
+            map.setZoom(13);
+          }
+        }, 0);
       } catch (e) {
         setMapError("Не удалось загрузить Google Maps. Проверьте API key и ограничения.");
       }
@@ -950,6 +965,11 @@ export default function App() {
         }
 
         const map = miniGoogleMapRef.current;
+        map.setOptions({
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
         miniGoogleMarkersRef.current.forEach((m) => m.setMap(null));
         miniGoogleMarkersRef.current = [];
         if (miniGoogleUserMarkerRef.current) miniGoogleUserMarkerRef.current.setMap(null);
@@ -1485,18 +1505,39 @@ export default function App() {
 
       <main style={{ padding:"16px 16px 40px" }}>
 
-        {scr==="home" && (<div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-          {SECTIONS.map((s,i) => (
-            <button key={s.id} onClick={() => { if (s.soon) return; if (s.id==="chat-sec") { if (!user) {handleLogin();return;} setScr("chat"); } else setScr(s.id); }}
-              style={{ ...cd, padding:"20px 10px", cursor:s.soon?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", fontFamily:"inherit", color:T.text, position:"relative", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:`all 0.4s ease ${i*0.05}s` }}
-              onMouseEnter={e=>{if(!s.soon)e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-              {s.soon && <div style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, color:T.light, background:T.bg, padding:"2px 6px", borderRadius:4, textTransform:"uppercase" }}>скоро</div>}
-              <div style={{ fontSize:28, marginBottom:8, filter:s.soon?"grayscale(0.6) opacity(0.4)":"none" }}>{s.icon}</div>
-              <div style={{ fontWeight:700, fontSize:13, opacity:s.soon?0.4:1 }}>{s.title}</div>
-              <div style={{ fontSize:11, color:T.mid, marginTop:3, opacity:s.soon?0.3:0.7 }}>{s.desc}</div>
-            </button>
-          ))}
-        </div>)}
+        {scr==="home" && (() => {
+          const chatSection = SECTIONS.find((s) => s.id === "chat-sec");
+          const mainSections = SECTIONS.filter((s) => s.id !== "chat-sec");
+          return (
+            <div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                {mainSections.map((s,i) => (
+                  <button key={s.id} onClick={() => { if (s.soon) return; setScr(s.id); }}
+                    style={{ ...cd, padding:"20px 10px", cursor:s.soon?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", fontFamily:"inherit", color:T.text, position:"relative", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:`all 0.4s ease ${i*0.05}s` }}
+                    onMouseEnter={e=>{if(!s.soon)e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
+                    {s.soon && <div style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, color:T.light, background:T.bg, padding:"2px 6px", borderRadius:4, textTransform:"uppercase" }}>скоро</div>}
+                    <div style={{ fontSize:28, marginBottom:8, filter:s.soon?"grayscale(0.6) opacity(0.4)":"none" }}>{s.icon}</div>
+                    <div style={{ fontWeight:700, fontSize:13, opacity:s.soon?0.4:1 }}>{s.title}</div>
+                    <div style={{ fontSize:11, color:T.mid, marginTop:3, opacity:s.soon?0.3:0.7 }}>{s.desc}</div>
+                  </button>
+                ))}
+              </div>
+              {chatSection && (
+                <button
+                  onClick={() => { if (!user) {handleLogin();return;} setScr("chat"); }}
+                  style={{ ...cd, marginTop:12, width:"100%", padding:"16px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:"all 0.4s ease 0.35s" }}
+                  onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}
+                >
+                  <div style={{ width:36, height:36, borderRadius:12, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{chatSection.icon}</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, fontSize:24, lineHeight:1.05 }}>AI ЧАТ</div>
+                    <div style={{ fontSize:11, color:T.mid, marginTop:3 }}>{chatSection.desc}</div>
+                  </div>
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* USCIS */}
         {scr==="uscis" && (<div>
