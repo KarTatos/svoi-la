@@ -72,6 +72,13 @@ export async function updateTip(id, updates) {
 }
 
 export async function deleteTip(id) {
+  const tipFirst = await supabase.from('tips').delete().eq('id', id);
+  if (!tipFirst.error) {
+    await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'tip');
+    await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'tip');
+    return tipFirst;
+  }
+
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'tip');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'tip');
   return supabase.from('tips').delete().eq('id', id);
@@ -94,6 +101,13 @@ export async function updateEvent(id, updates) {
 }
 
 export async function deleteEvent(id) {
+  const eventFirst = await supabase.from('events').delete().eq('id', id);
+  if (!eventFirst.error) {
+    await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'event');
+    await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'event');
+    return eventFirst;
+  }
+
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'event');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'event');
   return supabase.from('events').delete().eq('id', id);

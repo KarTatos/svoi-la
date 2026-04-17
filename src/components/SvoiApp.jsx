@@ -370,7 +370,14 @@ export default function App() {
     } catch {}
   }, []);
   const loadAllData = async (authUser = null) => {
-    const [{ data: dbPlaces }, { data: dbTips }, { data: dbEvents }, { data: placeComments }, { data: tipComments }, { data: eventComments }] = await Promise.all([
+    const [
+      { data: dbPlaces, error: placesError },
+      { data: dbTips, error: tipsError },
+      { data: dbEvents, error: eventsError },
+      { data: placeComments },
+      { data: tipComments },
+      { data: eventComments },
+    ] = await Promise.all([
       fetchPlaces(),
       fetchTips(),
       fetchEvents(),
@@ -395,19 +402,31 @@ export default function App() {
     const mappedPlaces = (dbPlaces || [])
       .map((p) => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||"", tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||"📍", photos:p.photos||[], likes:p.likes_count||0, comments: placeCommentsByItem[p.id] || [], fromDB:true }))
       .filter((p) => PLACE_CAT_IDS.has(p.cat));
-    setPlaces(mappedPlaces.length ? mappedPlaces : INIT_PLACES.filter((p) => PLACE_CAT_IDS.has(p.cat)));
+    if (!placesError) {
+      setPlaces(mappedPlaces);
+    } else if (!mappedPlaces.length) {
+      setPlaces(INIT_PLACES.filter((p) => PLACE_CAT_IDS.has(p.cat)));
+    }
 
     const mappedTips = (dbTips || []).map((t) => {
       const rich = decodeRichText(t.text);
       return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, comments: tipCommentsByItem[t.id] || [], fromDB:true };
     });
-    setTips(mappedTips.length ? mappedTips : INIT_TIPS);
+    if (!tipsError) {
+      setTips(mappedTips);
+    } else if (!mappedTips.length) {
+      setTips(INIT_TIPS);
+    }
 
     const mappedEvents = (dbEvents || []).map((e) => {
       const rich = decodeRichText(e.description);
       return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||"", desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments: eventCommentsByItem[e.id] || [], fromDB:true };
     });
-    setEvents(mappedEvents.length ? mappedEvents : INIT_EVENTS);
+    if (!eventsError) {
+      setEvents(mappedEvents);
+    } else if (!mappedEvents.length) {
+      setEvents(INIT_EVENTS);
+    }
 
     if (authUser?.id) {
       const userLikes = await getUserLikes(authUser.id);
@@ -1115,7 +1134,11 @@ export default function App() {
   };
   const handleDeletePlace = async (placeId) => {
     if (window.confirm("Удалить это место?")) {
-      await dbDeletePlace(placeId);
+      const { error } = await dbDeletePlace(placeId);
+      if (error) {
+        alert(error.message || "Не удалось удалить место");
+        return;
+      }
       setPlaces(prev => prev.filter(p => p.id !== placeId));
       if (selPlace?.id === placeId) {
         setSelPlace(null);
@@ -1173,7 +1196,11 @@ export default function App() {
   };
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm("Удалить событие?")) return;
-    await dbDeleteEvent(eventId);
+    const { error } = await dbDeleteEvent(eventId);
+    if (error) {
+      alert(error.message || "Не удалось удалить событие");
+      return;
+    }
     setEvents(prev => prev.filter(e => e.id !== eventId));
     setShowAddEvent(false);
     setEditingEvent(null);
@@ -1187,7 +1214,11 @@ export default function App() {
   };
   const handleDeleteTip = async (tipId) => {
     if (!window.confirm("Удалить совет?")) return;
-    await dbDeleteTip(tipId);
+    const { error } = await dbDeleteTip(tipId);
+    if (error) {
+      alert(error.message || "Не удалось удалить совет");
+      return;
+    }
     setTips(prev => prev.filter(t => t.id !== tipId));
     setShowAddTip(false);
     setEditingTip(null);
