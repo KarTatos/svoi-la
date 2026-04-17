@@ -1122,9 +1122,14 @@ export default function App() {
   };
   const handleDeletePlace = async (placeId) => {
     if (window.confirm("Удалить это место?")) {
-      const { error } = await dbDeletePlace(placeId);
-      if (error) {
-        alert(error.message || "Не удалось удалить место");
+      const result = await deleteItemWithVerification({
+        id: placeId,
+        itemType: "place",
+        table: "places",
+        directDeleteFn: dbDeletePlace,
+      });
+      if (!result.ok) {
+        alert(result.error || "Не удалось удалить место");
         return;
       }
       setPlaces(prev => prev.filter(p => p.id !== placeId));
@@ -1167,6 +1172,33 @@ export default function App() {
     const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
     setNewEventPhotos(prev => [...prev, ...newFiles].slice(0, 3));
   };
+  const deleteItemWithVerification = async ({ id, itemType, table, directDeleteFn }) => {
+    await directDeleteFn(id);
+
+    const firstCheck = await supabase.from(table).select("id").eq("id", id).maybeSingle();
+    if (!firstCheck.error && !firstCheck.data) return { ok: true };
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return { ok: false, error: "Нет сессии для удаления через админ API" };
+
+    const res = await fetch("/api/admin/content", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id, itemType }),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      return { ok: false, error: payload?.error || "Admin delete failed" };
+    }
+
+    const secondCheck = await supabase.from(table).select("id").eq("id", id).maybeSingle();
+    if (!secondCheck.error && !secondCheck.data) return { ok: true };
+    return { ok: false, error: "Карточка не удалена из базы" };
+  };
   const startEditEvent = (ev) => {
     setEditingEvent(ev);
     setNewEvent({
@@ -1184,9 +1216,14 @@ export default function App() {
   };
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm("Удалить событие?")) return;
-    const { error } = await dbDeleteEvent(eventId);
-    if (error) {
-      alert(error.message || "Не удалось удалить событие");
+    const result = await deleteItemWithVerification({
+      id: eventId,
+      itemType: "event",
+      table: "events",
+      directDeleteFn: dbDeleteEvent,
+    });
+    if (!result.ok) {
+      alert(result.error || "Не удалось удалить событие");
       return;
     }
     setEvents(prev => prev.filter(e => e.id !== eventId));
@@ -1202,9 +1239,14 @@ export default function App() {
   };
   const handleDeleteTip = async (tipId) => {
     if (!window.confirm("Удалить совет?")) return;
-    const { error } = await dbDeleteTip(tipId);
-    if (error) {
-      alert(error.message || "Не удалось удалить совет");
+    const result = await deleteItemWithVerification({
+      id: tipId,
+      itemType: "tip",
+      table: "tips",
+      directDeleteFn: dbDeleteTip,
+    });
+    if (!result.ok) {
+      alert(result.error || "Не удалось удалить совет");
       return;
     }
     setTips(prev => prev.filter(t => t.id !== tipId));
