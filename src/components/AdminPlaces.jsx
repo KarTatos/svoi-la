@@ -161,6 +161,7 @@ export default function AdminPlaces() {
     setDeleting(String(id));
     setError("");
     try {
+      let removed = false;
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (token) {
@@ -184,11 +185,24 @@ export default function AdminPlaces() {
           if (!canFallback) throw new Error(serverError || "Delete failed");
           const { error } = await dbDeletePlace(id);
           if (error) throw new Error(error.message || "Delete failed");
+          removed = true;
+        } else {
+          removed = true;
         }
       } else {
         const { error } = await dbDeletePlace(id);
         if (error) throw new Error(error.message || "Delete failed");
+        removed = true;
       }
+
+      if (removed) {
+        const verify = await supabase.from("places").select("id").eq("id", id).maybeSingle();
+        if (!verify.error && verify.data) {
+          const { error } = await dbDeletePlace(id);
+          if (error) throw new Error(error.message || "Delete failed");
+        }
+      }
+
       await loadAll();
     } catch (err) {
       setError(err?.message || "Delete failed");

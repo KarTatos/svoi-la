@@ -846,6 +846,18 @@ export default function App() {
   }, [scr, selPC, selD, places]);
 
   useEffect(() => {
+    // Force a fresh mini-map instance when category/district changes.
+    miniGoogleMarkersRef.current.forEach((m) => m.setMap(null));
+    miniGoogleMarkersRef.current = [];
+    if (miniGoogleUserMarkerRef.current) {
+      miniGoogleUserMarkerRef.current.setMap(null);
+      miniGoogleUserMarkerRef.current = null;
+    }
+    miniGoogleMapRef.current = null;
+    if (miniMapContainerRef.current) miniMapContainerRef.current.innerHTML = "";
+  }, [scr, selPC?.id, selD?.id]);
+
+  useEffect(() => {
     if (scr !== "places-cat" || !selPC || !miniMapContainerRef.current || miniMapLoading || !miniMapPlaces.length) return;
     let disposed = false;
     const initMiniMap = async () => {
@@ -907,6 +919,7 @@ export default function App() {
         }
 
         if (!bounds.isEmpty()) map.fitBounds(bounds, 40);
+        maps.event.trigger(map, "resize");
       } catch {
         setMiniMapError("Google Maps недоступны для мини-карты.");
       }
@@ -1979,15 +1992,21 @@ export default function App() {
       )}
 
       {photoViewer && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16, touchAction:"none" }}>
-          <button onClick={closePhotoViewer} style={{ position:"absolute", top:14, right:14, width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:18, cursor:"pointer", zIndex:2 }}>×</button>
+        <div onClick={closePhotoViewer} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16, touchAction:"none" }}>
+          <button
+            onClick={(e)=>{e.stopPropagation(); closePhotoViewer();}}
+            style={{ position:"absolute", top:"max(14px, env(safe-area-inset-top))", right:14, width:40, height:40, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.45)", background:"rgba(0,0,0,0.45)", color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", zIndex:5 }}
+          >
+            X
+          </button>
           {photoViewer.photos.length > 1 && (
             <>
-              <button onClick={goPrevPhoto} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:2 }}>‹</button>
-              <button onClick={goNextPhoto} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:2 }}>›</button>
+              <button onClick={(e)=>{e.stopPropagation(); goPrevPhoto();}} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:4 }}>‹</button>
+              <button onClick={(e)=>{e.stopPropagation(); goNextPhoto();}} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:4 }}>›</button>
             </>
           )}
           <div
+            onClick={(e)=>e.stopPropagation()}
             onTouchStart={onPhotoTouchStart}
             onTouchMove={onPhotoTouchMove}
             onTouchEnd={onPhotoTouchEnd}

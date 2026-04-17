@@ -39,6 +39,17 @@ export async function updatePlace(id, updates) {
 }
 
 export async function deletePlace(id) {
+  // Try direct place delete first. In many installs RLS allows this, while
+  // engagement rows may have stricter rules.
+  const placeFirst = await supabase.from('places').delete().eq('id', id);
+  if (!placeFirst.error) {
+    // Best-effort cleanup for setups without FK cascades.
+    await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'place');
+    await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'place');
+    return placeFirst;
+  }
+
+  // Fallback order for setups that require removing related rows first.
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'place');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'place');
   return supabase.from('places').delete().eq('id', id);
