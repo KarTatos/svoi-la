@@ -283,6 +283,9 @@ export default function App() {
   const [miniMapLoading, setMiniMapLoading] = useState(false);
   const [miniMapError, setMiniMapError] = useState("");
   const [miniMapPlaces, setMiniMapPlaces] = useState([]);
+  const [miniSelectedPlaceId, setMiniSelectedPlaceId] = useState(null);
+  const [miniRouteInfo, setMiniRouteInfo] = useState(null);
+  const [miniRouteLoading, setMiniRouteLoading] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
   const [liked, setLiked] = useState({});
   const [likedTips, setLikedTips] = useState({});
@@ -311,8 +314,10 @@ export default function App() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
+  const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
   const [addrOptionsEvent, setAddrOptionsEvent] = useState([]);
   const [addrLoadingPlace, setAddrLoadingPlace] = useState(false);
+  const [nameLoadingPlace, setNameLoadingPlace] = useState(false);
   const [addrLoadingEvent, setAddrLoadingEvent] = useState(false);
   const [addrValidPlace, setAddrValidPlace] = useState(false);
   const [addrValidEvent, setAddrValidEvent] = useState(false);
@@ -339,6 +344,7 @@ export default function App() {
   const miniGoogleMarkersRef = useRef([]);
   const miniGoogleUserMarkerRef = useRef(null);
   const googleDirectionsRendererRef = useRef(null);
+  const miniGoogleDirectionsRendererRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
   const datePickerRef = useRef(null);
   const googleAutocompleteRef = useRef(null);
@@ -465,7 +471,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -686,7 +692,7 @@ export default function App() {
           const label = placeName && !short.toLowerCase().includes(String(placeName).toLowerCase())
             ? `${placeName} — ${short}`
             : short;
-          return { label, value: short };
+          return { label, value: short, placeName };
         }),
       );
       const uniq = [];
@@ -719,19 +725,18 @@ export default function App() {
 
   useEffect(() => {
     const q = (np.name || "").trim();
-    if (!showAdd || !selD) return;
-    if (q.length < 3) return;
-    if ((np.address || "").trim() && addrValidPlace) return;
+    if (!showAdd || !selD) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
+    if (q.length < 3) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
     let canceled = false;
     const t = setTimeout(async () => {
+      setNameLoadingPlace(true);
       const opts = await fetchAddressSuggestions(q);
-      if (canceled || !opts.length) return;
-      setNp((prev) => ({ ...prev, address: opts[0].value }));
-      setAddrValidPlace(true);
-      setAddrOptionsPlace([]);
+      if (canceled) return;
+      setNameOptionsPlace(opts);
+      setNameLoadingPlace(false);
     }, 320);
     return () => { canceled = true; clearTimeout(t); };
-  }, [np.name, showAdd, selD, addrValidPlace, np.address]);
+  }, [np.name, showAdd, selD]);
 
   useEffect(() => {
     const q = (newEvent.location || "").trim();
@@ -880,6 +885,9 @@ export default function App() {
       setMiniMapPlaces([]);
       setMiniMapError("");
       setMiniMapLoading(false);
+      setMiniSelectedPlaceId(null);
+      setMiniRouteInfo(null);
+      setMiniRouteLoading(false);
       return;
     }
     let canceled = false;
@@ -929,12 +937,19 @@ export default function App() {
     // Force a fresh mini-map instance when category/district changes.
     miniGoogleMarkersRef.current.forEach((m) => m.setMap(null));
     miniGoogleMarkersRef.current = [];
+    if (miniGoogleDirectionsRendererRef.current) {
+      miniGoogleDirectionsRendererRef.current.setMap(null);
+      miniGoogleDirectionsRendererRef.current = null;
+    }
     if (miniGoogleUserMarkerRef.current) {
       miniGoogleUserMarkerRef.current.setMap(null);
       miniGoogleUserMarkerRef.current = null;
     }
     miniGoogleMapRef.current = null;
     if (miniMapContainerRef.current) miniMapContainerRef.current.innerHTML = "";
+    setMiniSelectedPlaceId(null);
+    setMiniRouteInfo(null);
+    setMiniRouteLoading(false);
   }, [scr, selPC?.id, selD?.id]);
 
   useEffect(() => {
@@ -965,6 +980,14 @@ export default function App() {
         }
 
         const map = miniGoogleMapRef.current;
+        if (!miniGoogleDirectionsRendererRef.current) {
+          miniGoogleDirectionsRendererRef.current = new maps.DirectionsRenderer({
+            suppressMarkers: true,
+            preserveViewport: true,
+            polylineOptions: { strokeColor: "#E74C3C", strokeOpacity: 0.95, strokeWeight: 4 },
+          });
+        }
+        miniGoogleDirectionsRendererRef.current.setMap(map);
         map.setOptions({
           mapTypeControl: false,
           streetViewControl: false,
@@ -981,7 +1004,7 @@ export default function App() {
             map,
             title: p.name,
           });
-          marker.addListener("click", () => { setSelPlace(p); setScr("place-item"); });
+          marker.addListener("click", () => { setMiniSelectedPlaceId(p.id); });
           miniGoogleMarkersRef.current.push(marker);
           bounds.extend(marker.getPosition());
         });
@@ -1012,6 +1035,56 @@ export default function App() {
     initMiniMap();
     return () => { disposed = true; };
   }, [scr, selPC, selD, miniMapLoading, miniMapPlaces, userCoords]);
+
+  useEffect(() => {
+    if (scr !== "places-cat") return;
+    const renderer = miniGoogleDirectionsRendererRef.current;
+    if (!miniSelectedPlaceId) {
+      if (renderer) renderer.set("directions", null);
+      setMiniRouteInfo(null);
+      setMiniRouteLoading(false);
+      return;
+    }
+    if (!window.google?.maps || !miniGoogleMapRef.current || !renderer) return;
+    if (!navigator.geolocation) {
+      setMiniRouteInfo(null);
+      return;
+    }
+    const target = miniMapPlaces.find((p) => p.id === miniSelectedPlaceId);
+    if (!target) return;
+
+    let canceled = false;
+    const maps = window.google.maps;
+    const getPosition = () => new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 7000, maximumAge: 120000 });
+    });
+
+    const build = async () => {
+      setMiniRouteLoading(true);
+      try {
+        const pos = await getPosition();
+        if (canceled) return;
+        const service = new maps.DirectionsService();
+        const res = await service.route({
+          origin: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          destination: { lat: target.lat, lng: target.lng },
+          travelMode: maps.TravelMode.DRIVING,
+        });
+        if (canceled) return;
+        renderer.setDirections(res);
+        const leg = res?.routes?.[0]?.legs?.[0];
+        setMiniRouteInfo(leg ? { distance: leg.distance?.text || "", duration: leg.duration?.text || "" } : null);
+      } catch {
+        renderer.set("directions", null);
+        setMiniRouteInfo(null);
+      } finally {
+        if (!canceled) setMiniRouteLoading(false);
+      }
+    };
+
+    build();
+    return () => { canceled = true; };
+  }, [scr, miniSelectedPlaceId, miniMapPlaces]);
 
   useEffect(() => {
     if (!photoViewer) return;
@@ -1183,6 +1256,7 @@ export default function App() {
     setNp({ name:p.name, cat:p.cat, address:p.address||"", tip:p.tip });
     setNPhotos((p.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
     setAddrValidPlace(!!(p.address || "").trim());
+    setNameOptionsPlace([]);
     setAddrOptionsPlace([]);
     setShowAdd(true);
   };
@@ -1192,6 +1266,7 @@ export default function App() {
     setNp({ name:"", cat:selPC?.id||"", address:"", tip:"" });
     setNPhotos([]);
     setAddrValidPlace(false);
+    setNameOptionsPlace([]);
     setAddrOptionsPlace([]);
     setShowAdd(true);
   };
@@ -1381,6 +1456,10 @@ export default function App() {
     }
     return placeSortDir === "asc" ? cmp : -cmp;
   });
+  const miniSelectedPlace = miniSelectedPlaceId ? cPlacesSorted.find((p) => p.id === miniSelectedPlaceId) || null : null;
+  const cPlacesDisplay = miniSelectedPlace
+    ? [miniSelectedPlace, ...cPlacesSorted.filter((p) => p.id !== miniSelectedPlace.id)]
+    : cPlacesSorted;
   const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || null) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
   const tipsQuery = tipsSearchApplied.trim().toLowerCase();
@@ -1530,8 +1609,8 @@ export default function App() {
                 >
                   <div style={{ width:36, height:36, borderRadius:12, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{chatSection.icon}</div>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800, fontSize:24, lineHeight:1.05 }}>AI ЧАТ</div>
-                    <div style={{ fontSize:11, color:T.mid, marginTop:3 }}>{chatSection.desc}</div>
+                    <div style={{ fontWeight:700, fontSize:13, lineHeight:1.2 }}>AI Чат</div>
+                    <div style={{ fontSize:11, color:T.mid, marginTop:3, opacity:0.7 }}>{chatSection.desc}</div>
                   </div>
                 </button>
               )}
@@ -1668,7 +1747,36 @@ export default function App() {
             {!user ? (<div style={{ textAlign:"center", padding:"20px 0" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
               <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{editingPlace ? "✏️ Редактировать место" : "Новое место"} · {selD.name}</h3>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
-              <input value={np.name} onChange={e=>setNp({...np,name:e.target.value})} placeholder="Название" style={{ ...iS, marginBottom:14 }} />
+              <input
+                value={np.name}
+                onChange={e=>{
+                  const v = e.target.value;
+                  setNp({...np,name:v});
+                  setAddrValidPlace(false);
+                  setAddrOptionsPlace([]);
+                }}
+                placeholder="Название"
+                style={{ ...iS, marginBottom:6 }}
+              />
+              {nameLoadingPlace && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем места...</div>}
+              {!nameLoadingPlace && nameOptionsPlace.length > 0 && (
+                <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:180, overflowY:"auto", background:T.card }}>
+                  {nameOptionsPlace.map((opt, i) => (
+                    <button
+                      key={`${opt.value}-${i}`}
+                      onClick={() => {
+                        setNp(prev => ({ ...prev, name: opt.placeName || prev.name, address: opt.value }));
+                        setAddrValidPlace(true);
+                        setNameOptionsPlace([]);
+                        setAddrOptionsPlace([]);
+                      }}
+                      style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < nameOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Категория *</label>
               <select value={np.cat} onChange={e=>setNp({...np,cat:e.target.value})} style={{ ...iS, marginBottom:14, appearance:"none", color:np.cat?T.text:T.light }}>
                 <option value="">Выберите</option>{PLACE_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
@@ -1709,7 +1817,7 @@ export default function App() {
           {cPlaces.length > 0 && (
             <div style={{ ...cd, padding:0, overflow:"hidden", marginBottom:12 }}>
               <div style={{ padding:"8px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
-                <button onClick={() => openAllOnMap(cPlacesSorted)} style={{ ...pl(false), padding:"6px 10px", fontSize:12 }}>⤢ Открыть карту</button>
+                <button onClick={() => openAllOnMap(cPlacesDisplay)} style={{ ...pl(false), padding:"6px 10px", fontSize:12 }}>⤢ Открыть карту</button>
               </div>
               <div style={{ position:"relative", height:220, background:"#ECEFF3" }}>
                 {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
@@ -1717,12 +1825,20 @@ export default function App() {
                 {!miniMapLoading && !miniMapError && miniMapPlaces.length === 0 && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:T.mid, padding:12, textAlign:"center" }}>Для этой категории пока нет точек с координатами.</div>}
                 <div ref={miniMapContainerRef} style={{ width:"100%", height:"100%" }} />
               </div>
+              {miniSelectedPlace && (
+                <div style={{ padding:"8px 12px", borderTop:`1px solid ${T.borderL}`, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, fontSize:12 }}>
+                  <span style={{ color:T.text, fontWeight:600 }}>{miniSelectedPlace.name}</span>
+                  <span style={{ color:T.mid }}>
+                    {miniRouteLoading ? "Считаем маршрут..." : miniRouteInfo ? `На машине: ${miniRouteInfo.duration} · ${miniRouteInfo.distance}` : "Маршрут недоступен"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10, gap:8 }}>
             <button
-              onClick={() => openAllOnMap(cPlacesSorted)}
+              onClick={() => openAllOnMap(cPlacesDisplay)}
               style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
               title="Открыть карту на весь экран"
             >
@@ -1740,7 +1856,7 @@ export default function App() {
             </button>
           </div>
 
-          {cPlacesSorted.map((p) => (
+          {cPlacesDisplay.map((p) => (
             <button key={p.id} onClick={() => { setSelPlace(p); setScr("place-item"); }} style={{ ...cd, width:"100%", overflow:"hidden", marginBottom:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", borderColor:T.borderL }}>
               <div style={{ padding:16 }}>
                 <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
