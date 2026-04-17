@@ -285,8 +285,8 @@ export default function App() {
   const [liked, setLiked] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
-  const [places, setPlaces] = useState(INIT_PLACES);
-  const [tips, setTips] = useState(INIT_TIPS);
+  const [places, setPlaces] = useState([]);
+  const [tips, setTips] = useState([]);
   const [user, setUser] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
@@ -301,7 +301,7 @@ export default function App() {
   const [showComments, setShowComments] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
-  const [events, setEvents] = useState(INIT_EVENTS);
+  const [events, setEvents] = useState([]);
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
@@ -362,7 +362,7 @@ export default function App() {
         setScr(saved.scr);
         if (saved.selDId) setSelD(DISTRICTS.find(d => d.id === saved.selDId) || null);
         if (saved.selPCId) setSelPC(PLACE_CATS.find(c => c.id === saved.selPCId) || null);
-        if (saved.selPlaceId) setSelPlace(INIT_PLACES.find(p => p.id === saved.selPlaceId) || null);
+        if (saved.selPlaceId) setSelPlace({ id: saved.selPlaceId });
         if (saved.selUId) setSelU(USCIS_CATS.find(c => c.id === saved.selUId) || null);
         if (saved.selTCId) setSelTC(TIPS_CATS.find(c => c.id === saved.selTCId) || null);
         if (saved.selECId) setSelEC(EVENT_CATS.find(c => c.id === saved.selECId) || null);
@@ -402,31 +402,19 @@ export default function App() {
     const mappedPlaces = (dbPlaces || [])
       .map((p) => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||"", tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||"📍", photos:p.photos||[], likes:p.likes_count||0, comments: placeCommentsByItem[p.id] || [], fromDB:true }))
       .filter((p) => PLACE_CAT_IDS.has(p.cat));
-    if (!placesError) {
-      setPlaces(mappedPlaces);
-    } else if (!mappedPlaces.length) {
-      setPlaces(INIT_PLACES.filter((p) => PLACE_CAT_IDS.has(p.cat)));
-    }
+    if (!placesError) setPlaces(mappedPlaces);
 
     const mappedTips = (dbTips || []).map((t) => {
       const rich = decodeRichText(t.text);
       return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, comments: tipCommentsByItem[t.id] || [], fromDB:true };
     });
-    if (!tipsError) {
-      setTips(mappedTips);
-    } else if (!mappedTips.length) {
-      setTips(INIT_TIPS);
-    }
+    if (!tipsError) setTips(mappedTips);
 
     const mappedEvents = (dbEvents || []).map((e) => {
       const rich = decodeRichText(e.description);
       return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||"", desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments: eventCommentsByItem[e.id] || [], fromDB:true };
     });
-    if (!eventsError) {
-      setEvents(mappedEvents);
-    } else if (!mappedEvents.length) {
-      setEvents(INIT_EVENTS);
-    }
+    if (!eventsError) setEvents(mappedEvents);
 
     if (authUser?.id) {
       const userLikes = await getUserLikes(authUser.id);
@@ -1350,7 +1338,7 @@ export default function App() {
     }
     return placeSortDir === "asc" ? cmp : -cmp;
   });
-  const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || selPlace) : null;
+  const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || null) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
   const catEvents = selEC ? events.filter(e=>{
     if (e.cat !== selEC.id) return false;
