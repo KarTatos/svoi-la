@@ -305,7 +305,6 @@ export default function App() {
   const [mapPlaces, setMapPlaces] = useState([]);
   const [selectedMapPlace, setSelectedMapPlace] = useState(null);
   const [mapLoading, setMapLoading] = useState(false);
-  const [mapProvider, setMapProvider] = useState("google");
   const [mapError, setMapError] = useState("");
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
@@ -361,8 +360,6 @@ export default function App() {
   const googleMarkersRef = useRef([]);
   const googleDirectionsRendererRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
-  const leafletMapRef = useRef(null);
-  const leafletLayerRef = useRef(null);
   const geocodeCacheRef = useRef({});
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
@@ -507,45 +504,6 @@ export default function App() {
     });
     return googleMapsLoaderRef.current;
   };
-  const ensureLeafletCss = () => {
-    if (document.getElementById("leaflet-css")) return;
-    const link = document.createElement("link");
-    link.id = "leaflet-css";
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(link);
-  };
-  const activateLeafletFallback = async (message = "Google Maps недоступны, включена резервная карта.") => {
-    const L = (await import("leaflet")).default;
-    ensureLeafletCss();
-    setMapProvider("leaflet");
-    setMapError(message);
-    setRouteInfo(null);
-    setRouteLoading(false);
-
-    if (!leafletMapRef.current) {
-      leafletMapRef.current = L.map(mapContainerRef.current, { zoomControl: true });
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-      }).addTo(leafletMapRef.current);
-      leafletLayerRef.current = L.layerGroup().addTo(leafletMapRef.current);
-    }
-
-    const map = leafletMapRef.current;
-    const layer = leafletLayerRef.current;
-    layer.clearLayers();
-    mapPlaces.forEach((p) => {
-      const marker = L.marker([p.lat, p.lng]).addTo(layer);
-      marker.on("click", () => setSelectedMapPlace(p));
-    });
-    const markers = layer.getLayers();
-    if (markers.length) {
-      const bounds = L.featureGroup(markers).getBounds();
-      map.fitBounds(bounds.pad(0.2));
-    } else if (selD) {
-      map.setView([selD.lat, selD.lng], 13);
-    }
-  };
   const geocodePlace = async (place) => {
     const key = `${place.name || ""}|${place.address || ""}`;
     if (geocodeCacheRef.current[key]) return geocodeCacheRef.current[key];
@@ -567,7 +525,6 @@ export default function App() {
   const openAllOnMap = async (placesArr) => {
     setShowMapModal(true);
     setMapLoading(true);
-    setMapProvider("google");
     setMapError("");
     setRouteInfo(null);
     setMapPlaces([]);
@@ -734,11 +691,6 @@ export default function App() {
     if (!showMapModal) {
       setRouteInfo(null);
       setRouteLoading(false);
-      if (leafletMapRef.current) {
-        leafletMapRef.current.remove();
-        leafletMapRef.current = null;
-        leafletLayerRef.current = null;
-      }
       return;
     }
     if (!mapContainerRef.current || mapLoading || !mapPlaces.length) return;
@@ -747,7 +699,6 @@ export default function App() {
       try {
         const maps = await ensureGoogleMapsApi();
         if (disposed || !maps) return;
-        setMapProvider("google");
         setMapError("");
 
         if (!googleMapRef.current) {
@@ -799,12 +750,7 @@ export default function App() {
           map.setZoom(13);
         }
       } catch (e) {
-        try {
-          if (disposed) return;
-          await activateLeafletFallback("Google Maps недоступны, включена резервная карта.");
-        } catch {
-          setMapError("Не удалось загрузить карту. Проверьте ключ Google Maps.");
-        }
+        setMapError("Google Maps не загрузились. Проверьте ключ, Billing и разрешённые домены (HTTP referrers).");
       }
     };
     init();
@@ -812,38 +758,12 @@ export default function App() {
   }, [showMapModal, mapLoading, mapPlaces, selectedMapPlace, selD]);
 
   useEffect(() => {
-    if (!selectedMapPlace) return;
-    if (mapProvider === "google" && googleMapRef.current && window.google?.maps) {
-      googleMapRef.current.panTo({ lat: selectedMapPlace.lat, lng: selectedMapPlace.lng });
-      googleMapRef.current.setZoom(15);
-      return;
-    }
-    if (mapProvider === "leaflet" && leafletMapRef.current) {
-      leafletMapRef.current.flyTo([selectedMapPlace.lat, selectedMapPlace.lng], 15, { duration: 0.35 });
-    }
-  }, [selectedMapPlace, mapProvider]);
+    if (!selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
+    googleMapRef.current.panTo({ lat: selectedMapPlace.lat, lng: selectedMapPlace.lng });
+    googleMapRef.current.setZoom(15);
+  }, [selectedMapPlace]);
 
   useEffect(() => {
-    if (!showMapModal || mapProvider !== "google" || mapLoading) return;
-    if (!mapContainerRef.current) return;
-    let canceled = false;
-    const t = setTimeout(async () => {
-      if (canceled || !mapContainerRef.current) return;
-      const text = (mapContainerRef.current.textContent || "").toLowerCase();
-      const hasGoogleError = text.includes("didn't load google maps correctly") || text.includes("something went wrong");
-      if (hasGoogleError) {
-        try {
-          await activateLeafletFallback("Google Maps временно недоступны, показана резервная карта.");
-        } catch {
-          setMapError("Не удалось загрузить карту. Проверьте ключ Google Maps.");
-        }
-      }
-    }, 1200);
-    return () => { canceled = true; clearTimeout(t); };
-  }, [showMapModal, mapProvider, mapLoading, mapPlaces]);
-
-  useEffect(() => {
-    if (mapProvider !== "google") return;
     if (!showMapModal || !selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
     if (!navigator.geolocation) return;
     let canceled = false;
@@ -893,6 +813,15 @@ export default function App() {
       document.body.style.touchAction = prevTouchAction;
     };
   }, [photoViewer]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const prev = window.gm_authFailure;
+    window.gm_authFailure = () => {
+      setMapError("Google Maps key отклонён. Нужны: активный Billing, включённый Maps JavaScript API и корректный HTTP referrer для домена.");
+    };
+    return () => { window.gm_authFailure = prev; };
+  }, []);
 
   const getTouchDistance = (touches) => {
     if (!touches || touches.length < 2) return 0;
