@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
@@ -207,13 +207,86 @@ const INIT_EVENTS = [
   { id:6, cat:"markets", title:"Гаражная распродажа", date:"2026-04-05T09:00", location:"Studio City", desc:"Диван IKEA ($150), стол ($80), монитор 27\" ($120). Всё в отличном состоянии.", author:"Алекс Р.", likes:8, comments:[] },
 ];
 
+const INIT_HOUSING = [
+  {
+    id: 1,
+    title: "The Parkline",
+    address: "1457 N Main St, Los Angeles, CA",
+    district: "Downtown LA",
+    type: "Apartments for rent",
+    minPrice: 1850,
+    options: ["$1,850+ Studio", "$2,289+ 1 bd"],
+    beds: 1,
+    baths: 1,
+    updatedLabel: "Updated yesterday",
+    tags: ["pool", "gym", "parking"],
+    photo: "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: 2,
+    title: "La Plaza Village",
+    address: "555 N Spring St, Los Angeles, CA",
+    district: "Downtown LA",
+    type: "Apartments for rent",
+    minPrice: 1842,
+    options: ["$1,842+ Studio", "$2,387+ 1 bd", "$3,296+ 2 bds"],
+    beds: 2,
+    baths: 2,
+    updatedLabel: "",
+    tags: ["pet-friendly", "gym", "washer-dryer"],
+    photo: "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: 3,
+    title: "Sentral Koreatown",
+    address: "680 S Berendo St, Los Angeles, CA",
+    district: "Koreatown",
+    type: "Lofts for rent",
+    minPrice: 2395,
+    options: ["$2,395+ 1 bd", "$3,120+ 2 bds"],
+    beds: 2,
+    baths: 2,
+    updatedLabel: "Updated 2 days ago",
+    tags: ["rooftop", "pet-friendly", "parking"],
+    photo: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: 4,
+    title: "Venice Breeze Homes",
+    address: "1101 Abbot Kinney Blvd, Venice, CA",
+    district: "Venice",
+    type: "Townhomes for rent",
+    minPrice: 3290,
+    options: ["$3,290+ 2 bds", "$4,150+ 3 bds"],
+    beds: 3,
+    baths: 2,
+    updatedLabel: "",
+    tags: ["backyard", "pet-friendly", "garage"],
+    photo: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: 5,
+    title: "Miracle Mile Flats",
+    address: "6110 Wilshire Blvd, Los Angeles, CA",
+    district: "Mid-City",
+    type: "Studios for rent",
+    minPrice: 1695,
+    options: ["$1,695+ Studio", "$2,120+ 1 bd"],
+    beds: 1,
+    baths: 1,
+    updatedLabel: "Updated today",
+    tags: ["studio", "laundry", "parking"],
+    photo: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
+  },
+];
+
 const SECTIONS = [
   { id:"uscis", icon:"📋", title:"USCIS", desc:"Документы" },
   { id:"places", icon:"📍", title:"Места", desc:"От своих" },
   { id:"tips", icon:"💡", title:"Советы", desc:"Лайфхаки" },
   { id:"events", icon:"🎉", title:"События", desc:"Мероприятия" },
   { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии", soon:true },
-  { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда", soon:true },
+  { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
   { id:"chat-sec", icon:"💬", title:"AI Чат", desc:"Помощник" },
 ];
 
@@ -263,6 +336,12 @@ export default function App() {
   const [selTC, setSelTC] = useState(null);
   const [tipsSearchInput, setTipsSearchInput] = useState("");
   const [tipsSearchApplied, setTipsSearchApplied] = useState("");
+  const [housingSearchInput, setHousingSearchInput] = useState("");
+  const [housingSearchApplied, setHousingSearchApplied] = useState("");
+  const [housingSort, setHousingSort] = useState("default");
+  const [housingSaved, setHousingSaved] = useState(false);
+  const [housingFiltersOpen, setHousingFiltersOpen] = useState(false);
+  const [housingBedsFilter, setHousingBedsFilter] = useState("all");
   // Save screen state on change
   useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
   useEffect(() => { try { sessionStorage.setItem('selD', selD ? JSON.stringify(selD) : ''); } catch {} }, [selD]);
@@ -288,10 +367,12 @@ export default function App() {
   const [miniRouteLoading, setMiniRouteLoading] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
   const [liked, setLiked] = useState({});
+  const [favorites, setFavorites] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
   const [places, setPlaces] = useState([]);
   const [tips, setTips] = useState([]);
+  const [housing, setHousing] = useState([]);
   const [user, setUser] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
@@ -331,6 +412,24 @@ export default function App() {
   const [tAns, setTAns] = useState([]);
   const [tDone, setTDone] = useState(false);
   const [tShuf, setTShuf] = useState([]);
+  const [selHousing, setSelHousing] = useState(null);
+
+  useEffect(() => {
+    try {
+      const key = `favorites_${user?.id || "guest"}`;
+      const raw = localStorage.getItem(key);
+      setFavorites(raw ? JSON.parse(raw) : {});
+    } catch {
+      setFavorites({});
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    try {
+      const key = `favorites_${user?.id || "guest"}`;
+      localStorage.setItem(key, JSON.stringify(favorites || {}));
+    } catch {}
+  }, [favorites, user?.id]);
   const chatEnd = useRef(null);
   const inpRef = useRef(null);
   const fileRef = useRef(null);
@@ -358,10 +457,10 @@ export default function App() {
   // Save navigation state to localStorage
   useEffect(() => {
     if (mt) {
-      const state = { scr, selDId: selD?.id, selPCId: selPC?.id, selPlaceId: selPlace?.id, selUId: selU?.id, selTCId: selTC?.id, selECId: selEC?.id };
+      const state = { scr, selDId: selD?.id, selPCId: selPC?.id, selPlaceId: selPlace?.id, selUId: selU?.id, selTCId: selTC?.id, selECId: selEC?.id, selHousingId: selHousing?.id };
       try { localStorage.setItem('nav', JSON.stringify(state)); } catch {}
     }
-  }, [scr, selD, selPC, selPlace, selU, selTC, selEC, mt]);
+  }, [scr, selD, selPC, selPlace, selU, selTC, selEC, selHousing, mt]);
   // Restore navigation on mount
   useEffect(() => {
     try {
@@ -374,6 +473,7 @@ export default function App() {
         if (saved.selUId) setSelU(USCIS_CATS.find(c => c.id === saved.selUId) || null);
         if (saved.selTCId) setSelTC(TIPS_CATS.find(c => c.id === saved.selTCId) || null);
         if (saved.selECId) setSelEC(EVENT_CATS.find(c => c.id === saved.selECId) || null);
+        if (saved.selHousingId) setSelHousing({ id: saved.selHousingId });
       }
     } catch {}
   }, []);
@@ -382,6 +482,7 @@ export default function App() {
       { data: dbPlaces, error: placesError },
       { data: dbTips, error: tipsError },
       { data: dbEvents, error: eventsError },
+      { data: dbHousing, error: housingError },
       { data: placeComments },
       { data: tipComments },
       { data: eventComments },
@@ -389,6 +490,7 @@ export default function App() {
       fetchPlaces(),
       fetchTips(),
       fetchEvents(),
+      fetchHousing(),
       getAllComments("place"),
       getAllComments("tip"),
       getAllComments("event"),
@@ -423,6 +525,26 @@ export default function App() {
       return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||"", desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments: eventCommentsByItem[e.id] || [], fromDB:true };
     });
     if (!eventsError) setEvents(mappedEvents);
+
+    const mappedHousing = (dbHousing || []).map((h) => ({
+      id: h.id,
+      title: h.title || "",
+      address: h.address || "",
+      district: h.district || "",
+      type: h.type || "Apartments for rent",
+      minPrice: Number(h.min_price ?? h.minPrice ?? 0),
+      options: Array.isArray(h.price_options) ? h.price_options : (Array.isArray(h.options) ? h.options : []),
+      beds: Number(h.beds ?? 0),
+      baths: Number(h.baths ?? 0),
+      updatedLabel: h.updated_label || h.updatedLabel || "",
+      tags: Array.isArray(h.tags) ? h.tags : [],
+      photo: h.photo || "",
+      userId: h.user_id,
+      likes: h.likes_count || 0,
+      fromDB: true,
+    }));
+    if (!housingError) setHousing(mappedHousing);
+    else setHousing(INIT_HOUSING);
 
     if (authUser?.id) {
       const userLikes = await getUserLikes(authUser.id);
@@ -460,6 +582,7 @@ export default function App() {
       .on("postgres_changes", { event: "*", schema: "public", table: "places" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "tips" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "housing" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, scheduleReload)
       .subscribe();
@@ -471,7 +594,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1196,7 +1319,7 @@ export default function App() {
     const { error } = await signInWithGoogle();
     if (error) console.error("Login error:", error);
   };
-  const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); };
+  const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); setFavorites({}); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
     if (!np.address.trim() || !addrValidPlace) {
@@ -1429,8 +1552,13 @@ export default function App() {
     if (itemType === "place") setPlaces(countUpdater);
     else if (itemType === "tip") setTips(countUpdater);
     else if (itemType === "event") setEvents(countUpdater);
+    else if (itemType === "housing") setHousing(countUpdater);
     // Persist to DB
     await dbToggleLike(itemId, itemType, user.id);
+  };
+  const toggleFavorite = (itemId, itemType) => {
+    const key = `${itemType}-${itemId}`;
+    setFavorites(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const startTest = () => { setTShuf(shuffleTest(CIVICS_RAW)); setTQ(0); setTAns([]); setTDone(false); setScr("test"); };
@@ -1451,6 +1579,9 @@ export default function App() {
     let cmp = 0;
     if (placeSortField === "name") {
       cmp = (a.name || "").localeCompare(b.name || "", "en", { sensitivity: "base" });
+    } else if (placeSortField === "favorites") {
+      cmp = (favorites[`place-${a.id}`] ? 1 : 0) - (favorites[`place-${b.id}`] ? 1 : 0);
+      if (cmp === 0) cmp = (a.likes || 0) - (b.likes || 0);
     } else {
       cmp = (a.likes || 0) - (b.likes || 0);
     }
@@ -1475,6 +1606,36 @@ export default function App() {
     setSelTC(null);
     setExpTip(null);
   };
+  const applyHousingSearch = () => {
+    setHousingSearchApplied(housingSearchInput.trim());
+  };
+  const resetHousingFilters = () => {
+    setHousingBedsFilter("all");
+    setHousingSort("default");
+    setHousingSearchInput("");
+    setHousingSearchApplied("");
+  };
+  const housingQuery = housingSearchApplied.trim().toLowerCase();
+  const housingFiltered = housing.filter((item) => {
+    const byQuery = !housingQuery
+      || `${item.title} ${item.address} ${item.district} ${item.type} ${(item.options || []).join(" ")}`.toLowerCase().includes(housingQuery);
+    const byBeds = housingBedsFilter === "all"
+      || (housingBedsFilter === "studio" && item.options.some((x) => x.toLowerCase().includes("studio")))
+      || (housingBedsFilter === "1" && item.beds >= 1)
+      || (housingBedsFilter === "2" && item.beds >= 2)
+      || (housingBedsFilter === "3" && item.beds >= 3);
+    return byQuery && byBeds;
+  });
+  const housingSorted = [...housingFiltered].sort((a, b) => {
+    if (housingSort === "price-asc") return (a.minPrice || 0) - (b.minPrice || 0);
+    if (housingSort === "price-desc") return (b.minPrice || 0) - (a.minPrice || 0);
+    if (housingSort === "favorites") return (favorites[`housing-${b.id}`] ? 1 : 0) - (favorites[`housing-${a.id}`] ? 1 : 0);
+    return 0;
+  });
+  const formatHousingPrice = (value) => {
+    try { return Number(value || 0).toLocaleString("en-US"); } catch { return String(value || 0); }
+  };
+  const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const catEvents = selEC ? events.filter(e=>{
     if (e.cat !== selEC.id) return false;
     if (filterDate) {
@@ -1495,6 +1656,9 @@ export default function App() {
   useEffect(() => {
     if (scr === "place-item" && !activePlace) setScr("places-cat");
   }, [scr, activePlace]);
+  useEffect(() => {
+    if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
+  }, [scr, activeHousing, housing.length]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -1846,6 +2010,16 @@ export default function App() {
             </button>
             <button
               onClick={() => {
+                if (placeSortField === "favorites") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                else { setPlaceSortField("favorites"); setPlaceSortDir("desc"); }
+              }}
+              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF8E8", color:"#D68910", fontWeight:700, fontSize:12, lineHeight:1 }}
+              title="Сортировать по избранному"
+            >
+              ★ {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+            </button>
+            <button
+              onClick={() => {
                 if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
                 else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
               }}
@@ -1867,7 +2041,8 @@ export default function App() {
                       📍 {p.address || selD.name}
                     </button>
                   </div>
-                  <div style={{ minWidth:64, display:"flex", justifyContent:"flex-end" }}>
+                  <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
+                    <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1 }} title="Избранное">{favorites[`place-${p.id}`] ? "★" : "☆"}</button>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}>
                       {liked[`place-${p.id}`] ? "♥" : "♡"} {p.likes || 0}
                     </span>
@@ -1895,7 +2070,8 @@ export default function App() {
                   </button>
                   <div style={{ marginTop:5, fontSize:12, color:T.light }}>от {activePlace.addedBy}</div>
                 </div>
-                <div style={{ minWidth:64, display:"flex", justifyContent:"flex-end" }}>
+                <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
+                  <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1 }} title="Избранное">{favorites[`place-${activePlace.id}`] ? "★" : "☆"}</button>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}>
                     {liked[`place-${activePlace.id}`] ? "♥" : "♡"} {activePlace.likes || 0}
                   </span>
@@ -1913,6 +2089,7 @@ export default function App() {
               {activePlace.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginBottom:10 }}>Листайте фото →</div>}
 
               <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
+                <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`place-${activePlace.id}`] ? "★" : "☆"}</button>
                 <button onClick={() => handleToggleLike(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`place-${activePlace.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`place-${activePlace.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activePlace.likes||0}</span></button>
                 <button onClick={()=> setShowComments(`place-${activePlace.id}`)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(activePlace.comments||[]).length}</span></button>
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
@@ -1952,6 +2129,7 @@ export default function App() {
               {tipsSearchResults.map((tip) => {
                 const isE = expTip === tip.id;
                 const isL = liked[`tip-${tip.id}`];
+                const isF = favorites[`tip-${tip.id}`];
                 const catTitle = TIPS_CATS.find((c) => c.id === tip.cat)?.title || "";
                 return (
                   <div key={tip.id} style={{ ...cd, marginBottom:0, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
@@ -1961,7 +2139,14 @@ export default function App() {
                       <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
                       <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
                         <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
-                        <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
+                        <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }}
+                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
+                            title="Избранное"
+                          >
+                            {isF ? "★" : "☆"}
+                          </button>
                           <span>❤️ {tip.likes||0}</span>
                           <span>💬 {(tip.comments||[]).length}</span>
                           <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
@@ -1970,6 +2155,7 @@ export default function App() {
                     </div>
                     {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
                       <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
+                        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
                         <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">↤</button>
@@ -2002,7 +2188,7 @@ export default function App() {
             <div style={{ width:48, height:48, borderRadius:14, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selTC.icon}</div>
             <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selTC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selTC.desc}</p></div>
           </div>
-          {catTips.map((tip, i) => { const isE = expTip===tip.id; const isL = liked[`tip-${tip.id}`]; return (
+          {catTips.map((tip, i) => { const isE = expTip===tip.id; const isL = liked[`tip-${tip.id}`]; const isF = favorites[`tip-${tip.id}`]; return (
             <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
               <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
                 <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
@@ -2017,7 +2203,14 @@ export default function App() {
                 {isE && tip.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:2 }}>Листайте фото →</div>}
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
                   <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
-                  <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
+                  <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }}
+                      style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
+                      title="Избранное"
+                    >
+                      {isF ? "★" : "☆"}
+                    </button>
                     <span>❤️ {tip.likes||0}</span>
                     <span>💬 {tip.comments.length}</span>
                     <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
@@ -2029,6 +2222,7 @@ export default function App() {
                   <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12 }}>{isL ? "❤️ Понравилось" : "🤍 Нравится"}</button>
                 </div>
                 <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
+                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
                   <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
@@ -2110,10 +2304,11 @@ export default function App() {
                 const dayNames = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
                 const isActive = filterDate && new Date(filterDate).toDateString() === d.toDateString();
                 const isToday = i === 0;
+                const isTodayAccent = isToday && !isActive;
                 return (
                   <button key={i} onClick={() => setFilterDate(isActive ? null : d.toISOString())}
-                    style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${isActive?T.primary:T.border}`, background:isActive?T.primary:T.card, color:isActive?"#fff":T.text, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", minWidth:0, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:2, justifyContent:"center" }}>
-                    <span style={{ fontSize:9, color:isActive?"#fff":T.light, fontWeight:400, lineHeight:1 }}>{isToday?"Сег":dayNames[d.getDay()]}</span>
+                    style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${isActive?T.primary:(isTodayAccent?"#E74C3C":T.border)}`, background:isActive?T.primary:(isTodayAccent?"#FFF5F5":T.card), color:isActive?"#fff":(isTodayAccent?"#C0392B":T.text), fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", minWidth:0, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:2, justifyContent:"center" }}>
+                    <span style={{ fontSize:9, color:isActive?"#fff":(isTodayAccent?"#C0392B":T.light), fontWeight:400, lineHeight:1 }}>{isToday?"Сег":dayNames[d.getDay()]}</span>
                     <span style={{ fontSize:14, fontWeight:700, lineHeight:1 }}>{d.getDate()}</span>
                   </button>
                 );
@@ -2139,7 +2334,7 @@ export default function App() {
               </div>
             )}
           </div>
-          {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const eventWebsite = normalizeExternalUrl(ev.website); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL }}>
+          {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const isF = favorites[`event-${ev.id}`]; const eventWebsite = normalizeExternalUrl(ev.website); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL }}>
             <div onClick={() => setExp(isEvExp?null:`ev-${ev.id}`)} style={{ padding:18, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
               <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>{ev.title}</div>
               <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:10 }}>
@@ -2168,7 +2363,14 @@ export default function App() {
               {isEvExp && ev.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:-6, marginBottom:8 }}>Листайте фото →</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:11, color:T.light }}>от {ev.author}</span>
-                <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid }}>
+                <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
+                  <button
+                    onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}}
+                    style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
+                    title="Избранное"
+                  >
+                    {isF ? "★" : "☆"}
+                  </button>
                   <span>❤️ {ev.likes}</span>
                   <span>💬 {(ev.comments||[]).length}</span>
                   <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
@@ -2177,6 +2379,7 @@ export default function App() {
             </div>
             {isEvExp && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
               <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
+                <button onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
                 <button onClick={(e)=>{e.stopPropagation(); handleToggleLike(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`event-${ev.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{ev.likes||0}</span></button>
                 <button onClick={(e)=>{e.stopPropagation(); setShowComments(`event-${ev.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(ev.comments||[]).length}</span></button>
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
@@ -2241,6 +2444,152 @@ export default function App() {
                 <button onClick={handleAddEvent} disabled={!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat} style={{ ...pl(true), flex:2, padding:14, opacity:(!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat)?0.5:1 }}>{editingEvent ? "Сохранить" : "Опубликовать"}</button>
               </div>
             </>)}
+          </div>
+        </div>)}
+
+        {/* HOUSING */}
+        {scr==="housing" && (<div>
+          <button onClick={goHome} style={bk}>← Главная</button>
+          <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 12px" }}>🏠 Жильё в LA</h2>
+          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+            <div style={{ ...cd, flex:1, display:"flex", alignItems:"center", padding:"10px 12px", boxShadow:"none" }}>
+              <span style={{ color:T.light, fontSize:20, lineHeight:1, marginRight:8 }}>⌕</span>
+              <input
+                value={housingSearchInput}
+                onChange={(e)=>setHousingSearchInput(e.target.value)}
+                placeholder='Try "rentals with backyard in LA"'
+                style={{ border:"none", outline:"none", background:"transparent", fontFamily:"inherit", width:"100%", fontSize:14, color:T.text }}
+              />
+            </div>
+            <button onClick={applyHousingSearch} style={{ ...cd, width:46, height:46, border:`1px solid ${T.border}`, boxShadow:"none", background:T.card, color:"#1E5AA5", cursor:"pointer", fontFamily:"inherit", fontSize:20 }}>⌕</button>
+            <button onClick={()=>setHousingFiltersOpen((v)=>!v)} style={{ ...cd, width:46, height:46, border:`1px solid ${T.border}`, boxShadow:"none", background:T.card, color:"#1E5AA5", cursor:"pointer", fontFamily:"inherit", fontSize:18 }}>☷</button>
+          </div>
+          {housingFiltersOpen && (
+            <div style={{ ...cd, padding:12, marginBottom:10, boxShadow:"none", border:`1px solid ${T.border}` }}>
+              <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Фильтр по спальням</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                {[
+                  { id:"all", label:"Все" },
+                  { id:"studio", label:"Studio" },
+                  { id:"1", label:"1+ bd" },
+                  { id:"2", label:"2+ bds" },
+                  { id:"3", label:"3+ bds" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={()=>setHousingBedsFilter(opt.id)}
+                    style={{ ...pl(housingBedsFilter===opt.id), padding:"8px 12px", fontSize:12 }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <button onClick={resetHousingFilters} style={{ ...pl(false), padding:"8px 12px", fontSize:12, marginLeft:"auto" }}>Сброс</button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ ...cd, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 0", marginBottom:12, borderRadius:0, border:"none", borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, boxShadow:"none", background:"transparent" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <label htmlFor="housing-sort" style={{ fontSize:13, fontWeight:700, color:"#1E4D97" }}>Sort:</label>
+              <select
+                id="housing-sort"
+                value={housingSort}
+                onChange={(e)=>setHousingSort(e.target.value)}
+                style={{ border:"none", background:"transparent", color:"#1E4D97", fontSize:13, fontWeight:700, fontFamily:"inherit", cursor:"pointer" }}
+              >
+                <option value="default">Default</option>
+                <option value="price-asc">Price low-high</option>
+                <option value="price-desc">Price high-low</option>
+                <option value="favorites">Favorites first</option>
+              </select>
+            </div>
+            <button onClick={()=>setHousingSaved((v)=>!v)} style={{ background:"none", border:"none", color:"#1E4D97", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
+              {housingSaved ? "♥" : "♡"} Save Search
+            </button>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:12, paddingBottom:70 }}>
+            {housingSorted.map((h) => {
+              const isFav = !!favorites[`housing-${h.id}`];
+              return (
+                <button
+                  key={h.id}
+                  onClick={() => { setSelHousing({ id: h.id }); setScr("housing-item"); }}
+                  style={{ ...cd, width:"100%", overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 3px 14px rgba(0,0,0,0.08)", padding:0, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", background:T.card }}
+                >
+                  <div style={{ position:"relative", height:240, background:"#E9EDF2" }}>
+                    <img src={h.photo} alt={h.title} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    {!!h.updatedLabel && (
+                      <div style={{ position:"absolute", top:10, left:10, background:"rgba(0,0,0,0.55)", color:"#fff", borderRadius:999, fontSize:11, fontWeight:700, padding:"6px 10px" }}>
+                        {h.updatedLabel}
+                      </div>
+                    )}
+                    <button
+                      onClick={(e)=>{ e.stopPropagation(); toggleFavorite(h.id, "housing"); }}
+                      style={{ position:"absolute", top:10, right:10, width:42, height:42, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.9)", color:isFav ? "#D68910" : "#1E4D97", fontSize:22, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}
+                      title="Избранное"
+                    >
+                      {isFav ? "★" : "☆"}
+                    </button>
+                  </div>
+                  <div style={{ padding:"12px 14px 14px" }}>
+                    <div style={{ fontSize:50, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:"-0.5px", fontFamily:"inherit" }}>${formatHousingPrice(h.minPrice)}+</div>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#2E2E3A", marginBottom:6 }}>{(h.options || []).join(" | ")}</div>
+                    <div style={{ fontSize:15, lineHeight:1.35, color:"#2E2E3A", marginBottom:4 }}>{h.title} · {h.address}</div>
+                    <div style={{ fontSize:12, color:T.mid }}>{h.type}</div>
+                  </div>
+                </button>
+              );
+            })}
+            {housingSorted.length===0 && (
+              <div style={{ ...cd, padding:16, fontSize:13, color:T.mid, textAlign:"center" }}>Ничего не найдено. Попробуйте другой запрос или фильтры.</div>
+            )}
+          </div>
+
+          <button style={{ position:"fixed", left:"50%", bottom:22, transform:"translateX(-50%)", border:"none", borderRadius:999, background:"#334760", color:"#fff", fontWeight:700, fontSize:16, padding:"12px 22px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", cursor:"pointer", fontFamily:"inherit", zIndex:90 }}>
+            🗺 Map
+          </button>
+        </div>)}
+
+        {/* HOUSING ITEM */}
+        {scr==="housing-item" && activeHousing && (<div>
+          <button onClick={() => setScr("housing")} style={bk}>← Жильё</button>
+          <div style={{ ...cd, overflow:"hidden", border:`1px solid ${T.border}` }}>
+            <div style={{ position:"relative", height:260, background:"#E9EDF2" }}>
+              <img src={activeHousing.photo} alt={activeHousing.title} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+              <button
+                onClick={() => toggleFavorite(activeHousing.id, "housing")}
+                style={{ position:"absolute", top:10, right:10, width:42, height:42, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.9)", color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : "#1E4D97", fontSize:22, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}
+                title="Избранное"
+              >
+                {favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}
+              </button>
+            </div>
+            <div style={{ padding:14 }}>
+              <div style={{ fontSize:52, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:"-0.6px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
+              <div style={{ fontSize:14, fontWeight:700, color:"#2E2E3A", marginBottom:8 }}>{(activeHousing.options || []).join(" | ")}</div>
+              <div style={{ fontWeight:700, fontSize:18, marginBottom:4 }}>{activeHousing.title}</div>
+              <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ background:"none", border:"none", padding:0, color:T.mid, textDecoration:"underline", cursor:"pointer", fontFamily:"inherit", fontSize:13, marginBottom:10 }}>{activeHousing.address}</button>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
+                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds || 0} beds</span>
+                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths || 0} baths</span>
+                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.district || "LA"}</span>
+                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.type}</span>
+              </div>
+              {!!activeHousing.updatedLabel && <div style={{ fontSize:12, color:T.mid, marginBottom:10 }}>{activeHousing.updatedLabel}</div>}
+              {!!activeHousing.tags?.length && (
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
+                  {activeHousing.tags.map((tag, idx) => (
+                    <span key={`${tag}-${idx}`} style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:"#EEF5FF", color:"#1E4D97" }}>#{tag}</span>
+                  ))}
+                </div>
+              )}
+              <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:2 }}>
+                <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`housing-${activeHousing.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
+                <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}+`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
+                <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
+              </div>
+            </div>
           </div>
         </div>)}
 

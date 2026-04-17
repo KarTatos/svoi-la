@@ -2,20 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  addHousing as dbAddHousing,
   addPlace as dbAddPlace,
+  deleteHousing as dbDeleteHousing,
   deletePlace as dbDeletePlace,
   getEvents,
+  getHousing,
   getPlaces,
   getTips,
   getUser,
   signInWithGoogle,
   signOut,
   supabase,
+  updateHousing as dbUpdateHousing,
   updatePlace as dbUpdatePlace,
   uploadPhoto,
 } from "@/lib/supabase";
 
-const TABS = ["places", "tips", "events", "comments", "likes"];
+const TABS = ["places", "housing", "tips", "events", "comments", "likes"];
 const PLACE_CATEGORIES = ["restaurants", "bars", "coffee", "hiking", "interesting", "music"];
 const DISTRICTS = ["weho", "hollywood", "glendale", "dtla", "valley", "silverlake", "westside", "pasadena", "midcity"];
 
@@ -28,6 +32,21 @@ const initialForm = {
   tip: "",
   added_by: "",
   photos: [],
+};
+
+const initialHousingForm = {
+  id: "",
+  title: "",
+  address: "",
+  district: "",
+  type: "Apartments for rent",
+  min_price: "",
+  price_options: "",
+  beds: "",
+  baths: "",
+  updated_label: "",
+  tags: "",
+  photo: "",
 };
 
 function filterRows(rows, query) {
@@ -44,6 +63,7 @@ export default function AdminPlaces() {
   const [query, setQuery] = useState("");
 
   const [places, setPlaces] = useState([]);
+  const [housing, setHousing] = useState([]);
   const [tips, setTips] = useState([]);
   const [events, setEvents] = useState([]);
   const [comments, setComments] = useState([]);
@@ -54,8 +74,11 @@ export default function AdminPlaces() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [newPhotos, setNewPhotos] = useState([]);
+  const [housingEditorOpen, setHousingEditorOpen] = useState(false);
+  const [housingForm, setHousingForm] = useState(initialHousingForm);
 
   const filteredPlaces = useMemo(() => filterRows(places, query), [places, query]);
+  const filteredHousing = useMemo(() => filterRows(housing, query), [housing, query]);
   const filteredTips = useMemo(() => filterRows(tips, query), [tips, query]);
   const filteredEvents = useMemo(() => filterRows(events, query), [events, query]);
   const filteredComments = useMemo(() => filterRows(comments, query), [comments, query]);
@@ -75,14 +98,16 @@ export default function AdminPlaces() {
     setLoading(true);
     setError("");
     try {
-      const [{ data: p }, { data: t }, { data: e }, commentsRes, likesRes] = await Promise.all([
+      const [{ data: p }, { data: h }, { data: t }, { data: e }, commentsRes, likesRes] = await Promise.all([
         getPlaces(),
+        getHousing(),
         getTips(),
         getEvents(),
         supabase.from("comments").select("*").order("created_at", { ascending: false }),
         supabase.from("likes").select("*").order("created_at", { ascending: false }),
       ]);
       setPlaces(p || []);
+      setHousing(h || []);
       setTips(t || []);
       setEvents(e || []);
       setComments(commentsRes.data || []);
@@ -113,6 +138,29 @@ export default function AdminPlaces() {
     });
     setNewPhotos([]);
     setEditorOpen(true);
+  }
+
+  function openCreateHousing() {
+    setHousingForm({ ...initialHousingForm });
+    setHousingEditorOpen(true);
+  }
+
+  function openEditHousing(item) {
+    setHousingForm({
+      id: item.id,
+      title: item.title || "",
+      address: item.address || "",
+      district: item.district || "",
+      type: item.type || "Apartments for rent",
+      min_price: item.min_price ?? "",
+      price_options: Array.isArray(item.price_options) ? item.price_options.join(", ") : "",
+      beds: item.beds ?? "",
+      baths: item.baths ?? "",
+      updated_label: item.updated_label || "",
+      tags: Array.isArray(item.tags) ? item.tags.join(", ") : "",
+      photo: item.photo || "",
+    });
+    setHousingEditorOpen(true);
   }
 
   function removeExistingPhoto(index) {
@@ -156,12 +204,65 @@ export default function AdminPlaces() {
     }
   }
 
+  async function saveHousing() {
+    if (!housingForm.title || !housingForm.address || !housingForm.min_price) {
+      setError("Fill required fields: title, address, min price");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        title: housingForm.title,
+        address: housingForm.address,
+        district: housingForm.district || "",
+        type: housingForm.type || "Apartments for rent",
+        min_price: Number(housingForm.min_price || 0),
+        price_options: housingForm.price_options
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        beds: Number(housingForm.beds || 0),
+        baths: Number(housingForm.baths || 0),
+        updated_label: housingForm.updated_label || "",
+        tags: housingForm.tags
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        photo: housingForm.photo || "",
+      };
+      if (housingForm.id) await dbUpdateHousing(housingForm.id, payload);
+      else await dbAddHousing(payload);
+      setHousingEditorOpen(false);
+      await loadAll();
+    } catch (err) {
+      setError(err?.message || "Save housing failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function deletePlace(id) {
     if (!window.confirm("Delete this place?")) return;
     setDeleting(String(id));
     setError("");
     try {
       const { error } = await dbDeletePlace(id);
+      if (error) throw new Error(error.message || "Delete failed");
+      await loadAll();
+    } catch (err) {
+      setError(err?.message || "Delete failed");
+    } finally {
+      setDeleting("");
+    }
+  }
+
+  async function deleteHousing(id) {
+    if (!window.confirm("Delete this housing item?")) return;
+    setDeleting(String(id));
+    setError("");
+    try {
+      const { error } = await dbDeleteHousing(id);
       if (error) throw new Error(error.message || "Delete failed");
       await loadAll();
     } catch (err) {
@@ -179,6 +280,7 @@ export default function AdminPlaces() {
     await signOut();
     setUser(null);
     setPlaces([]);
+    setHousing([]);
     setTips([]);
     setEvents([]);
     setComments([]);
@@ -208,6 +310,11 @@ export default function AdminPlaces() {
           {tab === "places" && (
             <button onClick={openCreate} style={btn}>
               New place
+            </button>
+          )}
+          {tab === "housing" && (
+            <button onClick={openCreateHousing} style={btn}>
+              New housing
             </button>
           )}
           <button onClick={loadAll} style={btn}>
@@ -275,6 +382,53 @@ export default function AdminPlaces() {
               ))}
               {!filteredPlaces.length && (
                 <tr><td style={td} colSpan={7}>No places found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && tab === "housing" && (
+        <div style={tableWrap}>
+          <table style={table}>
+            <thead>
+              <tr style={headRow}>
+                <th style={{ ...th, width: "16%" }}>Title</th>
+                <th style={{ ...th, width: "18%" }}>Address</th>
+                <th style={{ ...th, width: "8%" }}>District</th>
+                <th style={{ ...th, width: "9%" }}>Type</th>
+                <th style={{ ...th, width: "8%" }}>Min Price</th>
+                <th style={{ ...th, width: "12%" }}>Options</th>
+                <th style={{ ...th, width: "6%" }}>Beds</th>
+                <th style={{ ...th, width: "6%" }}>Baths</th>
+                <th style={{ ...th, width: "7%" }}>Photo</th>
+                <th style={{ ...th, width: "10%" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHousing.map((h) => (
+                <tr key={h.id} style={row}>
+                  <td style={td}><div style={clipText}>{h.title || "-"}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{h.address || "-"}</div></td>
+                  <td style={td}><div style={clipText}>{h.district || "-"}</div></td>
+                  <td style={td}><div style={clipText}>{h.type || "-"}</div></td>
+                  <td style={td}><div style={clipText}>{h.min_price || 0}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{Array.isArray(h.price_options) ? h.price_options.join(", ") : "-"}</div></td>
+                  <td style={td}><div style={clipText}>{h.beds ?? 0}</div></td>
+                  <td style={td}><div style={clipText}>{h.baths ?? 0}</div></td>
+                  <td style={td}><div style={clipText}>{h.photo ? "yes" : "-"}</div></td>
+                  <td style={td}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => openEditHousing(h)} style={smallBtn}>Edit</button>
+                      <button onClick={() => deleteHousing(h.id)} disabled={deleting === String(h.id)} style={smallBtnDanger}>
+                        {deleting === String(h.id) ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!filteredHousing.length && (
+                <tr><td style={td} colSpan={10}>No housing found.</td></tr>
               )}
             </tbody>
           </table>
@@ -466,6 +620,68 @@ export default function AdminPlaces() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
               <button onClick={() => setEditorOpen(false)} style={smallBtn}>Cancel</button>
               <button onClick={savePlace} disabled={saving} style={smallBtn}>
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {housingEditorOpen && (
+        <div style={overlay} onClick={() => setHousingEditorOpen(false)}>
+          <div style={panel} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>{housingForm.id ? "Edit housing" : "New housing"}</h3>
+            <div style={fieldGrid}>
+              <label style={label}>
+                Title *
+                <input value={housingForm.title} onChange={(e) => setHousingForm((s) => ({ ...s, title: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                Address *
+                <input value={housingForm.address} onChange={(e) => setHousingForm((s) => ({ ...s, address: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                District
+                <input value={housingForm.district} onChange={(e) => setHousingForm((s) => ({ ...s, district: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                Type
+                <input value={housingForm.type} onChange={(e) => setHousingForm((s) => ({ ...s, type: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                Min Price *
+                <input type="number" value={housingForm.min_price} onChange={(e) => setHousingForm((s) => ({ ...s, min_price: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                Price options (comma)
+                <input value={housingForm.price_options} onChange={(e) => setHousingForm((s) => ({ ...s, price_options: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                Beds
+                <input type="number" value={housingForm.beds} onChange={(e) => setHousingForm((s) => ({ ...s, beds: e.target.value }))} style={input} />
+              </label>
+              <label style={label}>
+                Baths
+                <input type="number" value={housingForm.baths} onChange={(e) => setHousingForm((s) => ({ ...s, baths: e.target.value }))} style={input} />
+              </label>
+            </div>
+
+            <label style={{ ...label, marginTop: 8 }}>
+              Updated label
+              <input value={housingForm.updated_label} onChange={(e) => setHousingForm((s) => ({ ...s, updated_label: e.target.value }))} style={input} />
+            </label>
+            <label style={{ ...label, marginTop: 8 }}>
+              Tags (comma)
+              <input value={housingForm.tags} onChange={(e) => setHousingForm((s) => ({ ...s, tags: e.target.value }))} style={input} />
+            </label>
+            <label style={{ ...label, marginTop: 8 }}>
+              Photo URL
+              <input value={housingForm.photo} onChange={(e) => setHousingForm((s) => ({ ...s, photo: e.target.value }))} style={input} />
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+              <button onClick={() => setHousingEditorOpen(false)} style={smallBtn}>Cancel</button>
+              <button onClick={saveHousing} disabled={saving} style={smallBtn}>
                 {saving ? "Saving..." : "Save"}
               </button>
             </div>

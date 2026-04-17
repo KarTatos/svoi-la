@@ -94,6 +94,29 @@ export async function deleteEvent(id) {
   return { error: null };
 }
 
+// HOUSING
+export async function getHousing() {
+  const { data, error } = await supabase.from('housing').select('*').order('created_at', { ascending: false });
+  return { data: data || [], error };
+}
+
+export async function addHousing(housing) {
+  const { data, error } = await supabase.from('housing').insert([housing]).select();
+  return { data, error };
+}
+
+export async function updateHousing(id, updates) {
+  const { data, error } = await supabase.from('housing').update(updates).eq('id', id).select();
+  return { data, error };
+}
+
+export async function deleteHousing(id) {
+  const { error } = await supabase.from('housing').delete().eq('id', id);
+  if (error) return { error };
+  await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'housing');
+  return { error: null };
+}
+
 // ═══ COMMENTS ═══
 export async function getComments(itemId, itemType) {
   const { data, error } = await supabase.from('comments').select('*')
