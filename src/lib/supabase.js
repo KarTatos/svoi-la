@@ -66,6 +66,11 @@ export async function addTip(tip) {
   return { data, error };
 }
 
+export async function updateTip(id, updates) {
+  const { data, error } = await supabase.from('tips').update(updates).eq('id', id).select();
+  return { data, error };
+}
+
 export async function deleteTip(id) {
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'tip');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'tip');

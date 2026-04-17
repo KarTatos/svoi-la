@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto } from "../lib/supabase";
+import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
@@ -296,6 +296,7 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [newTip, setNewTip] = useState({ title:"", text:"" });
   const [newTipPhotos, setNewTipPhotos] = useState([]);
+  const [editingTip, setEditingTip] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -343,6 +344,7 @@ export default function App() {
   const geocodeCacheRef = useRef({});
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
+  const realtimeReloadTimerRef = useRef(null);
 
   useEffect(() => setMt(true), []);
   // Save navigation state to localStorage
@@ -367,61 +369,94 @@ export default function App() {
       }
     } catch {}
   }, []);
+  const loadAllData = async (authUser = null) => {
+    const [{ data: dbPlaces }, { data: dbTips }, { data: dbEvents }, { data: placeComments }, { data: tipComments }, { data: eventComments }] = await Promise.all([
+      fetchPlaces(),
+      fetchTips(),
+      fetchEvents(),
+      getAllComments("place"),
+      getAllComments("tip"),
+      getAllComments("event"),
+    ]);
+
+    const groupComments = (rows) => {
+      const grouped = {};
+      (rows || []).forEach((c) => {
+        if (!grouped[c.item_id]) grouped[c.item_id] = [];
+        grouped[c.item_id].push({ id:c.id, author:c.author, text:c.text, userId:c.user_id });
+      });
+      return grouped;
+    };
+
+    const placeCommentsByItem = groupComments(placeComments);
+    const tipCommentsByItem = groupComments(tipComments);
+    const eventCommentsByItem = groupComments(eventComments);
+
+    const mappedPlaces = (dbPlaces || [])
+      .map((p) => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||"", tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||"📍", photos:p.photos||[], likes:p.likes_count||0, comments: placeCommentsByItem[p.id] || [], fromDB:true }))
+      .filter((p) => PLACE_CAT_IDS.has(p.cat));
+    setPlaces(mappedPlaces.length ? mappedPlaces : INIT_PLACES.filter((p) => PLACE_CAT_IDS.has(p.cat)));
+
+    const mappedTips = (dbTips || []).map((t) => {
+      const rich = decodeRichText(t.text);
+      return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, comments: tipCommentsByItem[t.id] || [], fromDB:true };
+    });
+    setTips(mappedTips.length ? mappedTips : INIT_TIPS);
+
+    const mappedEvents = (dbEvents || []).map((e) => {
+      const rich = decodeRichText(e.description);
+      return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||"", desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments: eventCommentsByItem[e.id] || [], fromDB:true };
+    });
+    setEvents(mappedEvents.length ? mappedEvents : INIT_EVENTS);
+
+    if (authUser?.id) {
+      const userLikes = await getUserLikes(authUser.id);
+      setLiked(userLikes || {});
+    }
+  };
+
   useEffect(() => {
+    let canceled = false;
     async function init() {
-      // Load user
       const u = await getUser();
+      if (canceled) return;
       if (u) {
         setUser({ id:u.id, name:u.user_metadata?.full_name||u.email||"Пользователь", email:u.email, avatar:"👤", avatarUrl:u.user_metadata?.avatar_url });
-        const userLikes = await getUserLikes(u.id);
-        setLiked(userLikes);
+      } else {
+        setUser(null);
+        setLiked({});
       }
-      // Load places from DB, merge with initial
-      const { data: dbPlaces } = await fetchPlaces();
-      if (dbPlaces && dbPlaces.length > 0) {
-        const mapped = dbPlaces
-          .map(p => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||'', tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||'📍', photos:p.photos||[], likes:p.likes_count||0, fromDB:true }))
-          .filter((p) => PLACE_CAT_IDS.has(p.cat));
-        const names = new Set(mapped.map(p => p.name));
-        setPlaces([...mapped, ...INIT_PLACES.filter(p => PLACE_CAT_IDS.has(p.cat) && !names.has(p.name))]);
-      }
-      // Load tips from DB
-      const { data: dbTips } = await fetchTips();
-      if (dbTips && dbTips.length > 0) {
-        const mapped = dbTips.map(t => {
-          const rich = decodeRichText(t.text);
-          return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, comments:[], fromDB:true };
-        });
-        const titles = new Set(mapped.map(t => t.title));
-        setTips([...mapped, ...INIT_TIPS.filter(t => !titles.has(t.title))]);
-      }
-      // Load events from DB
-      const { data: dbEvents } = await fetchEvents();
-      if (dbEvents && dbEvents.length > 0) {
-        const mapped = dbEvents.map(e => {
-          const rich = decodeRichText(e.description);
-          return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||'', desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, comments:[], fromDB:true };
-        });
-        const titles = new Set(mapped.map(e => e.title));
-        setEvents([...mapped, ...INIT_EVENTS.filter(e => !titles.has(e.title))]);
-      }
-      // Load all comments and attach to items
-      for (const type of ['place','tip','event']) {
-        const { data: allComments } = await getAllComments(type);
-        if (allComments && allComments.length > 0) {
-          const grouped = {};
-          allComments.forEach(c => { if (!grouped[c.item_id]) grouped[c.item_id] = []; grouped[c.item_id].push({ id:c.id, author:c.author, text:c.text, userId:c.user_id }); });
-          if (type === 'place') setPlaces(prev => prev.map(p => ({ ...p, comments: grouped[p.id] || p.comments || [] })));
-          if (type === 'tip') setTips(prev => prev.map(t => ({ ...t, comments: grouped[t.id] || t.comments || [] })));
-          if (type === 'event') setEvents(prev => prev.map(e => ({ ...e, comments: grouped[e.id] || e.comments || [] })));
-        }
-      }
+      await loadAllData(u || null);
     }
     init();
+    return () => { canceled = true; };
   }, []);
+
+  useEffect(() => {
+    const scheduleReload = () => {
+      if (realtimeReloadTimerRef.current) clearTimeout(realtimeReloadTimerRef.current);
+      realtimeReloadTimerRef.current = setTimeout(() => {
+        loadAllData(user || null);
+      }, 260);
+    };
+
+    const channel = supabase
+      .channel("svoi_la_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "places" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tips" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, scheduleReload)
+      .subscribe();
+
+    return () => {
+      if (realtimeReloadTimerRef.current) clearTimeout(realtimeReloadTimerRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setFilterDate(null); setShowDatePicker(false); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setSrch(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); setShowDatePicker(false); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1144,19 +1179,43 @@ export default function App() {
     setEditingEvent(null);
     setExp(null);
   };
+  const startEditTip = (tip) => {
+    setEditingTip(tip);
+    setNewTip({ title: tip.title || "", text: tip.text || "" });
+    setNewTipPhotos((tip.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
+    setShowAddTip(true);
+  };
+  const handleDeleteTip = async (tipId) => {
+    if (!window.confirm("Удалить совет?")) return;
+    await dbDeleteTip(tipId);
+    setTips(prev => prev.filter(t => t.id !== tipId));
+    setShowAddTip(false);
+    setEditingTip(null);
+    if (showComments === `tip-${tipId}`) setShowComments(null);
+    if (exp === `tip-${tipId}`) setExp(null);
+  };
   const handleAddTip = async () => {
     if (!newTip.title || !newTip.text || !user || !selTC) return;
     const safeTipText = limitCardText(newTip.text).trim();
     const uploaded = [];
     for (const p of newTipPhotos) {
-      const url = await uploadPhoto(p.file);
-      if (url) uploaded.push(url);
+      if (p.file) {
+        const url = await uploadPhoto(p.file);
+        if (url) uploaded.push(url);
+      } else if (p.preview && p.preview.startsWith("http")) {
+        uploaded.push(p.preview);
+      }
     }
     const dbData = { category:selTC.id, title:newTip.title, text:encodeRichText(safeTipText, uploaded), author:user.name, user_id:user.id };
-    const { data } = await dbAddTip(dbData);
-    const newId = data?.[0]?.id || Date.now();
-    setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:safeTipText, photos:uploaded, likes:0, comments:[], fromDB:true }, ...prev]);
-    setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(false);
+    if (editingTip) {
+      await dbUpdateTip(editingTip.id, dbData);
+      setTips(prev => prev.map(t => t.id === editingTip.id ? { ...t, cat:selTC.id, title:newTip.title, text:safeTipText, photos:uploaded } : t));
+    } else {
+      const { data } = await dbAddTip(dbData);
+      const newId = data?.[0]?.id || Date.now();
+      setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:safeTipText, photos:uploaded, likes:0, comments:[], fromDB:true }, ...prev]);
+    }
+    setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(false); setEditingTip(null);
   };
   const handleAddComment = async (tipId) => {
     if (!newComment.trim() || !user) return;
@@ -1566,29 +1625,27 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display:"flex", justifyContent:"flex-start", marginBottom:10 }}>
-            <div style={{ display:"flex", gap:8 }}>
-              <button
-                onClick={() => {
-                  if (placeSortField === "name") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
-                  else { setPlaceSortField("name"); setPlaceSortDir("asc"); }
-                }}
-                style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
-                title="Сортировать по названию"
-              >
-                🔤 {placeSortField === "name" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
-              </button>
-              <button
-                onClick={() => {
-                  if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
-                  else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
-                }}
-                style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
-                title="Сортировать по лайкам"
-              >
-                ♥ {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
-              </button>
-            </div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10, gap:8 }}>
+            <button
+              onClick={() => {
+                if (placeSortField === "name") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                else { setPlaceSortField("name"); setPlaceSortDir("asc"); }
+              }}
+              style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
+              title="Сортировать по названию"
+            >
+              🔤 {placeSortField === "name" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+            </button>
+            <button
+              onClick={() => {
+                if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
+              }}
+              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}
+              title="Сортировать по лайкам"
+            >
+              ♥ {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+            </button>
           </div>
 
           {cPlacesSorted.map((p) => (
@@ -1722,17 +1779,23 @@ export default function App() {
                   <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                 </div>
                 {renderComments(tip, "tip", handleAddComment)}
+                {user && (user.id === tip.userId || user.name === tip.author) && (
+                  <div style={{ padding:"0 16px 16px", display:"flex", gap:8 }}>
+                    <button onClick={(e)=>{e.stopPropagation(); startEditTip(tip);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12 }}>✏️ Редактировать</button>
+                    <button onClick={(e)=>{e.stopPropagation(); handleDeleteTip(tip.id);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>🗑 Удалить</button>
+                  </div>
+                )}
               </div>)}
             </div>
           ); })}
-          <button onClick={() => { if (!user) {handleLogin();return;} setNewTipPhotos([]); setShowAddTip(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
+          <button onClick={() => { if (!user) {handleLogin();return;} setEditingTip(null); setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
         </div>)}
 
         {/* ADD TIP MODAL */}
-        {showAddTip && selTC && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddTip(false); setNewTipPhotos([]);}}>
+        {showAddTip && selTC && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddTip(false); setNewTipPhotos([]); setEditingTip(null);}}>
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{selTC.icon} Новый совет · {selTC.title}</h3>
+            <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{selTC.icon} {editingTip ? "Редактировать совет" : "Новый совет"} · {selTC.title}</h3>
             <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Заголовок *</label>
             <input value={newTip.title} onChange={e=>setNewTip({...newTip,title:e.target.value})} placeholder="О чём совет?" style={{ ...iS, marginBottom:14 }} />
             <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Текст *</label>
@@ -1748,7 +1811,11 @@ export default function App() {
               ))}
               {newTipPhotos.length < 3 && <button onClick={()=>tipFileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото (до 3)</button>}
             </div>
-            <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAddTip(false); setNewTipPhotos([]);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddTip} disabled={!newTip.title||!newTip.text} style={{ ...pl(true), flex:2, padding:14, opacity:(!newTip.title||!newTip.text)?0.5:1 }}>Опубликовать</button></div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>{setShowAddTip(false); setNewTipPhotos([]); setEditingTip(null);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+              {editingTip && <button onClick={()=>handleDeleteTip(editingTip.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+              <button onClick={handleAddTip} disabled={!newTip.title||!newTip.text} style={{ ...pl(true), flex:2, padding:14, opacity:(!newTip.title||!newTip.text)?0.5:1 }}>{editingTip ? "Сохранить" : "Опубликовать"}</button>
+            </div>
           </div>
         </div>)}
 
