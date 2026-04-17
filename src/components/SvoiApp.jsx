@@ -276,7 +276,8 @@ export default function App() {
   const [mapError, setMapError] = useState("");
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
-  const [placeSort, setPlaceSort] = useState("likes");
+  const [placeSortField, setPlaceSortField] = useState("likes");
+  const [placeSortDir, setPlaceSortDir] = useState("desc");
   const [miniMapLoading, setMiniMapLoading] = useState(false);
   const [miniMapError, setMiniMapError] = useState("");
   const [miniMapPlaces, setMiniMapPlaces] = useState([]);
@@ -1230,8 +1231,13 @@ export default function App() {
     return 2 * R * Math.asin(Math.sqrt(s1 + s2));
   };
   const cPlacesSorted = [...cPlaces].sort((a, b) => {
-    if (placeSort === "name") return (a.name || "").localeCompare(b.name || "", "en", { sensitivity: "base" });
-    return (b.likes || 0) - (a.likes || 0);
+    let cmp = 0;
+    if (placeSortField === "name") {
+      cmp = (a.name || "").localeCompare(b.name || "", "en", { sensitivity: "base" });
+    } else {
+      cmp = (a.likes || 0) - (b.likes || 0);
+    }
+    return placeSortDir === "asc" ? cmp : -cmp;
   });
   const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || selPlace) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
@@ -1539,11 +1545,29 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10 }}>
-            <select value={placeSort} onChange={(e)=>setPlaceSort(e.target.value)} style={{ ...iS, width:"auto", padding:"8px 12px", fontSize:12, borderRadius:10 }}>
-              <option value="likes">Сортировка: по лайкам</option>
-              <option value="name">Сортировка: по названию</option>
-            </select>
+          <div style={{ display:"flex", justifyContent:"flex-start", marginBottom:10 }}>
+            <div style={{ display:"flex", gap:8 }}>
+              <button
+                onClick={() => {
+                  if (placeSortField === "name") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                  else { setPlaceSortField("name"); setPlaceSortDir("asc"); }
+                }}
+                style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
+                title="Сортировать по названию"
+              >
+                🔤 {placeSortField === "name" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              </button>
+              <button
+                onClick={() => {
+                  if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                  else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
+                }}
+                style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
+                title="Сортировать по лайкам"
+              >
+                ♥ {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              </button>
+            </div>
           </div>
 
           {cPlacesSorted.map((p) => (

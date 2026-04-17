@@ -244,24 +244,24 @@ export default function AdminPlaces() {
           <table style={table}>
             <thead>
               <tr style={headRow}>
-                <th style={th}>Name</th>
-                <th style={th}>Category</th>
-                <th style={th}>District</th>
-                <th style={th}>Address</th>
-                <th style={th}>Tip</th>
-                <th style={th}>Photos</th>
-                <th style={th}>Actions</th>
+                <th style={{ ...th, width: "14%" }}>Name</th>
+                <th style={{ ...th, width: "10%" }}>Category</th>
+                <th style={{ ...th, width: "8%" }}>District</th>
+                <th style={{ ...th, width: "22%" }}>Address</th>
+                <th style={{ ...th, width: "26%" }}>Tip</th>
+                <th style={{ ...th, width: "6%" }}>Photos</th>
+                <th style={{ ...th, width: "14%" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredPlaces.map((p) => (
                 <tr key={p.id} style={row}>
-                  <td style={td}>{p.name}</td>
-                  <td style={td}>{p.category}</td>
-                  <td style={td}>{p.district}</td>
-                  <td style={td}>{p.address || "-"}</td>
-                  <td style={td}>{(p.tip || "").slice(0, 120)}</td>
-                  <td style={td}>{Array.isArray(p.photos) ? p.photos.length : 0}</td>
+                  <td style={td}><div style={clipText}>{p.name}</div></td>
+                  <td style={td}><div style={clipText}>{p.category}</div></td>
+                  <td style={td}><div style={clipText}>{p.district}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{p.address || "-"}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{p.tip || "-"}</div></td>
+                  <td style={td}><div style={clipText}>{Array.isArray(p.photos) ? p.photos.length : 0}</div></td>
                   <td style={td}>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => openEdit(p)} style={smallBtn}>Edit</button>
@@ -294,10 +294,10 @@ export default function AdminPlaces() {
             <tbody>
               {filteredTips.map((t) => (
                 <tr key={t.id} style={row}>
-                  <td style={td}>{t.title}</td>
-                  <td style={td}>{t.category}</td>
-                  <td style={td}>{t.author}</td>
-                  <td style={td}>{(t.text || "").slice(0, 180)}</td>
+                  <td style={td}><div style={clipText}>{t.title}</div></td>
+                  <td style={td}><div style={clipText}>{t.category}</div></td>
+                  <td style={td}><div style={clipText}>{t.author}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{t.text || "-"}</div></td>
                 </tr>
               ))}
               {!filteredTips.length && (
@@ -323,11 +323,11 @@ export default function AdminPlaces() {
             <tbody>
               {filteredEvents.map((e) => (
                 <tr key={e.id} style={row}>
-                  <td style={td}>{e.title}</td>
-                  <td style={td}>{e.category}</td>
-                  <td style={td}>{e.date}</td>
-                  <td style={td}>{e.location || "-"}</td>
-                  <td style={td}>{(e.description || "").slice(0, 160)}</td>
+                  <td style={td}><div style={clipText}>{e.title}</div></td>
+                  <td style={td}><div style={clipText}>{e.category}</div></td>
+                  <td style={td}><div style={clipText}>{e.date}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{e.location || "-"}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{e.description || "-"}</div></td>
                 </tr>
               ))}
               {!filteredEvents.length && (
@@ -353,11 +353,11 @@ export default function AdminPlaces() {
             <tbody>
               {filteredComments.map((c) => (
                 <tr key={c.id} style={row}>
-                  <td style={td}>{c.item_type}</td>
-                  <td style={td}>{c.item_id}</td>
-                  <td style={td}>{c.author}</td>
-                  <td style={td}>{(c.text || "").slice(0, 180)}</td>
-                  <td style={td}>{c.created_at || "-"}</td>
+                  <td style={td}><div style={clipText}>{c.item_type}</div></td>
+                  <td style={td}><div style={clipText}>{c.item_id}</div></td>
+                  <td style={td}><div style={clipText}>{c.author}</div></td>
+                  <td style={td}><div style={clipTwoLines}>{c.text || "-"}</div></td>
+                  <td style={td}><div style={clipText}>{c.created_at || "-"}</div></td>
                 </tr>
               ))}
               {!filteredComments.length && (
@@ -382,10 +382,10 @@ export default function AdminPlaces() {
             <tbody>
               {filteredLikes.map((l) => (
                 <tr key={l.id} style={row}>
-                  <td style={td}>{l.item_type}</td>
-                  <td style={td}>{l.item_id}</td>
-                  <td style={td}>{l.user_id}</td>
-                  <td style={td}>{l.created_at || "-"}</td>
+                  <td style={td}><div style={clipText}>{l.item_type}</div></td>
+                  <td style={td}><div style={clipText}>{l.item_id}</div></td>
+                  <td style={td}><div style={clipText}>{l.user_id}</div></td>
+                  <td style={td}><div style={clipText}>{l.created_at || "-"}</div></td>
                 </tr>
               ))}
               {!filteredLikes.length && (
@@ -479,11 +479,19 @@ const btn = { padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", c
 const smallBtn = { padding: "6px 10px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer", background: "#fff" };
 const smallBtnDanger = { ...smallBtn, borderColor: "#f4b4b4", color: "#b00020", background: "#fff5f5" };
 const tableWrap = { border: "1px solid #eee", borderRadius: 10, overflow: "auto" };
-const table = { width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 900 };
+const table = { width: "100%", borderCollapse: "collapse", fontSize: 14, tableLayout: "fixed" };
 const headRow = { background: "#fafafa" };
 const row = { borderTop: "1px solid #f0f0f0" };
 const th = { textAlign: "left", padding: "10px 12px", color: "#385272", fontWeight: 700, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" };
-const td = { padding: "10px 12px", verticalAlign: "top", color: "#1a2d44" };
+const td = { padding: "10px 12px", verticalAlign: "top", color: "#1a2d44", overflow: "hidden" };
+const clipText = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const clipTwoLines = {
+  overflow: "hidden",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  wordBreak: "break-word",
+};
 
 const overlay = {
   position: "fixed",
