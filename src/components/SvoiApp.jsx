@@ -305,6 +305,9 @@ export default function App() {
   const [mapPlaces, setMapPlaces] = useState([]);
   const [selectedMapPlace, setSelectedMapPlace] = useState(null);
   const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState("");
+  const [routeInfo, setRouteInfo] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const [liked, setLiked] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
@@ -353,8 +356,10 @@ export default function App() {
   const tipFileRef = useRef(null);
   const eventFileRef = useRef(null);
   const mapContainerRef = useRef(null);
-  const leafletMapRef = useRef(null);
-  const markerLayerRef = useRef(null);
+  const googleMapRef = useRef(null);
+  const googleMarkersRef = useRef([]);
+  const googleDirectionsRendererRef = useRef(null);
+  const googleMapsLoaderRef = useRef(null);
   const geocodeCacheRef = useRef({});
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
@@ -467,13 +472,37 @@ export default function App() {
       }
     } catch {}
   };
-  const ensureLeafletCss = () => {
-    if (document.getElementById("leaflet-css")) return;
-    const link = document.createElement("link");
-    link.id = "leaflet-css";
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(link);
+  const ensureGoogleMapsApi = () => {
+    if (typeof window === "undefined") return Promise.reject(new Error("No browser"));
+    if (window.google?.maps) return Promise.resolve(window.google.maps);
+    if (googleMapsLoaderRef.current) return googleMapsLoaderRef.current;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCF1UVftmKSfE5x6QY2DoKIT9udSpyNaLM";
+    if (!apiKey) return Promise.reject(new Error("Google Maps API key is missing"));
+
+    googleMapsLoaderRef.current = new Promise((resolve, reject) => {
+      const existing = document.getElementById("google-maps-js");
+      if (existing) {
+        existing.addEventListener("load", () => resolve(window.google?.maps), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")), { once: true });
+        return;
+      }
+      const callbackName = `initGoogleMaps_${Date.now()}`;
+      window[callbackName] = () => {
+        resolve(window.google?.maps);
+        try { delete window[callbackName]; } catch {}
+      };
+      const script = document.createElement("script");
+      script.id = "google-maps-js";
+      script.async = true;
+      script.defer = true;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}`;
+      script.onerror = () => {
+        googleMapsLoaderRef.current = null;
+        reject(new Error("Failed to load Google Maps script"));
+      };
+      document.head.appendChild(script);
+    });
+    return googleMapsLoaderRef.current;
   };
   const geocodePlace = async (place) => {
     const key = `${place.name || ""}|${place.address || ""}`;
@@ -496,6 +525,8 @@ export default function App() {
   const openAllOnMap = async (placesArr) => {
     setShowMapModal(true);
     setMapLoading(true);
+    setMapError("");
+    setRouteInfo(null);
     setMapPlaces([]);
     setSelectedMapPlace(null);
     const limited = placesArr.slice(0, 40);
@@ -658,62 +689,117 @@ export default function App() {
 
   useEffect(() => {
     if (!showMapModal) {
-      if (leafletMapRef.current) {
-        leafletMapRef.current.remove();
-        leafletMapRef.current = null;
-        markerLayerRef.current = null;
-      }
+      setRouteInfo(null);
+      setRouteLoading(false);
       return;
     }
     if (!mapContainerRef.current || mapLoading || !mapPlaces.length) return;
     let disposed = false;
     const init = async () => {
-      ensureLeafletCss();
-      const L = (await import("leaflet")).default;
-      if (disposed) return;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
+      try {
+        const maps = await ensureGoogleMapsApi();
+        if (disposed || !maps) return;
 
-      if (!leafletMapRef.current) {
-        const map = L.map(mapContainerRef.current, { zoomControl: true });
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap contributors",
-        }).addTo(map);
-        leafletMapRef.current = map;
-        markerLayerRef.current = L.layerGroup().addTo(map);
+        if (!googleMapRef.current) {
+          googleMapRef.current = new maps.Map(mapContainerRef.current, {
+            zoom: 13,
+            center: selD ? { lat: selD.lat, lng: selD.lng } : { lat: 34.09, lng: -118.33 },
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            styles: [
+              { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+              { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+              { elementType: "labels.text.fill", stylers: [{ color: "#6e6e6e" }] },
+              { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
+              { featureType: "poi", stylers: [{ visibility: "off" }] },
+              { featureType: "transit", stylers: [{ visibility: "off" }] },
+              { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+              { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8edf5" }] },
+            ],
+          });
+          googleDirectionsRendererRef.current = new maps.DirectionsRenderer({
+            suppressMarkers: true,
+            preserveViewport: true,
+            polylineOptions: { strokeColor: "#F47B20", strokeOpacity: 0.9, strokeWeight: 5 },
+          });
+          googleDirectionsRendererRef.current.setMap(googleMapRef.current);
+        }
+
+        const map = googleMapRef.current;
+        googleMarkersRef.current.forEach((m) => m.setMap(null));
+        googleMarkersRef.current = [];
+
+        const bounds = new maps.LatLngBounds();
+        mapPlaces.forEach((p) => {
+          const marker = new maps.Marker({
+            position: { lat: p.lat, lng: p.lng },
+            map,
+            title: p.name,
+          });
+          marker.addListener("click", () => setSelectedMapPlace(p));
+          googleMarkersRef.current.push(marker);
+          bounds.extend(marker.getPosition());
+        });
+
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds, 70);
+        } else if (selD) {
+          map.setCenter({ lat: selD.lat, lng: selD.lng });
+          map.setZoom(13);
+        }
+      } catch (e) {
+        setMapError("Не удалось загрузить Google Maps. Проверьте API key и ограничения.");
       }
-
-      const map = leafletMapRef.current;
-      const layer = markerLayerRef.current;
-      layer.clearLayers();
-
-      mapPlaces.forEach((p) => {
-        const marker = L.marker([p.lat, p.lng]).addTo(layer);
-        marker.bindPopup(`<b>${p.name}</b><br/>${p.address || ""}`);
-        marker.on("click", () => setSelectedMapPlace(p));
-        if (selectedMapPlace?.id === p.id) marker.openPopup();
-      });
-
-      const markers = layer.getLayers();
-      if (markers.length) {
-        const bounds = L.featureGroup(markers).getBounds();
-        map.fitBounds(bounds.pad(0.2));
-      } else if (selD) {
-        map.setView([selD.lat, selD.lng], 13);
-      }
-      setTimeout(() => map.invalidateSize(), 80);
     };
     init();
     return () => { disposed = true; };
   }, [showMapModal, mapLoading, mapPlaces, selectedMapPlace, selD]);
 
   useEffect(() => {
-    if (!selectedMapPlace || !leafletMapRef.current) return;
-    leafletMapRef.current.flyTo([selectedMapPlace.lat, selectedMapPlace.lng], 15, { duration: 0.4 });
+    if (!selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
+    googleMapRef.current.panTo({ lat: selectedMapPlace.lat, lng: selectedMapPlace.lng });
+    googleMapRef.current.setZoom(15);
   }, [selectedMapPlace]);
+
+  useEffect(() => {
+    if (!showMapModal || !selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
+    if (!navigator.geolocation) return;
+    let canceled = false;
+    const maps = window.google.maps;
+    const renderer = googleDirectionsRendererRef.current;
+    if (!renderer) return;
+
+    const getPosition = () => new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 7000, maximumAge: 120000 });
+    });
+
+    const build = async () => {
+      setRouteLoading(true);
+      try {
+        const pos = await getPosition();
+        if (canceled) return;
+        const service = new maps.DirectionsService();
+        const res = await service.route({
+          origin: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          destination: { lat: selectedMapPlace.lat, lng: selectedMapPlace.lng },
+          travelMode: maps.TravelMode.DRIVING,
+        });
+        if (canceled) return;
+        renderer.setDirections(res);
+        const leg = res?.routes?.[0]?.legs?.[0];
+        setRouteInfo(leg ? { distance: leg.distance?.text || "", duration: leg.duration?.text || "" } : null);
+      } catch {
+        renderer.set("directions", null);
+        setRouteInfo(null);
+      } finally {
+        if (!canceled) setRouteLoading(false);
+      }
+    };
+
+    build();
+    return () => { canceled = true; };
+  }, [showMapModal, selectedMapPlace]);
 
   useEffect(() => {
     if (!photoViewer) return;
@@ -1691,6 +1777,11 @@ export default function App() {
                   Загружаем карту и точки...
                 </div>
               )}
+              {!mapLoading && mapError && (
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, color:"#C0392B", fontSize:14, padding:16, textAlign:"center", background:"rgba(255,255,255,0.8)" }}>
+                  {mapError}
+                </div>
+              )}
               {!mapLoading && mapPlaces.length === 0 && (
                 <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, color:T.mid, fontSize:14 }}>
                   Не удалось найти координаты для точек в этой категории.
@@ -1705,6 +1796,8 @@ export default function App() {
                   <div style={{ flex:"1 1 280px" }}>
                     <div style={{ fontWeight:700, fontSize:14 }}>{selectedMapPlace.name}</div>
                     <div style={{ fontSize:12, color:T.mid }}>{selectedMapPlace.address || selD?.name}</div>
+                    {routeLoading && <div style={{ fontSize:12, color:T.mid, marginTop:4 }}>Считаем маршрут...</div>}
+                    {!routeLoading && routeInfo && <div style={{ fontSize:12, color:T.mid, marginTop:4 }}>На машине: {routeInfo.duration} · {routeInfo.distance}</div>}
                   </div>
                   <button onClick={() => openRouteForPlace(selectedMapPlace, "google")} style={{ ...pl(false), padding:"10px 12px" }}>Google маршрут</button>
                   <button onClick={() => openRouteForPlace(selectedMapPlace, "apple")} style={{ ...pl(false), padding:"10px 12px" }}>Apple маршрут</button>
