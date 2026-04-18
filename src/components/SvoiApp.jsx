@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
@@ -390,7 +390,9 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showAddHousing, setShowAddHousing] = useState(false);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
+  const [newHousing, setNewHousing] = useState({ title:"", address:"", district:"", type:"Apartments for rent", minPrice:"", priceOptions:"", beds:"", baths:"", updatedLabel:"", tags:"", photo:"" });
   const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
@@ -594,7 +596,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1541,6 +1543,51 @@ export default function App() {
       setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:safeEventDesc, website, photos:uploaded, author:user.name, userId:user.id, likes:0, comments:[], fromDB:true }, ...prev]);
     }
     setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:"" }); setNewEventPhotos([]); setEditingEvent(null); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
+  };
+  const handleAddHousing = async () => {
+    if (!user) { handleLogin(); return; }
+    if (!newHousing.title.trim() || !newHousing.address.trim() || !newHousing.minPrice) return;
+    const payload = {
+      title: newHousing.title.trim(),
+      address: newHousing.address.trim(),
+      district: newHousing.district.trim(),
+      type: (newHousing.type || "Apartments for rent").trim(),
+      min_price: Number(newHousing.minPrice || 0),
+      price_options: String(newHousing.priceOptions || "").split(",").map((x) => x.trim()).filter(Boolean),
+      beds: Number(newHousing.beds || 0),
+      baths: Number(newHousing.baths || 0),
+      updated_label: newHousing.updatedLabel.trim(),
+      tags: String(newHousing.tags || "").split(",").map((x) => x.trim()).filter(Boolean),
+      photo: newHousing.photo.trim(),
+      user_id: user.id,
+    };
+    const { data, error } = await dbAddHousing(payload);
+    if (error) {
+      alert(error.message || "Не удалось добавить жильё");
+      return;
+    }
+    const row = data?.[0];
+    if (row) {
+      setHousing((prev) => [{
+        id: row.id,
+        title: row.title || "",
+        address: row.address || "",
+        district: row.district || "",
+        type: row.type || "Apartments for rent",
+        minPrice: Number(row.min_price || 0),
+        options: Array.isArray(row.price_options) ? row.price_options : [],
+        beds: Number(row.beds || 0),
+        baths: Number(row.baths || 0),
+        updatedLabel: row.updated_label || "",
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        photo: row.photo || "",
+        userId: row.user_id,
+        likes: row.likes_count || 0,
+        fromDB: true,
+      }, ...prev]);
+    }
+    setNewHousing({ title:"", address:"", district:"", type:"Apartments for rent", minPrice:"", priceOptions:"", beds:"", baths:"", updatedLabel:"", tags:"", photo:"" });
+    setShowAddHousing(false);
   };
   const handleToggleLike = async (itemId, itemType) => {
     if (!user) { handleLogin(); return; }
@@ -2546,6 +2593,8 @@ export default function App() {
             )}
           </div>
 
+          <button onClick={() => { if (!user) { handleLogin(); return; } setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+
           <button style={{ position:"fixed", left:"50%", bottom:22, transform:"translateX(-50%)", border:"none", borderRadius:999, background:"#334760", color:"#fff", fontWeight:700, fontSize:16, padding:"12px 22px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", cursor:"pointer", fontFamily:"inherit", zIndex:90 }}>
             🗺 Map
           </button>
@@ -2592,6 +2641,65 @@ export default function App() {
             </div>
           </div>
         </div>)}
+
+        {/* ADD HOUSING MODAL */}
+        {showAddHousing && (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>setShowAddHousing(false)}>
+            <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+              <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px" }}>🏠 Новое жильё</h3>
+
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
+              <input value={newHousing.title} onChange={(e)=>setNewHousing((s)=>({ ...s, title:e.target.value }))} placeholder="Например: The Parkline" style={{ ...iS, marginBottom:12 }} />
+
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
+              <input value={newHousing.address} onChange={(e)=>setNewHousing((s)=>({ ...s, address:e.target.value }))} placeholder="1457 N Main St, Los Angeles, CA" style={{ ...iS, marginBottom:12 }} />
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Район</label>
+                  <input value={newHousing.district} onChange={(e)=>setNewHousing((s)=>({ ...s, district:e.target.value }))} placeholder="Downtown LA" style={{ ...iS, marginBottom:0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Тип</label>
+                  <input value={newHousing.type} onChange={(e)=>setNewHousing((s)=>({ ...s, type:e.target.value }))} placeholder="Apartments for rent" style={{ ...iS, marginBottom:0 }} />
+                </div>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:12 }}>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Цена от *</label>
+                  <input type="number" value={newHousing.minPrice} onChange={(e)=>setNewHousing((s)=>({ ...s, minPrice:e.target.value }))} placeholder="1850" style={{ ...iS, marginBottom:0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Спальни</label>
+                  <input type="number" value={newHousing.beds} onChange={(e)=>setNewHousing((s)=>({ ...s, beds:e.target.value }))} placeholder="1" style={{ ...iS, marginBottom:0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Ванные</label>
+                  <input type="number" value={newHousing.baths} onChange={(e)=>setNewHousing((s)=>({ ...s, baths:e.target.value }))} placeholder="1" style={{ ...iS, marginBottom:0 }} />
+                </div>
+              </div>
+
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Варианты цены (через запятую)</label>
+              <input value={newHousing.priceOptions} onChange={(e)=>setNewHousing((s)=>({ ...s, priceOptions:e.target.value }))} placeholder="$1,850+ Studio, $2,289+ 1 bd" style={{ ...iS, marginBottom:12 }} />
+
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Теги (через запятую)</label>
+              <input value={newHousing.tags} onChange={(e)=>setNewHousing((s)=>({ ...s, tags:e.target.value }))} placeholder="pool, gym, parking" style={{ ...iS, marginBottom:12 }} />
+
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Обновление</label>
+              <input value={newHousing.updatedLabel} onChange={(e)=>setNewHousing((s)=>({ ...s, updatedLabel:e.target.value }))} placeholder="Updated yesterday" style={{ ...iS, marginBottom:12 }} />
+
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Фото URL</label>
+              <input value={newHousing.photo} onChange={(e)=>setNewHousing((s)=>({ ...s, photo:e.target.value }))} placeholder="https://..." style={{ ...iS, marginBottom:18 }} />
+
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={()=>setShowAddHousing(false)} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+                <button onClick={handleAddHousing} disabled={!newHousing.title.trim() || !newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.title.trim() || !newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>Опубликовать</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* CHAT */}
         {scr==="chat" && (<div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 120px)" }}>
