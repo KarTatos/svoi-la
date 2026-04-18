@@ -412,7 +412,7 @@ export default function App() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddHousing, setShowAddHousing] = useState(false);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
-  const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" });
+  const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" });
   const [newHousingPhotos, setNewHousingPhotos] = useState([]);
   const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -555,6 +555,9 @@ export default function App() {
 
     const mappedHousing = (dbHousing || []).map((h) => {
       const photos = decodeHousingPhotos(h.photo);
+      const tagList = Array.isArray(h.tags) ? h.tags : [];
+      const tgTag = tagList.find((t) => String(t).startsWith("contact_tg:"));
+      const msgTag = tagList.find((t) => String(t).startsWith("contact_msg:"));
       return {
         id: h.id,
         title: h.title || "",
@@ -566,7 +569,9 @@ export default function App() {
         beds: Number(h.beds ?? 0),
         baths: Number(h.baths ?? 0),
         updatedLabel: h.updated_label || h.updatedLabel || "",
-        tags: Array.isArray(h.tags) ? h.tags : [],
+        tags: tagList.filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:")),
+        telegram: tgTag ? String(tgTag).replace("contact_tg:", "").trim() : "",
+        messageContact: msgTag ? String(msgTag).replace("contact_msg:", "").trim() : "",
         photos,
         photo: photos[0] || "",
         userId: h.user_id,
@@ -625,7 +630,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -648,7 +653,18 @@ export default function App() {
   const openFilterDatePicker = () => {
     const input = datePickerRef.current;
     if (!input) return;
-    input.showPicker();
+    try {
+      if (typeof input.showPicker === "function") {
+        input.showPicker();
+        return;
+      }
+    } catch {}
+    try {
+      input.focus({ preventScroll: true });
+    } catch {}
+    try {
+      input.click();
+    } catch {}
   };
   const normalizeExternalUrl = (url) => {
     const v = (url || "").trim();
@@ -1601,6 +1617,11 @@ export default function App() {
     }
     const typeMap = { room: "Комната", studio: "Студия", "1bd": "1 bd", "2bd": "2 bd" };
     const title = `${typeMap[newHousing.type] || "Жильё"} · ${newHousing.district.trim() || "LA"}`;
+    const contactTags = [];
+    const tg = (newHousing.telegram || "").trim();
+    const msg = (newHousing.messageContact || "").trim();
+    if (tg) contactTags.push(`contact_tg:${tg}`);
+    if (msg) contactTags.push(`contact_msg:${msg}`);
     const payload = {
       title,
       address: newHousing.address.trim(),
@@ -1608,10 +1629,10 @@ export default function App() {
       type: (newHousing.type || "studio").trim(),
       min_price: Number(newHousing.minPrice || 0),
       price_options: [],
-      beds: Number(newHousing.beds || 0),
-      baths: Number(newHousing.baths || 0),
+      beds: 0,
+      baths: 0,
       updated_label: "",
-      tags: [],
+      tags: contactTags,
       photo: encodeHousingPhotos(uploaded),
       user_id: user.id,
     };
@@ -1633,7 +1654,9 @@ export default function App() {
         beds: Number(row.beds || 0),
         baths: Number(row.baths || 0),
         updatedLabel: row.updated_label || "",
-        tags: Array.isArray(row.tags) ? row.tags : [],
+        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:")),
+        telegram: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_tg:")) || "").replace("contact_tg:", ""),
+        messageContact: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_msg:")) || "").replace("contact_msg:", ""),
         photos: decodeHousingPhotos(row.photo),
         photo: decodeHousingPhotos(row.photo)[0] || "",
         userId: row.user_id,
@@ -1641,7 +1664,7 @@ export default function App() {
         fromDB: true,
       }, ...prev]);
     }
-    setNewHousing({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" });
+    setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" });
     setNewHousingPhotos([]);
     setAddrValidHousing(false);
     setAddrOptionsHousing([]);
@@ -1725,10 +1748,10 @@ export default function App() {
     const byQuery = !housingQuery
       || `${item.title} ${item.address} ${item.district} ${item.type} ${(item.options || []).join(" ")}`.toLowerCase().includes(housingQuery);
     const byBeds = housingBedsFilter === "all"
-      || (housingBedsFilter === "studio" && item.options.some((x) => x.toLowerCase().includes("studio")))
-      || (housingBedsFilter === "1" && item.beds >= 1)
-      || (housingBedsFilter === "2" && item.beds >= 2)
-      || (housingBedsFilter === "3" && item.beds >= 3);
+      || (housingBedsFilter === "studio" && item.type === "studio")
+      || (housingBedsFilter === "1" && (item.type === "1bd" || item.type === "2bd"))
+      || (housingBedsFilter === "2" && item.type === "2bd")
+      || (housingBedsFilter === "3" && item.type === "2bd");
     return byQuery && byBeds;
   });
   const housingSorted = [...housingFiltered].sort((a, b) => {
@@ -1743,6 +1766,27 @@ export default function App() {
   const formatHousingType = (value) => {
     const map = { room: "Комната", studio: "Студия", "1bd": "1 bd", "2bd": "2 bd" };
     return map[value] || value || "Студия";
+  };
+  const openTelegramContact = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return;
+    const normalized = raw.startsWith("@") ? raw.slice(1) : raw;
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://t.me/${encodeURIComponent(normalized)}`;
+    openExternalUrl(url);
+  };
+  const openMessageContact = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return;
+    if (/^https?:\/\//i.test(raw)) {
+      openExternalUrl(raw);
+      return;
+    }
+    if (raw.includes("@")) {
+      openExternalUrl(`mailto:${encodeURIComponent(raw)}`);
+      return;
+    }
+    navigator.clipboard?.writeText(raw).catch(() => {});
+    alert("Контакт скопирован");
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const catEvents = selEC ? events.filter(e=>{
@@ -2253,7 +2297,7 @@ export default function App() {
                 const catTitle = TIPS_CATS.find((c) => c.id === tip.cat)?.title || "";
                 return (
                   <div key={tip.id} style={{ ...cd, marginBottom:0, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-                    <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+                    <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
                       <div style={{ fontSize:11, color:T.light, marginBottom:4 }}>{catTitle}</div>
                       <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
                       <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
@@ -2310,7 +2354,7 @@ export default function App() {
           </div>
           {catTips.map((tip, i) => { const isE = expTip===tip.id; const isL = liked[`tip-${tip.id}`]; const isF = favorites[`tip-${tip.id}`]; return (
             <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-              <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+              <div onClick={() => setExpTip(isE?null:tip.id)} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
                 <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
                 <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
                 {isE && tip.photos?.length > 0 && (
@@ -2669,7 +2713,7 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => { if (!user) { handleLogin(); return; } setNewHousing({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+          <button onClick={() => { if (!user) { handleLogin(); return; } setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
 
           <button style={{ position:"fixed", left:"50%", bottom:22, transform:"translateX(-50%)", border:"none", borderRadius:999, background:"#334760", color:"#fff", fontWeight:700, fontSize:16, padding:"12px 22px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", cursor:"pointer", fontFamily:"inherit", zIndex:90 }}>
             🗺 Map
@@ -2705,11 +2749,17 @@ export default function App() {
                   <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
                   <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{activeHousing.address}</div>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
-                    <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds || 0} beds</span>
-                    <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths || 0} baths</span>
+                    {Number(activeHousing.beds || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds} beds</span>}
+                    {Number(activeHousing.baths || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths} baths</span>}
                     <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.district || "LA"}</span>
                     <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{formatHousingType(activeHousing.type)}</span>
                   </div>
+                  {(!!activeHousing.telegram || !!activeHousing.messageContact) && (
+                    <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                      {!!activeHousing.telegram && <button onClick={() => openTelegramContact(activeHousing.telegram)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Telegram</button>}
+                      {!!activeHousing.messageContact && <button onClick={() => openMessageContact(activeHousing.messageContact)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Сообщение</button>}
+                    </div>
+                  )}
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                     <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}</button>
                     <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`housing-${activeHousing.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
@@ -2763,18 +2813,21 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:12 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:10, marginBottom:12 }}>
                 <div>
                   <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Цена от *</label>
                   <input type="number" value={newHousing.minPrice} onChange={(e)=>setNewHousing((s)=>({ ...s, minPrice:e.target.value }))} placeholder="1850" style={{ ...iS, marginBottom:0 }} />
                 </div>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Спальни</label>
-                  <input type="number" value={newHousing.beds} onChange={(e)=>setNewHousing((s)=>({ ...s, beds:e.target.value }))} placeholder="1" style={{ ...iS, marginBottom:0 }} />
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Telegram</label>
+                  <input value={newHousing.telegram} onChange={(e)=>setNewHousing((s)=>({ ...s, telegram:e.target.value }))} placeholder="@username" style={{ ...iS, marginBottom:0 }} />
                 </div>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Ванные</label>
-                  <input type="number" value={newHousing.baths} onChange={(e)=>setNewHousing((s)=>({ ...s, baths:e.target.value }))} placeholder="1" style={{ ...iS, marginBottom:0 }} />
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Сообщение</label>
+                  <input value={newHousing.messageContact} onChange={(e)=>setNewHousing((s)=>({ ...s, messageContact:e.target.value }))} placeholder="email или ссылка" style={{ ...iS, marginBottom:0 }} />
                 </div>
               </div>
 
