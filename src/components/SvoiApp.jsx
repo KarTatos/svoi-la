@@ -426,7 +426,7 @@ export default function App() {
   const [addrValidHousing, setAddrValidHousing] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
   const [photoZoom, setPhotoZoom] = useState(1);
-  const [chat, setChat] = useState([{ role:"assistant", text:"ну чего тебе?" }]);
+  const [chat, setChat] = useState([{ role:"assistant", text:"Здравствуйте. Задайте вопрос по USCIS, местам, событиям, советам или жилью." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
@@ -645,6 +645,92 @@ export default function App() {
   const openEventMap = (location, t) => {
     const q = encodeURIComponent(location || "");
     openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`);
+  };
+  const openChatAppLink = (url) => {
+    const raw = String(url || "").trim();
+    if (!raw) return;
+    if (!raw.startsWith("app://")) {
+      openExternalUrl(raw);
+      return;
+    }
+    const withoutScheme = raw.slice("app://".length);
+    const [type, idRaw] = withoutScheme.split("/");
+    const id = Number(idRaw);
+    if (!Number.isFinite(id)) return;
+
+    if (type === "housing") {
+      setSelHousing({ id });
+      setScr("housing-item");
+      return;
+    }
+    if (type === "place") {
+      const place = places.find((p) => Number(p.id) === id);
+      if (!place) return;
+      const district = DISTRICTS.find((d) => d.id === place.district) || null;
+      const placeCat = PLACE_CATS.find((c) => c.id === place.cat) || null;
+      if (district) setSelD(district);
+      if (placeCat) setSelPC(placeCat);
+      setSelPlace(place);
+      setScr("place-item");
+      return;
+    }
+    if (type === "event") {
+      const ev = events.find((e) => Number(e.id) === id);
+      if (!ev) return;
+      const eventCat = EVENT_CATS.find((c) => c.id === ev.cat) || null;
+      if (eventCat) setSelEC(eventCat);
+      setScr("events");
+      setExp(`event-${id}`);
+      return;
+    }
+    if (type === "tip") {
+      const tip = tips.find((t) => Number(t.id) === id);
+      if (!tip) return;
+      const tipCat = TIPS_CATS.find((c) => c.id === tip.cat) || null;
+      if (tipCat) setSelTC(tipCat);
+      setScr("tips");
+      setExpTip(`tip-${id}`);
+      return;
+    }
+  };
+  const renderChatText = (text, isUser) => {
+    const safe = String(text || "");
+    const linkColor = isUser ? "#fff" : "#1E5AA5";
+    const rowStyle = { display:"block", marginBottom:4 };
+    const parseLine = (line, lineIndex) => {
+      const rx = /\[([^\]]+)\]\((app:\/\/[^)\s]+|https?:\/\/[^)\s]+)\)|(app:\/\/[^\s]+|https?:\/\/[^\s]+)/gi;
+      const out = [];
+      let last = 0;
+      let m;
+      while ((m = rx.exec(line)) !== null) {
+        if (m.index > last) out.push(<span key={`t-${lineIndex}-${last}`}>{line.slice(last, m.index)}</span>);
+        const label = m[1] || m[3];
+        const href = m[2] || m[3];
+        const isApp = href.startsWith("app://");
+        out.push(
+          <button
+            key={`l-${lineIndex}-${m.index}`}
+            onClick={() => isApp ? openChatAppLink(href) : openExternalUrl(href)}
+            style={{ background:"none", border:"none", padding:0, margin:0, color:linkColor, textDecoration:"underline", cursor:"pointer", fontFamily:"inherit", fontSize:"inherit", lineHeight:"inherit" }}
+          >
+            {label}
+          </button>,
+        );
+        last = rx.lastIndex;
+      }
+      if (last < line.length) out.push(<span key={`t-${lineIndex}-end`}>{line.slice(last)}</span>);
+      if (!out.length) return <span key={`empty-${lineIndex}`}>{line}</span>;
+      return out;
+    };
+    return (
+      <span style={{ display:"block" }}>
+        {safe.split("\n").map((line, i) => (
+          <span key={`line-${i}`} style={rowStyle}>
+            {line.length ? parseLine(line, i) : <span>&nbsp;</span>}
+          </span>
+        ))}
+      </span>
+    );
   };
   const openFilterDatePicker = () => {
     const input = datePickerRef.current;
@@ -1359,6 +1445,16 @@ export default function App() {
           location: e.location,
           date: e.date,
           desc: e.desc,
+        })),
+        housing: housing.slice(0, 120).map((h) => ({
+          id: h.id,
+          title: h.title,
+          district: h.district,
+          type: h.type,
+          address: h.address,
+          minPrice: h.minPrice,
+          telegram: h.telegram,
+          messageContact: h.messageContact,
         })),
       };
       const res = await fetch("/api/chat", {
@@ -2876,7 +2972,7 @@ export default function App() {
           {!user ? (<div style={{ textAlign:"center", padding:"40px 20px" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>Войдите для AI-чата</h3><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
             <div style={{ flex:1, overflowY:"auto", paddingBottom:12 }}>
               {chat.map((m,i) => (<div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start", marginBottom:10 }}>
-                <div style={{ maxWidth:"85%", padding:"12px 16px", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?T.primary:T.card, color:m.role==="user"?"#fff":T.text, fontSize:14, lineHeight:1.55, boxShadow:m.role==="user"?"0 2px 10px rgba(244,123,32,0.25)":T.sh, border:m.role==="user"?"none":`1px solid ${T.borderL}`, whiteSpace:"pre-wrap" }}>{m.text}</div>
+                <div style={{ maxWidth:"85%", padding:"12px 16px", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?T.primary:T.card, color:m.role==="user"?"#fff":T.text, fontSize:14, lineHeight:1.55, boxShadow:m.role==="user"?"0 2px 10px rgba(244,123,32,0.25)":T.sh, border:m.role==="user"?"none":`1px solid ${T.borderL}` }}>{renderChatText(m.text, m.role==="user")}</div>
               </div>))}
               {typing && <div style={{ display:"flex", marginBottom:10 }}><div style={{ ...cd, padding:"14px 20px", display:"flex", gap:5 }}>{[0,1,2].map(j=><div key={j} style={{ width:7, height:7, borderRadius:"50%", background:T.primary, opacity:0.4, animation:`pulse 1.2s ease ${j*0.2}s infinite` }} />)}</div></div>}
               <div ref={chatEnd} />
