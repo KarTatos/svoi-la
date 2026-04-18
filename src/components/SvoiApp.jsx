@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
@@ -411,6 +411,7 @@ export default function App() {
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddHousing, setShowAddHousing] = useState(false);
+  const [editingHousing, setEditingHousing] = useState(null);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
   const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" });
   const [newHousingPhotos, setNewHousingPhotos] = useState([]);
@@ -630,7 +631,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1636,13 +1637,38 @@ export default function App() {
       photo: encodeHousingPhotos(uploaded),
       user_id: user.id,
     };
-    const { data, error } = await dbAddHousing(payload);
+    const saveFn = editingHousing ? dbUpdateHousing : dbAddHousing;
+    const saveRes = editingHousing
+      ? await saveFn(editingHousing.id, payload)
+      : await saveFn(payload);
+    const { data, error } = saveRes || {};
     if (error) {
-      alert(error.message || "Не удалось добавить жильё");
+      alert(error.message || "Не удалось сохранить жильё");
       return;
     }
     const row = data?.[0];
-    if (row) {
+    if (row && editingHousing) {
+      setHousing((prev) => prev.map((h) => h.id === editingHousing.id ? {
+        id: row.id,
+        title: row.title || "",
+        address: row.address || "",
+        district: row.district || "",
+        type: row.type || "studio",
+        minPrice: Number(row.min_price || 0),
+        options: Array.isArray(row.price_options) ? row.price_options : [],
+        beds: Number(row.beds || 0),
+        baths: Number(row.baths || 0),
+        updatedLabel: row.updated_label || "",
+        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:")),
+        telegram: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_tg:")) || "").replace("contact_tg:", ""),
+        messageContact: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_msg:")) || "").replace("contact_msg:", ""),
+        photos: decodeHousingPhotos(row.photo),
+        photo: decodeHousingPhotos(row.photo)[0] || "",
+        userId: row.user_id,
+        likes: row.likes_count || 0,
+        fromDB: true,
+      } : h));
+    } else if (row) {
       setHousing((prev) => [{
         id: row.id,
         title: row.title || "",
@@ -1668,6 +1694,39 @@ export default function App() {
     setNewHousingPhotos([]);
     setAddrValidHousing(false);
     setAddrOptionsHousing([]);
+    setEditingHousing(null);
+    setShowAddHousing(false);
+  };
+  const startEditHousing = (item) => {
+    if (!item) return;
+    setEditingHousing(item);
+    setNewHousing({
+      address: item.address || "",
+      district: item.district || "",
+      type: item.type || "studio",
+      minPrice: String(item.minPrice || ""),
+      telegram: item.telegram || "",
+      messageContact: item.messageContact || "",
+    });
+    setNewHousingPhotos((item.photos || []).filter((ph) => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
+    setAddrValidHousing(!!(item.address || "").trim());
+    setAddrOptionsHousing([]);
+    setShowAddHousing(true);
+  };
+  const handleDeleteHousing = async (housingId) => {
+    if (!housingId) return;
+    if (!confirm("Удалить это жильё?")) return;
+    const { error } = await dbDeleteHousing(housingId);
+    if (error) {
+      alert(error.message || "Не удалось удалить жильё");
+      return;
+    }
+    setHousing((prev) => prev.filter((h) => h.id !== housingId));
+    if (selHousing?.id === housingId) {
+      setSelHousing(null);
+      setScr("housing");
+    }
+    setEditingHousing(null);
     setShowAddHousing(false);
   };
   const handleToggleLike = async (itemId, itemType) => {
@@ -1770,23 +1829,20 @@ export default function App() {
   const openTelegramContact = (value) => {
     const raw = String(value || "").trim();
     if (!raw) return;
-    const normalized = raw.startsWith("@") ? raw.slice(1) : raw;
-    const url = /^https?:\/\//i.test(raw) ? raw : `https://t.me/${encodeURIComponent(normalized)}`;
-    openExternalUrl(url);
+    let username = raw;
+    if (/^https?:\/\/t\.me\//i.test(raw)) {
+      username = raw.replace(/^https?:\/\/t\.me\//i, "").split(/[/?#]/)[0] || "";
+    }
+    username = username.startsWith("@") ? username.slice(1) : username;
+    if (!username) return;
+    openExternalUrl(`tg://resolve?domain=${encodeURIComponent(username)}`);
   };
   const openMessageContact = (value) => {
     const raw = String(value || "").trim();
     if (!raw) return;
-    if (/^https?:\/\//i.test(raw)) {
-      openExternalUrl(raw);
-      return;
-    }
-    if (raw.includes("@")) {
-      openExternalUrl(`mailto:${encodeURIComponent(raw)}`);
-      return;
-    }
-    navigator.clipboard?.writeText(raw).catch(() => {});
-    alert("Контакт скопирован");
+    const digits = raw.replace(/[^\d+]/g, "");
+    if (!digits) return;
+    openExternalUrl(`tel:${encodeURIComponent(digits)}`);
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const catEvents = selEC ? events.filter(e=>{
@@ -2713,7 +2769,7 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => { if (!user) { handleLogin(); return; } setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+          <button onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
 
           <button style={{ position:"fixed", left:"50%", bottom:22, transform:"translateX(-50%)", border:"none", borderRadius:999, background:"#334760", color:"#fff", fontWeight:700, fontSize:16, padding:"12px 22px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", cursor:"pointer", fontFamily:"inherit", zIndex:90 }}>
             🗺 Map
@@ -2757,7 +2813,13 @@ export default function App() {
                   {(!!activeHousing.telegram || !!activeHousing.messageContact) && (
                     <div style={{ display:"flex", gap:8, marginBottom:10 }}>
                       {!!activeHousing.telegram && <button onClick={() => openTelegramContact(activeHousing.telegram)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Telegram</button>}
-                      {!!activeHousing.messageContact && <button onClick={() => openMessageContact(activeHousing.messageContact)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Сообщение</button>}
+                      {!!activeHousing.messageContact && <button onClick={() => openMessageContact(activeHousing.messageContact)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Телефон</button>}
+                    </div>
+                  )}
+                  {user && (
+                    <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                      <button onClick={() => startEditHousing(activeHousing)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Редактировать</button>
+                      <button onClick={() => handleDeleteHousing(activeHousing.id)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>
                     </div>
                   )}
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
@@ -2776,13 +2838,13 @@ export default function App() {
         {showAddHousing && (
           <div
             style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }}
-            onClick={()=>{ setShowAddHousing(false); setAddrOptionsHousing([]); setAddrValidHousing(false); }}
+            onClick={()=>{ setShowAddHousing(false); setEditingHousing(null); setAddrOptionsHousing([]); setAddrValidHousing(false); }}
             onTouchMove={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
             onWheel={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
           >
             <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
               <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px" }}>🏠 Новое жильё</h3>
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px" }}>🏠 {editingHousing ? "Редактировать жильё" : "Новое жильё"}</h3>
 
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
               <input value={newHousing.address} onChange={(e)=>{ setNewHousing((s)=>({ ...s, address:e.target.value })); setAddrValidHousing(false); }} placeholder="1457 N Main St, Los Angeles, CA" style={{ ...iS, marginBottom:6, borderColor:newHousing.address && !addrValidHousing ? "#f5b7b1" : T.border }} />
@@ -2826,8 +2888,8 @@ export default function App() {
                   <input value={newHousing.telegram} onChange={(e)=>setNewHousing((s)=>({ ...s, telegram:e.target.value }))} placeholder="@username" style={{ ...iS, marginBottom:0 }} />
                 </div>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Сообщение</label>
-                  <input value={newHousing.messageContact} onChange={(e)=>setNewHousing((s)=>({ ...s, messageContact:e.target.value }))} placeholder="email или ссылка" style={{ ...iS, marginBottom:0 }} />
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Номер телефона</label>
+                  <input value={newHousing.messageContact} onChange={(e)=>setNewHousing((s)=>({ ...s, messageContact:e.target.value }))} placeholder="+1 213 555 12 34" style={{ ...iS, marginBottom:0 }} />
                 </div>
               </div>
 
@@ -2853,8 +2915,9 @@ export default function App() {
               </div>
 
               <div style={{ display:"flex", gap:10 }}>
-                <button onClick={()=>{ setShowAddHousing(false); setAddrOptionsHousing([]); setAddrValidHousing(false); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-                <button onClick={handleAddHousing} disabled={!newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>Опубликовать</button>
+                <button onClick={()=>{ setShowAddHousing(false); setEditingHousing(null); setAddrOptionsHousing([]); setAddrValidHousing(false); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+                {editingHousing && <button onClick={() => handleDeleteHousing(editingHousing.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+                <button onClick={handleAddHousing} disabled={!newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>{editingHousing ? "Сохранить" : "Опубликовать"}</button>
               </div>
             </div>
           </div>
