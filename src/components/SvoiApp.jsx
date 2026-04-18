@@ -327,6 +327,18 @@ function decodeRichText(raw) {
   }
 }
 
+function getUscisPdfUrl(doc) {
+  const rawUrl = String(doc?.url || "").trim();
+  if (!rawUrl) return "";
+  if (/\.pdf(\?|#|$)/i.test(rawUrl)) return rawUrl;
+  if (!/uscis\.gov/i.test(rawUrl)) return "";
+
+  const rawForm = String(doc?.form || "").trim().toLowerCase();
+  const baseForm = rawForm.split(/[\/\s]/)[0];
+  if (!/^[a-z]{1,3}-\d+[a-z]?$/i.test(baseForm)) return "";
+  return `https://www.uscis.gov/sites/default/files/document/forms/${baseForm}.pdf`;
+}
+
 function decodeHousingPhotos(raw) {
   if (Array.isArray(raw)) return raw.filter(Boolean);
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -435,6 +447,7 @@ export default function App() {
   const [tDone, setTDone] = useState(false);
   const [tShuf, setTShuf] = useState([]);
   const [selHousing, setSelHousing] = useState(null);
+  const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
 
   useEffect(() => {
     try {
@@ -646,6 +659,12 @@ export default function App() {
     const q = encodeURIComponent(location || "");
     openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`);
   };
+  const openUscisPdf = (url, title) => {
+    const pdfUrl = String(url || "").trim();
+    if (!pdfUrl) return;
+    setUscisPdfViewer({ url: pdfUrl, title: title || "USCIS PDF" });
+  };
+  const closeUscisPdf = () => setUscisPdfViewer(null);
   const openChatAppLink = (url) => {
     const raw = String(url || "").trim();
     if (!raw) return;
@@ -2088,10 +2107,14 @@ export default function App() {
             <div style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.light, pointerEvents:"none" }}>🔎</div>
             <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Поиск формы..." style={{ ...iS, paddingLeft:42, borderColor:srch?T.primary:T.border }} />
           </div>
-          {srch.trim().length>=2 ? (<div>{sRes.map((d,i) => (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
-            <div style={{ display:"flex", gap:8, marginBottom:6 }}>{d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}<span style={{ fontSize:11, color:T.mid }}>{d.cI} {d.cT}</span></div>
+          {srch.trim().length>=2 ? (<div>{sRes.map((d,i) => { const pdfUrl = getUscisPdfUrl(d); return (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
+            <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center", flexWrap:"wrap" }}>
+              {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
+              {pdfUrl && <button onClick={() => openUscisPdf(pdfUrl, `${d.form} — ${d.name}`)} style={{ ...pl(false), padding:"4px 10px", fontSize:11 }}>PDF</button>}
+              <span style={{ fontSize:11, color:T.mid }}>{d.cI} {d.cT}</span>
+            </div>
             <div style={{ fontWeight:600, fontSize:14 }}>{d.name}</div><div style={{ fontSize:12, color:T.mid, marginTop:3 }}>{d.desc}</div>
-          </div>))}{sRes.length===0 && <p style={{ fontSize:13, color:T.mid }}>Не найдено</p>}</div>) : (<><div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          </div>); })}{sRes.length===0 && <p style={{ fontSize:13, color:T.mid }}>Не найдено</p>}</div>) : (<><div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {USCIS_CATS.map(c => (<button key={c.id} onClick={() => { setSelU(c); setScr("uscis-cat"); setExpF(null); }}
               style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
               onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
@@ -2119,10 +2142,13 @@ export default function App() {
             <div style={{ width:48, height:48, borderRadius:14, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28 }}>{selU.icon}</div>
             <div><h2 style={{ fontSize:22, fontWeight:700, margin:0 }}>{selU.title}</h2></div>
           </div>
-          {selU.docs.map((d, i) => { const isE = expF===i; return (<div key={i} style={{ ...cd, marginBottom:10, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
+          {selU.docs.map((d, i) => { const isE = expF===i; const pdfUrl = getUscisPdfUrl(d); return (<div key={i} style={{ ...cd, marginBottom:10, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
             <div onClick={() => setExpF(isE?null:i)} style={{ padding:"16px", cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
+                <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                  {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
+                  {pdfUrl && <button onClick={(e)=>{ e.stopPropagation(); openUscisPdf(pdfUrl, `${d.form} — ${d.name}`); }} style={{ ...pl(false), padding:"5px 12px", fontSize:12 }}>PDF</button>}
+                </div>
                 <span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
               </div>
               <div style={{ fontWeight:600, fontSize:14, marginTop:10 }}>{d.name}</div>
@@ -2130,7 +2156,11 @@ export default function App() {
             </div>
             {isE && (<div style={{ padding:"0 16px 16px", borderTop:`1px solid ${T.borderL}` }}>
               <div style={{ padding:14, background:T.bg, borderRadius:10, marginTop:12, fontSize:13, lineHeight:1.65, color:T.mid }}>{d.detail}</div>
-              {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", marginTop:12, ...pl(true), textDecoration:"none", fontSize:12 }}>uscis.gov ↗</a>}
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
+                {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", ...pl(true), textDecoration:"none", fontSize:12 }}>uscis.gov ↗</a>}
+                {pdfUrl && <button onClick={() => openUscisPdf(pdfUrl, `${d.form} — ${d.name}`)} style={{ ...pl(false), fontSize:12 }}>Открыть PDF</button>}
+                {pdfUrl && <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download style={{ ...pl(false), textDecoration:"none", fontSize:12, display:"inline-flex", alignItems:"center" }}>Скачать PDF</a>}
+              </div>
               {d.isTest && <button onClick={startTest} style={{ ...pl(true), marginTop:12, width:"100%" }}>🇺🇸 Start Civics Test</button>}
             </div>)}
           </div>); })}
@@ -2985,6 +3015,22 @@ export default function App() {
           </>)}
         </div>)}
       </main>
+
+      {uscisPdfViewer && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", zIndex:320, display:"flex", alignItems:"center", justifyContent:"center", padding:10 }} onClick={closeUscisPdf}>
+          <div style={{ ...cd, width:"100%", maxWidth:980, height:"92vh", borderRadius:16, overflow:"hidden", display:"grid", gridTemplateRows:"auto 1fr auto" }} onClick={(e)=>e.stopPropagation()}>
+            <div style={{ padding:"10px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+              <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{uscisPdfViewer.title || "USCIS PDF"}</div>
+              <button onClick={closeUscisPdf} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:10, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit", color:T.mid }}>Закрыть</button>
+            </div>
+            <iframe src={uscisPdfViewer.url} title={uscisPdfViewer.title || "USCIS PDF"} style={{ width:"100%", height:"100%", border:"none", background:"#fff" }} />
+            <div style={{ padding:"10px 12px", borderTop:`1px solid ${T.borderL}`, display:"flex", justifyContent:"flex-end", gap:8 }}>
+              <a href={uscisPdfViewer.url} target="_blank" rel="noopener noreferrer" download style={{ ...pl(false), textDecoration:"none", fontSize:12, display:"inline-flex", alignItems:"center" }}>Скачать PDF</a>
+              <a href={uscisPdfViewer.url} target="_blank" rel="noopener noreferrer" style={{ ...pl(true), textDecoration:"none", fontSize:12, display:"inline-flex", alignItems:"center" }}>Открыть в новой вкладке</a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showMapModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:280, display:"flex", alignItems:"center", justifyContent:"center", padding:12 }} onClick={() => setShowMapModal(false)}>
