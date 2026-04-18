@@ -356,8 +356,6 @@ export default function App() {
   const [selTC, setSelTC] = useState(null);
   const [tipsSearchInput, setTipsSearchInput] = useState("");
   const [tipsSearchApplied, setTipsSearchApplied] = useState("");
-  const [housingSort, setHousingSort] = useState("default");
-  const [housingSaved, setHousingSaved] = useState(false);
   const [housingBedsFilter, setHousingBedsFilter] = useState("all");
   // Save screen state on change
   useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
@@ -1792,7 +1790,6 @@ export default function App() {
   };
   const resetHousingFilters = () => {
     setHousingBedsFilter("all");
-    setHousingSort("default");
   };
   const housingFiltered = housing.filter((item) => {
     const byQuery = true;
@@ -1800,15 +1797,10 @@ export default function App() {
       || (housingBedsFilter === "studio" && item.type === "studio")
       || (housingBedsFilter === "1" && (item.type === "1bd" || item.type === "2bd"))
       || (housingBedsFilter === "2" && item.type === "2bd")
-      || (housingBedsFilter === "3" && item.type === "2bd");
+      || (housingBedsFilter === "room" && item.type === "room");
     return byQuery && byBeds;
   });
-  const housingSorted = [...housingFiltered].sort((a, b) => {
-    if (housingSort === "price-asc") return (a.minPrice || 0) - (b.minPrice || 0);
-    if (housingSort === "price-desc") return (b.minPrice || 0) - (a.minPrice || 0);
-    if (housingSort === "favorites") return (favorites[`housing-${b.id}`] ? 1 : 0) - (favorites[`housing-${a.id}`] ? 1 : 0);
-    return 0;
-  });
+  const housingSorted = housingFiltered;
   const formatHousingPrice = (value) => {
     try { return Number(value || 0).toLocaleString("en-US"); } catch { return String(value || 0); }
   };
@@ -2669,7 +2661,7 @@ export default function App() {
                 { id:"studio", label:"Studio" },
                 { id:"1", label:"1+ bd" },
                 { id:"2", label:"2+ bds" },
-                { id:"3", label:"3+ bds" },
+                { id:"room", label:"Комната" },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -2681,26 +2673,6 @@ export default function App() {
               ))}
               <button onClick={resetHousingFilters} style={{ ...pl(false), padding:"8px 12px", fontSize:12, marginLeft:"auto" }}>Сброс</button>
             </div>
-          </div>
-
-          <div style={{ ...cd, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 0", marginBottom:12, borderRadius:0, border:"none", borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, boxShadow:"none", background:"transparent" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <label htmlFor="housing-sort" style={{ fontSize:13, fontWeight:700, color:"#1E4D97" }}>Sort:</label>
-              <select
-                id="housing-sort"
-                value={housingSort}
-                onChange={(e)=>setHousingSort(e.target.value)}
-                style={{ border:"none", background:"transparent", color:"#1E4D97", fontSize:13, fontWeight:700, fontFamily:"inherit", cursor:"pointer" }}
-              >
-                <option value="default">Default</option>
-                <option value="price-asc">Price low-high</option>
-                <option value="price-desc">Price high-low</option>
-                <option value="favorites">Favorites first</option>
-              </select>
-            </div>
-            <button onClick={()=>setHousingSaved((v)=>!v)} style={{ background:"none", border:"none", color:"#1E4D97", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
-              {housingSaved ? "♥" : "♡"} Save Search
-            </button>
           </div>
 
           <div style={{ display:"flex", flexDirection:"column", gap:12, paddingBottom:70 }}>
