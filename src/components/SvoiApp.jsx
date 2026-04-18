@@ -327,6 +327,26 @@ function decodeRichText(raw) {
   }
 }
 
+function decodeHousingPhotos(raw) {
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter((x) => typeof x === "string" && x);
+    } catch {}
+  }
+  return [trimmed];
+}
+
+function encodeHousingPhotos(urls = []) {
+  const clean = (urls || []).filter((x) => typeof x === "string" && x);
+  if (!clean.length) return "";
+  if (clean.length === 1) return clean[0];
+  return JSON.stringify(clean);
+}
+
 export default function App() {
   const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
   const [selU, setSelU] = useState(null);
@@ -392,18 +412,22 @@ export default function App() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddHousing, setShowAddHousing] = useState(false);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
-  const [newHousing, setNewHousing] = useState({ title:"", address:"", district:"", type:"Apartments for rent", minPrice:"", priceOptions:"", beds:"", baths:"", updatedLabel:"", tags:"", photo:"" });
+  const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" });
+  const [newHousingPhotos, setNewHousingPhotos] = useState([]);
   const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
   const [addrOptionsEvent, setAddrOptionsEvent] = useState([]);
+  const [addrOptionsHousing, setAddrOptionsHousing] = useState([]);
   const [addrLoadingPlace, setAddrLoadingPlace] = useState(false);
   const [nameLoadingPlace, setNameLoadingPlace] = useState(false);
   const [addrLoadingEvent, setAddrLoadingEvent] = useState(false);
+  const [addrLoadingHousing, setAddrLoadingHousing] = useState(false);
   const [addrValidPlace, setAddrValidPlace] = useState(false);
   const [addrValidEvent, setAddrValidEvent] = useState(false);
+  const [addrValidHousing, setAddrValidHousing] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
   const [photoZoom, setPhotoZoom] = useState(1);
   const [chat, setChat] = useState([{ role:"assistant", text:"ну чего тебе?" }]);
@@ -437,6 +461,7 @@ export default function App() {
   const fileRef = useRef(null);
   const tipFileRef = useRef(null);
   const eventFileRef = useRef(null);
+  const housingFileRef = useRef(null);
   const mapContainerRef = useRef(null);
   const miniMapContainerRef = useRef(null);
   const googleMapRef = useRef(null);
@@ -528,23 +553,27 @@ export default function App() {
     });
     if (!eventsError) setEvents(mappedEvents);
 
-    const mappedHousing = (dbHousing || []).map((h) => ({
-      id: h.id,
-      title: h.title || "",
-      address: h.address || "",
-      district: h.district || "",
-      type: h.type || "Apartments for rent",
-      minPrice: Number(h.min_price ?? h.minPrice ?? 0),
-      options: Array.isArray(h.price_options) ? h.price_options : (Array.isArray(h.options) ? h.options : []),
-      beds: Number(h.beds ?? 0),
-      baths: Number(h.baths ?? 0),
-      updatedLabel: h.updated_label || h.updatedLabel || "",
-      tags: Array.isArray(h.tags) ? h.tags : [],
-      photo: h.photo || "",
-      userId: h.user_id,
-      likes: h.likes_count || 0,
-      fromDB: true,
-    }));
+    const mappedHousing = (dbHousing || []).map((h) => {
+      const photos = decodeHousingPhotos(h.photo);
+      return {
+        id: h.id,
+        title: h.title || "",
+        address: h.address || "",
+        district: h.district || "",
+        type: h.type || "studio",
+        minPrice: Number(h.min_price ?? h.minPrice ?? 0),
+        options: Array.isArray(h.price_options) ? h.price_options : (Array.isArray(h.options) ? h.options : []),
+        beds: Number(h.beds ?? 0),
+        baths: Number(h.baths ?? 0),
+        updatedLabel: h.updated_label || h.updatedLabel || "",
+        tags: Array.isArray(h.tags) ? h.tags : [],
+        photos,
+        photo: photos[0] || "",
+        userId: h.user_id,
+        likes: h.likes_count || 0,
+        fromDB: true,
+      };
+    });
     if (!housingError) setHousing(mappedHousing);
     else setHousing(INIT_HOUSING);
 
@@ -596,7 +625,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -875,6 +904,20 @@ export default function App() {
     }, 280);
     return () => clearTimeout(t);
   }, [newEvent.location, addrValidEvent]);
+
+  useEffect(() => {
+    const q = (newHousing.address || "").trim();
+    if (!showAddHousing) { setAddrOptionsHousing([]); setAddrLoadingHousing(false); return; }
+    if (addrValidHousing) { setAddrOptionsHousing([]); return; }
+    if (q.length < 3) { setAddrOptionsHousing([]); return; }
+    const t = setTimeout(async () => {
+      setAddrLoadingHousing(true);
+      const opts = await fetchAddressSuggestions(q);
+      setAddrOptionsHousing(opts);
+      setAddrLoadingHousing(false);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [newHousing.address, addrValidHousing, showAddHousing]);
 
   useEffect(() => {
     if (!showMapModal) {
@@ -1546,19 +1589,30 @@ export default function App() {
   };
   const handleAddHousing = async () => {
     if (!user) { handleLogin(); return; }
-    if (!newHousing.title.trim() || !newHousing.address.trim() || !newHousing.minPrice) return;
+    if (!newHousing.address.trim() || !newHousing.minPrice) return;
+    const uploaded = [];
+    for (const p of newHousingPhotos) {
+      if (p.file) {
+        const url = await uploadPhoto(p.file);
+        if (url) uploaded.push(url);
+      } else if (p.preview && p.preview.startsWith("http")) {
+        uploaded.push(p.preview);
+      }
+    }
+    const typeMap = { room: "Комната", studio: "Студия", "1bd": "1 bd", "2bd": "2 bd" };
+    const title = `${typeMap[newHousing.type] || "Жильё"} · ${newHousing.district.trim() || "LA"}`;
     const payload = {
-      title: newHousing.title.trim(),
+      title,
       address: newHousing.address.trim(),
       district: newHousing.district.trim(),
-      type: (newHousing.type || "Apartments for rent").trim(),
+      type: (newHousing.type || "studio").trim(),
       min_price: Number(newHousing.minPrice || 0),
-      price_options: String(newHousing.priceOptions || "").split(",").map((x) => x.trim()).filter(Boolean),
+      price_options: [],
       beds: Number(newHousing.beds || 0),
       baths: Number(newHousing.baths || 0),
-      updated_label: newHousing.updatedLabel.trim(),
-      tags: String(newHousing.tags || "").split(",").map((x) => x.trim()).filter(Boolean),
-      photo: newHousing.photo.trim(),
+      updated_label: "",
+      tags: [],
+      photo: encodeHousingPhotos(uploaded),
       user_id: user.id,
     };
     const { data, error } = await dbAddHousing(payload);
@@ -1573,20 +1627,24 @@ export default function App() {
         title: row.title || "",
         address: row.address || "",
         district: row.district || "",
-        type: row.type || "Apartments for rent",
+        type: row.type || "studio",
         minPrice: Number(row.min_price || 0),
         options: Array.isArray(row.price_options) ? row.price_options : [],
         beds: Number(row.beds || 0),
         baths: Number(row.baths || 0),
         updatedLabel: row.updated_label || "",
         tags: Array.isArray(row.tags) ? row.tags : [],
-        photo: row.photo || "",
+        photos: decodeHousingPhotos(row.photo),
+        photo: decodeHousingPhotos(row.photo)[0] || "",
         userId: row.user_id,
         likes: row.likes_count || 0,
         fromDB: true,
       }, ...prev]);
     }
-    setNewHousing({ title:"", address:"", district:"", type:"Apartments for rent", minPrice:"", priceOptions:"", beds:"", baths:"", updatedLabel:"", tags:"", photo:"" });
+    setNewHousing({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" });
+    setNewHousingPhotos([]);
+    setAddrValidHousing(false);
+    setAddrOptionsHousing([]);
     setShowAddHousing(false);
   };
   const handleToggleLike = async (itemId, itemType) => {
@@ -1682,6 +1740,10 @@ export default function App() {
   const formatHousingPrice = (value) => {
     try { return Number(value || 0).toLocaleString("en-US"); } catch { return String(value || 0); }
   };
+  const formatHousingType = (value) => {
+    const map = { room: "Комната", studio: "Студия", "1bd": "1 bd", "2bd": "2 bd" };
+    return map[value] || value || "Студия";
+  };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const catEvents = selEC ? events.filter(e=>{
     if (e.cat !== selEC.id) return false;
@@ -1706,6 +1768,17 @@ export default function App() {
   useEffect(() => {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
+  useEffect(() => {
+    if (!showAddHousing) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [showAddHousing]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -2564,8 +2637,12 @@ export default function App() {
                   onClick={() => { setSelHousing({ id: h.id }); setScr("housing-item"); }}
                   style={{ ...cd, width:"100%", overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 3px 14px rgba(0,0,0,0.08)", padding:0, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", background:T.card }}
                 >
-                  <div style={{ position:"relative", height:240, background:"#E9EDF2" }}>
-                    <img src={h.photo} alt={h.title} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                  <div style={{ position:"relative", height:188, background:"#E9EDF2" }}>
+                    {h.photo ? (
+                      <img src={h.photo} alt={h.title || h.address} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    ) : (
+                      <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", color:T.light, fontSize:12 }}>Нет фото</div>
+                    )}
                     {!!h.updatedLabel && (
                       <div style={{ position:"absolute", top:10, left:10, background:"rgba(0,0,0,0.55)", color:"#fff", borderRadius:999, fontSize:11, fontWeight:700, padding:"6px 10px" }}>
                         {h.updatedLabel}
@@ -2579,11 +2656,10 @@ export default function App() {
                       {isFav ? "★" : "☆"}
                     </button>
                   </div>
-                  <div style={{ padding:"12px 14px 14px" }}>
-                    <div style={{ fontSize:50, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:"-0.5px", fontFamily:"inherit" }}>${formatHousingPrice(h.minPrice)}+</div>
-                    <div style={{ fontSize:14, fontWeight:700, color:"#2E2E3A", marginBottom:6 }}>{(h.options || []).join(" | ")}</div>
-                    <div style={{ fontSize:15, lineHeight:1.35, color:"#2E2E3A", marginBottom:4 }}>{h.title} · {h.address}</div>
-                    <div style={{ fontSize:12, color:T.mid }}>{h.type}</div>
+                  <div style={{ padding:"10px 12px 12px" }}>
+                    <div style={{ fontSize:24, fontWeight:900, lineHeight:1.05, marginBottom:6, letterSpacing:"-0.2px", fontFamily:"inherit" }}>${formatHousingPrice(h.minPrice)}+</div>
+                    <div style={{ fontSize:15, lineHeight:1.35, color:"#2E2E3A", marginBottom:4 }}>{h.address}</div>
+                    <div style={{ fontSize:12, color:T.mid }}>{formatHousingType(h.type)} · {h.district || "LA"}</div>
                   </div>
                 </button>
               );
@@ -2593,7 +2669,7 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => { if (!user) { handleLogin(); return; } setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+          <button onClick={() => { if (!user) { handleLogin(); return; } setNewHousing({ address:"", district:"", type:"studio", minPrice:"", beds:"", baths:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
 
           <button style={{ position:"fixed", left:"50%", bottom:22, transform:"translateX(-50%)", border:"none", borderRadius:999, background:"#334760", color:"#fff", fontWeight:700, fontSize:16, padding:"12px 22px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", cursor:"pointer", fontFamily:"inherit", zIndex:90 }}>
             🗺 Map
@@ -2604,8 +2680,12 @@ export default function App() {
         {scr==="housing-item" && activeHousing && (<div>
           <button onClick={() => setScr("housing")} style={bk}>← Жильё</button>
           <div style={{ ...cd, overflow:"hidden", border:`1px solid ${T.border}` }}>
-            <div style={{ position:"relative", height:260, background:"#E9EDF2" }}>
-              <img src={activeHousing.photo} alt={activeHousing.title} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            <div style={{ position:"relative", height:220, background:"#E9EDF2" }}>
+              {activeHousing.photo ? (
+                <img src={activeHousing.photo} alt={activeHousing.title || activeHousing.address} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+              ) : (
+                <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", color:T.light, fontSize:13 }}>Нет фото</div>
+              )}
               <button
                 onClick={() => toggleFavorite(activeHousing.id, "housing")}
                 style={{ position:"absolute", top:10, right:10, width:42, height:42, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.9)", color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : "#1E4D97", fontSize:22, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}
@@ -2615,15 +2695,14 @@ export default function App() {
               </button>
             </div>
             <div style={{ padding:14 }}>
-              <div style={{ fontSize:52, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:"-0.6px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
-              <div style={{ fontSize:14, fontWeight:700, color:"#2E2E3A", marginBottom:8 }}>{(activeHousing.options || []).join(" | ")}</div>
-              <div style={{ fontWeight:700, fontSize:18, marginBottom:4 }}>{activeHousing.title}</div>
+              <div style={{ fontSize:30, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
+              <div style={{ fontWeight:700, fontSize:16, marginBottom:4 }}>{activeHousing.address}</div>
               <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ background:"none", border:"none", padding:0, color:T.mid, textDecoration:"underline", cursor:"pointer", fontFamily:"inherit", fontSize:13, marginBottom:10 }}>{activeHousing.address}</button>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
                 <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds || 0} beds</span>
                 <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths || 0} baths</span>
                 <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.district || "LA"}</span>
-                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.type}</span>
+                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{formatHousingType(activeHousing.type)}</span>
               </div>
               {!!activeHousing.updatedLabel && <div style={{ fontSize:12, color:T.mid, marginBottom:10 }}>{activeHousing.updatedLabel}</div>}
               {!!activeHousing.tags?.length && (
@@ -2644,16 +2723,28 @@ export default function App() {
 
         {/* ADD HOUSING MODAL */}
         {showAddHousing && (
-          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>setShowAddHousing(false)}>
-            <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+          <div
+            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }}
+            onClick={()=>{ setShowAddHousing(false); setAddrOptionsHousing([]); setAddrValidHousing(false); }}
+            onTouchMove={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
+            onWheel={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
+          >
+            <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
               <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
               <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px" }}>🏠 Новое жильё</h3>
 
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
-              <input value={newHousing.title} onChange={(e)=>setNewHousing((s)=>({ ...s, title:e.target.value }))} placeholder="Например: The Parkline" style={{ ...iS, marginBottom:12 }} />
-
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
-              <input value={newHousing.address} onChange={(e)=>setNewHousing((s)=>({ ...s, address:e.target.value }))} placeholder="1457 N Main St, Los Angeles, CA" style={{ ...iS, marginBottom:12 }} />
+              <input value={newHousing.address} onChange={(e)=>{ setNewHousing((s)=>({ ...s, address:e.target.value })); setAddrValidHousing(false); }} placeholder="1457 N Main St, Los Angeles, CA" style={{ ...iS, marginBottom:6, borderColor:newHousing.address && !addrValidHousing ? "#f5b7b1" : T.border }} />
+              {addrLoadingHousing && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем место...</div>}
+              {!addrLoadingHousing && addrOptionsHousing.length > 0 && !addrValidHousing && (
+                <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
+                  {addrOptionsHousing.map((opt, i) => (
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNewHousing((s) => ({ ...s, address: opt.value })); setAddrValidHousing(true); setAddrOptionsHousing([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsHousing.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
                 <div>
@@ -2662,7 +2753,12 @@ export default function App() {
                 </div>
                 <div>
                   <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Тип</label>
-                  <input value={newHousing.type} onChange={(e)=>setNewHousing((s)=>({ ...s, type:e.target.value }))} placeholder="Apartments for rent" style={{ ...iS, marginBottom:0 }} />
+                  <select value={newHousing.type} onChange={(e)=>setNewHousing((s)=>({ ...s, type:e.target.value }))} style={{ ...iS, marginBottom:0 }}>
+                    <option value="room">Комната</option>
+                    <option value="studio">Студия</option>
+                    <option value="1bd">1 bd</option>
+                    <option value="2bd">2 bd</option>
+                  </select>
                 </div>
               </div>
 
@@ -2681,21 +2777,30 @@ export default function App() {
                 </div>
               </div>
 
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Варианты цены (через запятую)</label>
-              <input value={newHousing.priceOptions} onChange={(e)=>setNewHousing((s)=>({ ...s, priceOptions:e.target.value }))} placeholder="$1,850+ Studio, $2,289+ 1 bd" style={{ ...iS, marginBottom:12 }} />
-
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Теги (через запятую)</label>
-              <input value={newHousing.tags} onChange={(e)=>setNewHousing((s)=>({ ...s, tags:e.target.value }))} placeholder="pool, gym, parking" style={{ ...iS, marginBottom:12 }} />
-
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Обновление</label>
-              <input value={newHousing.updatedLabel} onChange={(e)=>setNewHousing((s)=>({ ...s, updatedLabel:e.target.value }))} placeholder="Updated yesterday" style={{ ...iS, marginBottom:12 }} />
-
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Фото URL</label>
-              <input value={newHousing.photo} onChange={(e)=>setNewHousing((s)=>({ ...s, photo:e.target.value }))} placeholder="https://..." style={{ ...iS, marginBottom:18 }} />
+              <input
+                ref={housingFileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []).map((file) => ({ file, name:file.name, preview: URL.createObjectURL(file) }));
+                  setNewHousingPhotos((prev) => [...prev, ...files].slice(0, 10));
+                }}
+                style={{ display:"none" }}
+              />
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:18 }}>
+                {newHousingPhotos.map((p, i) => (
+                  <div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
+                    <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    <button onClick={()=>setNewHousingPhotos((pr)=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button>
+                  </div>
+                ))}
+                {newHousingPhotos.length < 10 && <button onClick={()=>housingFileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото (до 10)</button>}
+              </div>
 
               <div style={{ display:"flex", gap:10 }}>
-                <button onClick={()=>setShowAddHousing(false)} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-                <button onClick={handleAddHousing} disabled={!newHousing.title.trim() || !newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.title.trim() || !newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>Опубликовать</button>
+                <button onClick={()=>{ setShowAddHousing(false); setAddrOptionsHousing([]); setAddrValidHousing(false); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+                <button onClick={handleAddHousing} disabled={!newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>Опубликовать</button>
               </div>
             </div>
           </div>
