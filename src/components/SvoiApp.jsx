@@ -2677,49 +2677,50 @@ export default function App() {
         </div>)}
 
         {/* HOUSING ITEM */}
-        {scr==="housing-item" && activeHousing && (<div>
-          <button onClick={() => setScr("housing")} style={bk}>← Жильё</button>
-          <div style={{ ...cd, overflow:"hidden", border:`1px solid ${T.border}` }}>
-            <div style={{ position:"relative", height:220, background:"#E9EDF2" }}>
-              {activeHousing.photo ? (
-                <img src={activeHousing.photo} alt={activeHousing.title || activeHousing.address} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-              ) : (
-                <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", color:T.light, fontSize:13 }}>Нет фото</div>
-              )}
-              <button
-                onClick={() => toggleFavorite(activeHousing.id, "housing")}
-                style={{ position:"absolute", top:10, right:10, width:42, height:42, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.9)", color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : "#1E4D97", fontSize:22, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}
-                title="Избранное"
-              >
-                {favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}
-              </button>
-            </div>
-            <div style={{ padding:14 }}>
-              <div style={{ fontSize:30, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
-              <div style={{ fontWeight:700, fontSize:16, marginBottom:4 }}>{activeHousing.address}</div>
-              <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ background:"none", border:"none", padding:0, color:T.mid, textDecoration:"underline", cursor:"pointer", fontFamily:"inherit", fontSize:13, marginBottom:10 }}>{activeHousing.address}</button>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
-                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds || 0} beds</span>
-                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths || 0} baths</span>
-                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.district || "LA"}</span>
-                <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{formatHousingType(activeHousing.type)}</span>
-              </div>
-              {!!activeHousing.updatedLabel && <div style={{ fontSize:12, color:T.mid, marginBottom:10 }}>{activeHousing.updatedLabel}</div>}
-              {!!activeHousing.tags?.length && (
-                <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
-                  {activeHousing.tags.map((tag, idx) => (
-                    <span key={`${tag}-${idx}`} style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:"#EEF5FF", color:"#1E4D97" }}>#{tag}</span>
-                  ))}
+        {scr==="housing-item" && activeHousing && (() => {
+          const galleryPhotos = Array.isArray(activeHousing.photos) && activeHousing.photos.length
+            ? activeHousing.photos
+            : (activeHousing.photo ? [activeHousing.photo] : []);
+          return (
+            <div>
+              <div style={{ position:"relative", height:"calc(100vh - 122px)", overflowY:"auto", borderRadius:18, border:`1px solid ${T.border}`, background:"#0f1116", boxShadow:T.sh }}>
+                <button onClick={() => setScr("housing")} style={{ position:"sticky", top:10, left:10, zIndex:4, margin:10, width:44, height:44, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.92)", color:"#222", fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }} title="Закрыть">×</button>
+                {galleryPhotos.length ? (
+                  <div style={{ marginTop:-64 }}>
+                    {galleryPhotos.map((src, i) => (
+                      <button
+                        key={`${src}-${i}`}
+                        onClick={() => openPhotoViewer(galleryPhotos, i)}
+                        style={{ display:"block", width:"100%", padding:0, margin:0, border:"none", background:"transparent", cursor:"zoom-in" }}
+                      >
+                        <img src={src} alt="" style={{ width:"100%", minHeight:240, maxHeight:560, objectFit:"cover", display:"block", borderBottom:`1px solid rgba(255,255,255,0.1)` }} />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:14 }}>Нет фото</div>
+                )}
+
+                <div style={{ position:"sticky", bottom:0, zIndex:3, background:T.card, borderTop:`1px solid ${T.border}`, borderRadius:"18px 18px 0 0", padding:"14px 14px calc(14px + env(safe-area-inset-bottom))" }}>
+                  <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
+                  <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{activeHousing.address}</div>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
+                    <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds || 0} beds</span>
+                    <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths || 0} baths</span>
+                    <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.district || "LA"}</span>
+                    <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{formatHousingType(activeHousing.type)}</span>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                    <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}</button>
+                    <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`housing-${activeHousing.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
+                    <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}+`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
+                    <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
+                  </div>
                 </div>
-              )}
-              <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:2 }}>
-                <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`housing-${activeHousing.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
-                <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}+`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
-                <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
               </div>
             </div>
-          </div>
-        </div>)}
+          );
+        })()}
 
         {/* ADD HOUSING MODAL */}
         {showAddHousing && (
