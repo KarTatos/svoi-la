@@ -1056,6 +1056,7 @@ export default function App() {
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: false,
+            gestureHandling: "greedy",
             styles: [
               { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
               { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
@@ -1080,6 +1081,7 @@ export default function App() {
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          gestureHandling: "greedy",
         });
         maps.event.trigger(map, "resize");
         googleMarkersRef.current.forEach((m) => m.setMap(null));
@@ -1903,9 +1905,6 @@ export default function App() {
     setSelTC(null);
     setExpTip(null);
   };
-  const resetHousingFilters = () => {
-    setHousingBedsFilter("all");
-  };
   const housingFiltered = housing.filter((item) => {
     const byQuery = true;
     const byBeds = housingBedsFilter === "all"
@@ -2107,10 +2106,9 @@ export default function App() {
             <div style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.light, pointerEvents:"none" }}>🔎</div>
             <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Поиск формы..." style={{ ...iS, paddingLeft:42, borderColor:srch?T.primary:T.border }} />
           </div>
-          {srch.trim().length>=2 ? (<div>{sRes.map((d,i) => { const pdfUrl = getUscisPdfUrl(d); return (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
+          {srch.trim().length>=2 ? (<div>{sRes.map((d,i) => { return (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
             <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center", flexWrap:"wrap" }}>
               {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
-              {pdfUrl && <button onClick={() => openUscisPdf(pdfUrl, `${d.form} — ${d.name}`)} style={{ ...pl(false), padding:"4px 10px", fontSize:11 }}>PDF</button>}
               <span style={{ fontSize:11, color:T.mid }}>{d.cI} {d.cT}</span>
             </div>
             <div style={{ fontWeight:600, fontSize:14 }}>{d.name}</div><div style={{ fontSize:12, color:T.mid, marginTop:3 }}>{d.desc}</div>
@@ -2147,7 +2145,6 @@ export default function App() {
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
                   {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
-                  {pdfUrl && <button onClick={(e)=>{ e.stopPropagation(); openUscisPdf(pdfUrl, `${d.form} — ${d.name}`); }} style={{ ...pl(false), padding:"5px 12px", fontSize:12 }}>PDF</button>}
                 </div>
                 <span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
               </div>
@@ -2158,8 +2155,7 @@ export default function App() {
               <div style={{ padding:14, background:T.bg, borderRadius:10, marginTop:12, fontSize:13, lineHeight:1.65, color:T.mid }}>{d.detail}</div>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
                 {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", ...pl(true), textDecoration:"none", fontSize:12 }}>uscis.gov ↗</a>}
-                {pdfUrl && <button onClick={() => openUscisPdf(pdfUrl, `${d.form} — ${d.name}`)} style={{ ...pl(false), fontSize:12 }}>Открыть PDF</button>}
-                {pdfUrl && <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download style={{ ...pl(false), textDecoration:"none", fontSize:12, display:"inline-flex", alignItems:"center" }}>Скачать PDF</a>}
+                {pdfUrl && <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download style={{ ...pl(false), textDecoration:"none", fontSize:12, display:"inline-flex", alignItems:"center" }}>Открыть PDF</a>}
               </div>
               {d.isTest && <button onClick={startTest} style={{ ...pl(true), marginTop:12, width:"100%" }}>🇺🇸 Start Civics Test</button>}
             </div>)}
@@ -2797,7 +2793,6 @@ export default function App() {
                   {opt.label}
                 </button>
               ))}
-              <button onClick={resetHousingFilters} style={{ ...pl(false), padding:"8px 12px", fontSize:12, marginLeft:"auto" }}>Сброс</button>
             </div>
           </div>
 
@@ -2844,9 +2839,6 @@ export default function App() {
 
           <button onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
 
-          <button style={{ position:"fixed", left:"50%", bottom:22, transform:"translateX(-50%)", border:"none", borderRadius:999, background:"#334760", color:"#fff", fontWeight:700, fontSize:16, padding:"12px 22px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", cursor:"pointer", fontFamily:"inherit", zIndex:90 }}>
-            🗺 Map
-          </button>
         </div>)}
 
         {/* HOUSING ITEM */}
