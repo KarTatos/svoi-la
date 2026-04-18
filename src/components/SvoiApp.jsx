@@ -356,11 +356,8 @@ export default function App() {
   const [selTC, setSelTC] = useState(null);
   const [tipsSearchInput, setTipsSearchInput] = useState("");
   const [tipsSearchApplied, setTipsSearchApplied] = useState("");
-  const [housingSearchInput, setHousingSearchInput] = useState("");
-  const [housingSearchApplied, setHousingSearchApplied] = useState("");
   const [housingSort, setHousingSort] = useState("default");
   const [housingSaved, setHousingSaved] = useState(false);
-  const [housingFiltersOpen, setHousingFiltersOpen] = useState(false);
   const [housingBedsFilter, setHousingBedsFilter] = useState("all");
   // Save screen state on change
   useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
@@ -631,7 +628,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setHousingSearchInput(""); setHousingSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1793,19 +1790,12 @@ export default function App() {
     setSelTC(null);
     setExpTip(null);
   };
-  const applyHousingSearch = () => {
-    setHousingSearchApplied(housingSearchInput.trim());
-  };
   const resetHousingFilters = () => {
     setHousingBedsFilter("all");
     setHousingSort("default");
-    setHousingSearchInput("");
-    setHousingSearchApplied("");
   };
-  const housingQuery = housingSearchApplied.trim().toLowerCase();
   const housingFiltered = housing.filter((item) => {
-    const byQuery = !housingQuery
-      || `${item.title} ${item.address} ${item.district} ${item.type} ${(item.options || []).join(" ")}`.toLowerCase().includes(housingQuery);
+    const byQuery = true;
     const byBeds = housingBedsFilter === "all"
       || (housingBedsFilter === "studio" && item.type === "studio")
       || (housingBedsFilter === "1" && (item.type === "1bd" || item.type === "2bd"))
@@ -1842,7 +1832,7 @@ export default function App() {
     if (!raw) return;
     const digits = raw.replace(/[^\d+]/g, "");
     if (!digits) return;
-    openExternalUrl(`tel:${encodeURIComponent(digits)}`);
+    openExternalUrl(`sms:${encodeURIComponent(digits)}`);
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const catEvents = selEC ? events.filter(e=>{
@@ -2671,42 +2661,27 @@ export default function App() {
         {scr==="housing" && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
           <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 12px" }}>🏠 Жильё в LA</h2>
-          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-            <div style={{ ...cd, flex:1, display:"flex", alignItems:"center", padding:"10px 12px", boxShadow:"none" }}>
-              <span style={{ color:T.light, fontSize:20, lineHeight:1, marginRight:8 }}>⌕</span>
-              <input
-                value={housingSearchInput}
-                onChange={(e)=>setHousingSearchInput(e.target.value)}
-                placeholder='Try "rentals with backyard in LA"'
-                style={{ border:"none", outline:"none", background:"transparent", fontFamily:"inherit", width:"100%", fontSize:14, color:T.text }}
-              />
+          <div style={{ ...cd, padding:12, marginBottom:10, boxShadow:"none", border:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Фильтр по спальням</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {[
+                { id:"all", label:"Все" },
+                { id:"studio", label:"Studio" },
+                { id:"1", label:"1+ bd" },
+                { id:"2", label:"2+ bds" },
+                { id:"3", label:"3+ bds" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={()=>setHousingBedsFilter(opt.id)}
+                  style={{ ...pl(housingBedsFilter===opt.id), padding:"8px 12px", fontSize:12 }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <button onClick={resetHousingFilters} style={{ ...pl(false), padding:"8px 12px", fontSize:12, marginLeft:"auto" }}>Сброс</button>
             </div>
-            <button onClick={applyHousingSearch} style={{ ...cd, width:46, height:46, border:`1px solid ${T.border}`, boxShadow:"none", background:T.card, color:"#1E5AA5", cursor:"pointer", fontFamily:"inherit", fontSize:20 }}>⌕</button>
-            <button onClick={()=>setHousingFiltersOpen((v)=>!v)} style={{ ...cd, width:46, height:46, border:`1px solid ${T.border}`, boxShadow:"none", background:T.card, color:"#1E5AA5", cursor:"pointer", fontFamily:"inherit", fontSize:18 }}>☷</button>
           </div>
-          {housingFiltersOpen && (
-            <div style={{ ...cd, padding:12, marginBottom:10, boxShadow:"none", border:`1px solid ${T.border}` }}>
-              <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Фильтр по спальням</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-                {[
-                  { id:"all", label:"Все" },
-                  { id:"studio", label:"Studio" },
-                  { id:"1", label:"1+ bd" },
-                  { id:"2", label:"2+ bds" },
-                  { id:"3", label:"3+ bds" },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={()=>setHousingBedsFilter(opt.id)}
-                    style={{ ...pl(housingBedsFilter===opt.id), padding:"8px 12px", fontSize:12 }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-                <button onClick={resetHousingFilters} style={{ ...pl(false), padding:"8px 12px", fontSize:12, marginLeft:"auto" }}>Сброс</button>
-              </div>
-            </div>
-          )}
 
           <div style={{ ...cd, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 0", marginBottom:12, borderRadius:0, border:"none", borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, boxShadow:"none", background:"transparent" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -2813,7 +2788,7 @@ export default function App() {
                   {(!!activeHousing.telegram || !!activeHousing.messageContact) && (
                     <div style={{ display:"flex", gap:8, marginBottom:10 }}>
                       {!!activeHousing.telegram && <button onClick={() => openTelegramContact(activeHousing.telegram)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Telegram</button>}
-                      {!!activeHousing.messageContact && <button onClick={() => openMessageContact(activeHousing.messageContact)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Телефон</button>}
+                      {!!activeHousing.messageContact && <button onClick={() => openMessageContact(activeHousing.messageContact)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Сообщение</button>}
                     </div>
                   )}
                   {user && (
