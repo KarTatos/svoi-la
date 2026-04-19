@@ -920,30 +920,50 @@ export default function App() {
       byAddress: `addr|${address}`,
     };
   };
-  const bumpViewLocally = (itemType, itemId) => {
-    const updater = (item) => item.id === itemId ? { ...item, views: Number(item.views || 0) + 1 } : item;
+  const setCardViewsLocally = (itemType, itemId, views) => {
+    const nextViews = Number(views || 0);
+    const updater = (item) => item.id === itemId ? { ...item, views: nextViews } : item;
     if (itemType === "place") {
       setPlaces((prev) => prev.map(updater));
-      setSelPlace((prev) => prev?.id === itemId ? { ...prev, views: Number(prev.views || 0) + 1 } : prev);
+      setSelPlace((prev) => prev?.id === itemId ? { ...prev, views: nextViews } : prev);
     } else if (itemType === "tip") {
       setTips((prev) => prev.map(updater));
     } else if (itemType === "event") {
       setEvents((prev) => prev.map(updater));
     } else if (itemType === "housing") {
       setHousing((prev) => prev.map(updater));
-      setSelHousing((prev) => prev?.id === itemId ? { ...prev, views: Number(prev.views || 0) + 1 } : prev);
+      setSelHousing((prev) => prev?.id === itemId ? { ...prev, views: nextViews } : prev);
+    }
+  };
+  const getViewerKey = () => {
+    if (user?.id) return `user:${user.id}`;
+    try {
+      const storageKey = "la_viewer_key";
+      let guestKey = localStorage.getItem(storageKey);
+      if (!guestKey) {
+        guestKey = (window?.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        localStorage.setItem(storageKey, guestKey);
+      }
+      return `guest:${guestKey}`;
+    } catch {
+      return "guest:anonymous";
     }
   };
   const trackCardView = async (itemType, item) => {
     const itemId = item?.id;
     if (!itemId || !item?.fromDB) return;
-    bumpViewLocally(itemType, itemId);
+    const viewerKey = getViewerKey();
+    if (!viewerKey) return;
     try {
-      await fetch("/api/views", {
+      const response = await fetch("/api/views", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemType, itemId }),
+        body: JSON.stringify({ itemType, itemId, viewerKey }),
       });
+      const payload = await response.json().catch(() => null);
+      if (response.ok && payload?.ok && Number.isFinite(Number(payload.views))) {
+        setCardViewsLocally(itemType, itemId, Number(payload.views));
+      }
     } catch {}
   };
   const saveGeocodeCache = (place, coords) => {
@@ -2604,16 +2624,18 @@ export default function App() {
                   </div>
                   <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
                     <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${p.id}`]} size={13} /></button>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
-                      👁 {p.views || 0}
-                    </span>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${p.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${p.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
                       <HeartIcon active={!!liked[`place-${p.id}`]} size={13} /> {p.likes || 0}
                     </span>
                   </div>
                 </div>
                 <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ ...twoLineClampStyle, fontSize:13, color:T.mid }}>{limitCardText(p.tip)}</div></div>
-                <div style={{ marginTop:10, fontSize:11, color:T.light }}>от {p.addedBy}</div>
+                <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                  <span style={{ fontSize:11, color:T.light }}>от {p.addedBy}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
+                    👁 {p.views || 0}
+                  </span>
+                </div>
               </div>
             </button>
           ))}
