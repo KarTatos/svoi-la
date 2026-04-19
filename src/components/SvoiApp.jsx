@@ -2466,9 +2466,18 @@ export default function App() {
         {/* PLACES IN CATEGORY */}
         {scr==="places-cat" && selPC && selD && (<div>
           <button onClick={() => { setScr("district"); setSelPC(null); setSelPlace(null); }} style={bk}>← {selD.name}</button>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"4px 0 12px" }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${selPC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{selPC.icon}</div>
-            <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selPC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selD.name} · {cPlaces.length} мест</p></div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, margin:"4px 0 12px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:`${selPC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{selPC.icon}</div>
+              <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selPC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selD.name} · {cPlaces.length} мест</p></div>
+            </div>
+            <button
+              onClick={() => { openAddForm(); }}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить"
+            >
+              +
+            </button>
           </div>
           {cPlaces.length > 0 && (
             <div style={{ ...cd, padding:0, overflow:"hidden", marginBottom:12 }}>
@@ -2526,7 +2535,6 @@ export default function App() {
             <button key={p.id} onClick={() => { setSelPlace(p); setScr("place-item"); }} style={{ ...cd, width:"100%", overflow:"hidden", marginBottom:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", borderColor:T.borderL }}>
               <div style={{ padding:16 }}>
                 <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
-                  <div style={{ width:50, height:50, borderRadius:14, background:`${selPC.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>{p.img}</div>
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:16 }}>{p.name}</div>
                     <button onClick={(e)=>{ e.stopPropagation(); openAddressInMaps(p.address || selD.name); }} style={{ background:"none", border:"none", padding:0, marginTop:3, color:T.mid, fontSize:12, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline", textAlign:"left" }}>
@@ -2676,9 +2684,18 @@ export default function App() {
         {/* TIPS CATEGORY */}
         {scr==="tips" && selTC && (<div>
           <button onClick={() => setSelTC(null)} style={bk}>← Все советы</button>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"4px 0 18px" }}>
-            <div style={{ width:48, height:48, borderRadius:14, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selTC.icon}</div>
-            <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selTC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selTC.desc}</p></div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, margin:"4px 0 18px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selTC.icon}</div>
+              <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selTC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selTC.desc}</p></div>
+            </div>
+            <button
+              onClick={() => { if (!user) {handleLogin();return;} setEditingTip(null); setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(true); }}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить"
+            >
+              +
+            </button>
           </div>
           {catTips.map((tip, i) => { const isE = expTip===tip.id; const isL = liked[`tip-${tip.id}`]; const isF = favorites[`tip-${tip.id}`]; return (
             <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
@@ -2780,9 +2797,18 @@ export default function App() {
 
         {scr==="events" && selEC && (<div>
           <button onClick={() => { setSelEC(null); setFilterDate(null); }} style={bk}>← Все события</button>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"4px 0 12px" }}>
-            <div style={{ width:48, height:48, borderRadius:14, background:`${selEC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selEC.icon}</div>
-            <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, margin:"4px 0 12px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:`${selEC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selEC.icon}</div>
+              <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
+            </div>
+            <button
+              onClick={() => { if (!user) {handleLogin();return;} setEditingEvent(null); setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:selEC?.id||"" }); setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(true); }}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить"
+            >
+              +
+            </button>
           </div>
           {/* Date filter bar */}
           <div style={{ marginBottom:16 }}>
@@ -3046,7 +3072,12 @@ export default function App() {
 
                 <div style={{ position:"sticky", bottom:0, zIndex:3, background:T.card, borderTop:`1px solid ${T.border}`, borderRadius:"18px 18px 0 0", padding:"14px 14px calc(14px + env(safe-area-inset-bottom))" }}>
                   <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}</div>
-                  <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{activeHousing.address}</div>
+                  <button
+                    onClick={() => openAddressInMaps(activeHousing.address)}
+                    style={{ background:"none", border:"none", padding:0, marginBottom:6, fontWeight:700, fontSize:16, color:T.text, textAlign:"left", cursor:"pointer", fontFamily:"inherit", textDecoration:"underline" }}
+                  >
+                    {activeHousing.address}
+                  </button>
                   {!!activeHousing.comment && <div style={{ fontSize:13, lineHeight:1.55, color:T.mid, marginBottom:8 }}>{activeHousing.comment}</div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
                     {Number(activeHousing.beds || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds} beds</span>}
@@ -3069,8 +3100,7 @@ export default function App() {
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                     <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное"><StarIcon active={!!favorites[`housing-${activeHousing.id}`]} size={18} /></button>
                     <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`housing-${activeHousing.id}`]} /> <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
-                    <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
-                    <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
+                    <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                   </div>
                 </div>
               </div>
