@@ -2627,13 +2627,16 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10, gap:8 }}>
+          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10, gap:8 }}>
             <button
-              onClick={() => openAllOnMap(cPlacesDisplay)}
-              style={{ ...pl(false), padding:"8px 10px", fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}
-              title="Открыть карту на весь экран"
+              onClick={() => {
+                if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
+              }}
+              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}
+              title="Сортировать по лайкам"
             >
-              🗺 ⤢
+              <HeartIcon active={true} size={13} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
             </button>
             <button
               onClick={() => {
@@ -2644,16 +2647,6 @@ export default function App() {
               title="Сортировать по избранному"
             >
               <StarIcon active={true} size={13} /> {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
-            </button>
-            <button
-              onClick={() => {
-                if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
-                else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
-              }}
-              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}
-              title="Сортировать по лайкам"
-            >
-              <HeartIcon active={true} size={13} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
             </button>
           </div>
 
