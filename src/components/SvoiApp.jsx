@@ -560,6 +560,7 @@ export default function App() {
   const datePickerRef = useRef(null);
   const googleAutocompleteRef = useRef(null);
   const googlePlacesServiceRef = useRef(null);
+  const googleGeocoderRef = useRef(null);
   const geocodeCacheRef = useRef({});
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
@@ -757,8 +758,8 @@ export default function App() {
     }
     const withoutScheme = raw.slice("app://".length);
     const [type, idRaw] = withoutScheme.split("/");
-    const id = Number(idRaw);
-    if (!Number.isFinite(id)) return;
+    const id = String(idRaw || "").trim();
+    if (!id) return;
 
     if (type === "housing") {
       setSelHousing({ id });
@@ -766,7 +767,7 @@ export default function App() {
       return;
     }
     if (type === "place") {
-      const place = places.find((p) => Number(p.id) === id);
+      const place = places.find((p) => String(p.id) === id);
       if (!place) return;
       const district = DISTRICTS.find((d) => d.id === place.district) || null;
       const placeCat = PLACE_CATS.find((c) => c.id === place.cat) || null;
@@ -777,21 +778,21 @@ export default function App() {
       return;
     }
     if (type === "event") {
-      const ev = events.find((e) => Number(e.id) === id);
+      const ev = events.find((e) => String(e.id) === id);
       if (!ev) return;
       const eventCat = EVENT_CATS.find((c) => c.id === ev.cat) || null;
       if (eventCat) setSelEC(eventCat);
       setScr("events");
-      setExp(`event-${id}`);
+      setExp(`ev-${ev.id}`);
       return;
     }
     if (type === "tip") {
-      const tip = tips.find((t) => Number(t.id) === id);
+      const tip = tips.find((t) => String(t.id) === id);
       if (!tip) return;
       const tipCat = TIPS_CATS.find((c) => c.id === tip.cat) || null;
       if (tipCat) setSelTC(tipCat);
       setScr("tips");
-      setExpTip(`tip-${id}`);
+      setExpTip(tip.id);
       return;
     }
   };
@@ -799,6 +800,16 @@ export default function App() {
     const safe = String(text || "");
     const linkColor = isUser ? "#fff" : "#1E5AA5";
     const rowStyle = { display:"block", marginBottom:4 };
+    const getAppLinkLabel = (href, rawLabel) => {
+      if (rawLabel && rawLabel !== href) return rawLabel;
+      const withoutScheme = String(href || "").replace(/^app:\/\//i, "");
+      const [type] = withoutScheme.split("/");
+      if (type === "place") return "Открыть карточку места";
+      if (type === "tip") return "Открыть карточку совета";
+      if (type === "event") return "Открыть карточку события";
+      if (type === "housing") return "Открыть карточку жилья";
+      return "Открыть карточку";
+    };
     const parseLine = (line, lineIndex) => {
       const rx = /\[([^\]]+)\]\((app:\/\/[^)\s]+|https?:\/\/[^)\s]+)\)|(app:\/\/[^\s]+|https?:\/\/[^\s]+)/gi;
       const out = [];
@@ -806,9 +817,10 @@ export default function App() {
       let m;
       while ((m = rx.exec(line)) !== null) {
         if (m.index > last) out.push(<span key={`t-${lineIndex}-${last}`}>{line.slice(last, m.index)}</span>);
-        const label = m[1] || m[3];
+        const rawLabel = m[1] || m[3];
         const href = m[2] || m[3];
         const isApp = href.startsWith("app://");
+        const label = isApp ? getAppLinkLabel(href, rawLabel) : rawLabel;
         out.push(
           <button
             key={`l-${lineIndex}-${m.index}`}
@@ -885,9 +897,46 @@ export default function App() {
     });
     return googleMapsLoaderRef.current;
   };
+  const getGeocodeCacheKeys = (place = {}) => {
+    const address = String(place.address || "").trim().toLowerCase();
+    const name = String(place.name || "").trim().toLowerCase();
+    return {
+      primary: `${name}|${address}`,
+      byAddress: `addr|${address}`,
+    };
+  };
+  const saveGeocodeCache = (place, coords) => {
+    if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return;
+    const { primary, byAddress } = getGeocodeCacheKeys(place);
+    if (primary) geocodeCacheRef.current[primary] = coords;
+    if (byAddress) geocodeCacheRef.current[byAddress] = coords;
+  };
   const geocodePlace = async (place) => {
-    const key = `${place.name || ""}|${place.address || ""}`;
-    if (geocodeCacheRef.current[key]) return geocodeCacheRef.current[key];
+    const { primary, byAddress } = getGeocodeCacheKeys(place);
+    if (primary && geocodeCacheRef.current[primary]) return geocodeCacheRef.current[primary];
+    if (byAddress && geocodeCacheRef.current[byAddress]) return geocodeCacheRef.current[byAddress];
+
+    // Prefer Google geocoder for better match with Google Maps pins.
+    try {
+      const maps = await ensureGoogleMapsApi();
+      if (maps?.Geocoder) {
+        if (!googleGeocoderRef.current) googleGeocoderRef.current = new maps.Geocoder();
+        const q = `${place.address || place.name}, Los Angeles County, California`;
+        const googleCoords = await new Promise((resolve) => {
+          googleGeocoderRef.current.geocode({ address: q, region: "us" }, (results, status) => {
+            const loc = Array.isArray(results) ? results[0]?.geometry?.location : null;
+            if (status !== "OK" || !loc) return resolve(null);
+            resolve({ lat: Number(loc.lat()), lng: Number(loc.lng()) });
+          });
+        });
+        if (googleCoords && Number.isFinite(googleCoords.lat) && Number.isFinite(googleCoords.lng)) {
+          saveGeocodeCache(place, googleCoords);
+          return googleCoords;
+        }
+      }
+    } catch {}
+
+    // Fallback, if Google geocode is unavailable.
     const query = encodeURIComponent(`${place.address || place.name}, Los Angeles County, California`);
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&addressdetails=1&q=${query}`);
@@ -897,7 +946,7 @@ export default function App() {
       const lng = Number(data[0].lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
       const coords = { lat, lng };
-      geocodeCacheRef.current[key] = coords;
+      saveGeocodeCache(place, coords);
       return coords;
     } catch {
       return null;
@@ -1008,7 +1057,7 @@ export default function App() {
   });
   const getGooglePlaceDetails = (placesService, placeId) => new Promise((resolve) => {
     placesService.getDetails(
-      { placeId, fields: ["name", "formatted_address", "address_components"] },
+      { placeId, fields: ["name", "formatted_address", "address_components", "geometry"] },
       (result, status) => {
         const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
         resolve(ok ? result : null);
@@ -1030,7 +1079,15 @@ export default function App() {
           const label = placeName && !short.toLowerCase().includes(String(placeName).toLowerCase())
             ? `${placeName} — ${short}`
             : short;
-          return { label, value: short, placeName };
+          const lat = details?.geometry?.location?.lat?.();
+          const lng = details?.geometry?.location?.lng?.();
+          return {
+            label,
+            value: short,
+            placeName,
+            lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
+            lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
+          };
         }),
       );
       const uniq = [];
@@ -1123,6 +1180,7 @@ export default function App() {
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: false,
+            cameraControl: false,
             gestureHandling: "greedy",
             styles: [
               { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
@@ -1148,6 +1206,7 @@ export default function App() {
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          cameraControl: false,
           gestureHandling: "greedy",
         });
         maps.event.trigger(map, "resize");
@@ -1326,6 +1385,7 @@ export default function App() {
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: false,
+            cameraControl: false,
             gestureHandling: "greedy",
             styles: [
               { elementType: "geometry", stylers: [{ color: "#f7f7f8" }] },
@@ -1351,6 +1411,7 @@ export default function App() {
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          cameraControl: false,
         });
         miniGoogleMarkersRef.current.forEach((m) => m.setMap(null));
         miniGoogleMarkersRef.current = [];
@@ -2351,6 +2412,7 @@ export default function App() {
                       key={`${opt.value}-${i}`}
                       onClick={() => {
                         setNp(prev => ({ ...prev, name: opt.placeName || prev.name, address: opt.value }));
+                        if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: opt.placeName || np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
                         setAddrValidPlace(true);
                         setNameOptionsPlace([]);
                         setAddrOptionsPlace([]);
@@ -2381,7 +2443,7 @@ export default function App() {
               {!addrLoadingPlace && addrOptionsPlace.length > 0 && !addrValidPlace && (
                 <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
                   {addrOptionsPlace.map((opt, i) => (
-                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); setAddrValidPlace(true); setAddrOptionsPlace([]); setNameOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng }); setAddrValidPlace(true); setAddrOptionsPlace([]); setNameOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                       {opt.label}
                     </button>
                   ))}
@@ -2846,7 +2908,7 @@ export default function App() {
               {!addrLoadingEvent && addrOptionsEvent.length > 0 && !addrValidEvent && (
                 <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
                   {addrOptionsEvent.map((opt, i) => (
-                    <button key={`${opt.value}-${i}`} onClick={() => { setNewEvent(prev => ({ ...prev, location: opt.value })); setAddrValidEvent(true); setAddrOptionsEvent([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsEvent.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNewEvent(prev => ({ ...prev, location: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: newEvent.title, address: opt.value }, { lat: opt.lat, lng: opt.lng }); setAddrValidEvent(true); setAddrOptionsEvent([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsEvent.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                       {opt.label}
                     </button>
                   ))}
@@ -3034,7 +3096,7 @@ export default function App() {
               {!addrLoadingHousing && addrOptionsHousing.length > 0 && !addrValidHousing && (
                 <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
                   {addrOptionsHousing.map((opt, i) => (
-                    <button key={`${opt.value}-${i}`} onClick={() => { setNewHousing((s) => ({ ...s, address: opt.value })); setAddrValidHousing(true); setAddrOptionsHousing([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsHousing.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNewHousing((s) => ({ ...s, address: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: "", address: opt.value }, { lat: opt.lat, lng: opt.lng }); setAddrValidHousing(true); setAddrOptionsHousing([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsHousing.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                       {opt.label}
                     </button>
                   ))}
