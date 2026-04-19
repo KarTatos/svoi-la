@@ -339,6 +339,21 @@ function getUscisPdfUrl(doc) {
   return `https://www.uscis.gov/sites/default/files/document/forms/${baseForm}.pdf`;
 }
 
+function HeartIcon({ active = false, size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M12 20.5c-.3 0-.6-.1-.8-.3C8.4 17.8 3 13.2 3 8.6 3 5.9 5.1 4 7.6 4c1.7 0 3.3.8 4.4 2.1C13.1 4.8 14.7 4 16.4 4 18.9 4 21 5.9 21 8.6c0 4.6-5.4 9.2-8.2 11.6-.2.2-.5.3-.8.3z"
+        fill={active ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function decodeHousingPhotos(raw) {
   if (Array.isArray(raw)) return raw.filter(Boolean);
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -2360,7 +2375,7 @@ export default function App() {
               style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}
               title="Сортировать по лайкам"
             >
-              ♥ {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              <HeartIcon active={true} size={13} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
             </button>
           </div>
 
@@ -2377,8 +2392,8 @@ export default function App() {
                   </div>
                   <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
                     <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1 }} title="Избранное">{favorites[`place-${p.id}`] ? "★" : "☆"}</button>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}>
-                      {liked[`place-${p.id}`] ? "♥" : "♡"} {p.likes || 0}
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${p.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${p.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
+                      <HeartIcon active={!!liked[`place-${p.id}`]} size={13} /> {p.likes || 0}
                     </span>
                   </div>
                 </div>
@@ -2406,8 +2421,8 @@ export default function App() {
                 </div>
                 <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
                   <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1 }} title="Избранное">{favorites[`place-${activePlace.id}`] ? "★" : "☆"}</button>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}>
-                    {liked[`place-${activePlace.id}`] ? "♥" : "♡"} {activePlace.likes || 0}
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${activePlace.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${activePlace.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
+                    <HeartIcon active={!!liked[`place-${activePlace.id}`]} size={13} /> {activePlace.likes || 0}
                   </span>
                 </div>
               </div>
@@ -2424,7 +2439,7 @@ export default function App() {
 
               <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
                 <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`place-${activePlace.id}`] ? "★" : "☆"}</button>
-                <button onClick={() => handleToggleLike(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`place-${activePlace.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`place-${activePlace.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activePlace.likes||0}</span></button>
+                <button onClick={() => handleToggleLike(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`place-${activePlace.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`place-${activePlace.id}`]} /> <span style={{ fontSize:14 }}>{activePlace.likes||0}</span></button>
                 <button onClick={()=> setShowComments(`place-${activePlace.id}`)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(activePlace.comments||[]).length}</span></button>
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
               </div>
@@ -2481,7 +2496,7 @@ export default function App() {
                           >
                             {isF ? "★" : "☆"}
                           </button>
-                          <span>❤️ {tip.likes||0}</span>
+                          <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
                           <span>💬 {(tip.comments||[]).length}</span>
                           <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
                         </div>
@@ -2490,7 +2505,7 @@ export default function App() {
                     {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
                       <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
                         <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
-                        <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">↤</button>
                       </div>
@@ -2545,7 +2560,7 @@ export default function App() {
                     >
                       {isF ? "★" : "☆"}
                     </button>
-                    <span>❤️ {tip.likes||0}</span>
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
                     <span>💬 {tip.comments.length}</span>
                     <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
                   </div>
@@ -2553,11 +2568,11 @@ export default function App() {
               </div>
               {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
                 <div style={{ padding:"16px 16px 0", display:"none" }}>
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12 }}>{isL ? "❤️ Понравилось" : "🤍 Нравится"}</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}>{isL ? <HeartIcon active={true} size={14} /> : <HeartIcon active={false} size={14} />} {isL ? "Понравилось" : "Нравится"}</button>
                 </div>
                 <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
                   <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится">{isL ? "♥" : "♡"} <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                 </div>
@@ -2705,7 +2720,7 @@ export default function App() {
                   >
                     {isF ? "★" : "☆"}
                   </button>
-                  <span>❤️ {ev.likes}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid }}><HeartIcon active={!!liked[`event-${ev.id}`]} size={14} /> {ev.likes}</span>
                   <span>💬 {(ev.comments||[]).length}</span>
                   <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
                 </div>
@@ -2714,7 +2729,7 @@ export default function App() {
             {isEvExp && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
               <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
                 <button onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
-                <button onClick={(e)=>{e.stopPropagation(); handleToggleLike(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`event-${ev.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{ev.likes||0}</span></button>
+                <button onClick={(e)=>{e.stopPropagation(); handleToggleLike(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`event-${ev.id}`]} /> <span style={{ fontSize:14 }}>{ev.likes||0}</span></button>
                 <button onClick={(e)=>{e.stopPropagation(); setShowComments(`event-${ev.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(ev.comments||[]).length}</span></button>
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
               </div>
@@ -2784,7 +2799,16 @@ export default function App() {
         {/* HOUSING */}
         {scr==="housing" && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
-          <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 12px" }}>🏠 Жильё в LA</h2>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>🏠 Жильё в LA</h2>
+            <button
+              onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить жильё"
+            >
+              +
+            </button>
+          </div>
           <div style={{ ...cd, padding:12, marginBottom:10, boxShadow:"none", border:`1px solid ${T.border}` }}>
             <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Фильтр по спальням</div>
             <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
@@ -2901,7 +2925,7 @@ export default function App() {
                   )}
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                     <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}</button>
-                    <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`housing-${activeHousing.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
+                    <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`housing-${activeHousing.id}`]} /> <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
                     <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                     <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
                   </div>
