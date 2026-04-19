@@ -15,6 +15,32 @@ function getAdminClient() {
   return createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 }
 
+async function incrementViews(admin, table, itemId) {
+  const { data: row, error: readError } = await admin
+    .from(table)
+    .select("id,views")
+    .eq("id", itemId)
+    .single();
+
+  if (readError || !row?.id) {
+    return { error: readError?.message || "Item not found.", status: 404 };
+  }
+
+  const nextViews = Number(row.views || 0) + 1;
+  const { data, error } = await admin
+    .from(table)
+    .update({ views: nextViews })
+    .eq("id", itemId)
+    .select("views")
+    .single();
+
+  if (error) {
+    return { error: error.message, status: 500 };
+  }
+
+  return { views: Number(data?.views ?? nextViews) };
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -52,32 +78,19 @@ export async function POST(request) {
         }
         return Response.json({ ok: true, counted: false, views: Number(existing?.views || 0) });
       }
-      return Response.json({ error: insertError.message }, { status: 500 });
+      const fallback = await incrementViews(admin, table, itemId);
+      if (fallback?.error) {
+        return Response.json({ error: insertError.message }, { status: 500 });
+      }
+      return Response.json({ ok: true, counted: true, fallback: true, views: Number(fallback.views || 0) });
     }
 
-    const { data: row, error: readError } = await admin
-      .from(table)
-      .select("id,views")
-      .eq("id", itemId)
-      .single();
-
-    if (readError || !row?.id) {
-      return Response.json({ error: readError?.message || "Item not found." }, { status: 404 });
+    const incremented = await incrementViews(admin, table, itemId);
+    if (incremented?.error) {
+      return Response.json({ error: incremented.error }, { status: incremented.status || 500 });
     }
 
-    const nextViews = Number(row.views || 0) + 1;
-    const { data, error } = await admin
-      .from(table)
-      .update({ views: nextViews })
-      .eq("id", itemId)
-      .select("views")
-      .single();
-
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
-
-    return Response.json({ ok: true, counted: true, views: Number(data?.views ?? nextViews) });
+    return Response.json({ ok: true, counted: true, views: Number(incremented.views || 0) });
   } catch (error) {
     return Response.json({ error: error?.message || "Server error." }, { status: 500 });
   }

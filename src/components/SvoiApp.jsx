@@ -354,6 +354,22 @@ function HeartIcon({ active = false, size = 16 }) {
   );
 }
 
+function ViewIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 function HomeIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -954,6 +970,13 @@ export default function App() {
     if (!itemId || !item?.fromDB) return;
     const viewerKey = getViewerKey();
     if (!viewerKey) return;
+    const viewedStorageKey = `viewed_once_${viewerKey}`;
+    const viewedItemKey = `${itemType}:${itemId}`;
+    try {
+      const viewedRaw = localStorage.getItem(viewedStorageKey);
+      const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
+      if (viewedMap?.[viewedItemKey]) return;
+    } catch {}
     try {
       const response = await fetch("/api/views", {
         method: "POST",
@@ -963,8 +986,18 @@ export default function App() {
       const payload = await response.json().catch(() => null);
       if (response.ok && payload?.ok && Number.isFinite(Number(payload.views))) {
         setCardViewsLocally(itemType, itemId, Number(payload.views));
+        try {
+          const viewedRaw = localStorage.getItem(viewedStorageKey);
+          const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
+          viewedMap[viewedItemKey] = true;
+          localStorage.setItem(viewedStorageKey, JSON.stringify(viewedMap));
+        } catch {}
+      } else {
+        setCardViewsLocally(itemType, itemId, Number(item?.views || 0) + 1);
       }
-    } catch {}
+    } catch {
+      setCardViewsLocally(itemType, itemId, Number(item?.views || 0) + 1);
+    }
   };
   const saveGeocodeCache = (place, coords) => {
     if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return;
@@ -1275,11 +1308,17 @@ export default function App() {
         googleMarkersRef.current = [];
 
         const bounds = new maps.LatLngBounds();
-        mapPlaces.forEach((p) => {
+        mapPlaces.forEach((p, idx) => {
           const marker = new maps.Marker({
             position: { lat: p.lat, lng: p.lng },
             map,
             title: p.name,
+            label: {
+              text: String(idx + 1),
+              color: "#fff",
+              fontSize: "13px",
+              fontWeight: "700",
+            },
           });
           marker.addListener("click", () => setSelectedMapPlace(p));
           googleMarkersRef.current.push(marker);
@@ -1479,11 +1518,17 @@ export default function App() {
         if (miniGoogleUserMarkerRef.current) miniGoogleUserMarkerRef.current.setMap(null);
 
         const bounds = new maps.LatLngBounds();
-        miniMapPlaces.forEach((p) => {
+        miniMapPlaces.forEach((p, idx) => {
           const marker = new maps.Marker({
             position: { lat: p.lat, lng: p.lng },
             map,
             title: p.name,
+            label: {
+              text: String(idx + 1),
+              color: "#fff",
+              fontSize: "12px",
+              fontWeight: "700",
+            },
           });
           marker.addListener("click", () => { setMiniSelectedPlaceId(p.id); });
           miniGoogleMarkersRef.current.push(marker);
@@ -2612,12 +2657,15 @@ export default function App() {
             </button>
           </div>
 
-          {cPlacesDisplay.map((p) => (
+          {cPlacesDisplay.map((p, idx) => (
             <button key={p.id} onClick={() => { setSelPlace(p); setScr("place-item"); }} style={{ ...cd, width:"100%", overflow:"hidden", marginBottom:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", borderColor:T.borderL }}>
               <div style={{ padding:16 }}>
                 <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:16 }}>{p.name}</div>
+                    <div style={{ fontWeight:700, fontSize:16, display:"flex", alignItems:"center", gap:8 }}>
+                      <span style={{ color:"#D7261E", fontWeight:800 }}>{idx + 1}</span>
+                      <span>{p.name}</span>
+                    </div>
                     <button onClick={(e)=>{ e.stopPropagation(); openAddressInMaps(p.address || selD.name); }} style={{ background:"none", border:"none", padding:0, marginTop:3, color:T.mid, fontSize:12, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline", textAlign:"left" }}>
                       {formatPlaceAddressLabel(p.address || selD.name)}
                     </button>
@@ -2633,7 +2681,7 @@ export default function App() {
                 <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
                   <span style={{ fontSize:11, color:T.light }}>от {p.addedBy}</span>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
-                    👁 {p.views || 0}
+                    <ViewIcon size={13} /> {p.views || 0}
                   </span>
                 </div>
               </div>
@@ -2657,7 +2705,7 @@ export default function App() {
                 </div>
                 <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
                   <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={13} /></button>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>👁 {activePlace.views || 0}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}><ViewIcon size={13} /> {activePlace.views || 0}</span>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${activePlace.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${activePlace.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
                     <HeartIcon active={!!liked[`place-${activePlace.id}`]} size={13} /> {activePlace.likes || 0}
                   </span>
@@ -2676,9 +2724,7 @@ export default function App() {
 
               <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
                 <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={18} /></button>
-                <button onClick={() => handleToggleLike(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`place-${activePlace.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`place-${activePlace.id}`]} /> <span style={{ fontSize:14 }}>{activePlace.likes||0}</span></button>
-                <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {activePlace.views || 0}</span>
-                <button onClick={()=> setShowComments(`place-${activePlace.id}`)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(activePlace.comments||[]).length}</span></button>
+                <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}><ViewIcon size={15} /> {activePlace.views || 0}</span>
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
               </div>
 
