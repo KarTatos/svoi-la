@@ -499,6 +499,7 @@ export default function App() {
   const [tips, setTips] = useState([]);
   const [housing, setHousing] = useState([]);
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
   const [np, setNp] = useState({ name:"", cat:"", district:"", address:"", tip:"" });
@@ -713,6 +714,7 @@ export default function App() {
   useEffect(() => {
     let canceled = false;
     async function init() {
+      setAuthReady(false);
       const u = await getUser();
       if (canceled) return;
       if (u) {
@@ -722,6 +724,7 @@ export default function App() {
         setLiked({});
       }
       await loadAllData(u || null);
+      if (!canceled) setAuthReady(true);
     }
     init();
     return () => { canceled = true; };
@@ -968,6 +971,7 @@ export default function App() {
   const trackCardView = async (itemType, item) => {
     const itemId = item?.id;
     if (!itemId || !item?.fromDB) return;
+    if (!authReady) return;
     const viewerKey = getViewerKey();
     if (!viewerKey) return;
     const viewedStorageKey = `viewed_once_${viewerKey}`;
@@ -992,12 +996,8 @@ export default function App() {
           viewedMap[viewedItemKey] = true;
           localStorage.setItem(viewedStorageKey, JSON.stringify(viewedMap));
         } catch {}
-      } else {
-        setCardViewsLocally(itemType, itemId, Number(item?.views || 0) + 1);
       }
-    } catch {
-      setCardViewsLocally(itemType, itemId, Number(item?.views || 0) + 1);
-    }
+    } catch {}
   };
   const saveGeocodeCache = (place, coords) => {
     if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return;

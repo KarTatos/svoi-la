@@ -78,11 +78,7 @@ export async function POST(request) {
         }
         return Response.json({ ok: true, counted: false, views: Number(existing?.views || 0) });
       }
-      const fallback = await incrementViews(admin, table, itemId);
-      if (fallback?.error) {
-        return Response.json({ error: insertError.message }, { status: 500 });
-      }
-      return Response.json({ ok: true, counted: true, fallback: true, views: Number(fallback.views || 0) });
+      return Response.json({ error: insertError.message }, { status: 500 });
     }
 
     const incremented = await incrementViews(admin, table, itemId);
