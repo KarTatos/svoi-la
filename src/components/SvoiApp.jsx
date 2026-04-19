@@ -435,6 +435,12 @@ function encodeHousingPhotos(urls = []) {
   return JSON.stringify(clean);
 }
 
+function formatPlaceAddressLabel(address = "") {
+  const raw = String(address || "").trim();
+  if (!raw) return "";
+  return raw.replace(/,\s*CA(?:\s+\d{5}(?:-\d{4})?)?$/i, "").trim();
+}
+
 export default function App() {
   const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
   const [selU, setSelU] = useState(null);
@@ -523,7 +529,12 @@ export default function App() {
   const [tDone, setTDone] = useState(false);
   const [tShuf, setTShuf] = useState([]);
   const [selHousing, setSelHousing] = useState(null);
+  const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
+
+  useEffect(() => {
+    if (scr === "housing-item") setHousingTextCollapsed(false);
+  }, [scr, selHousing?.id]);
 
   useEffect(() => {
     try {
@@ -2538,7 +2549,7 @@ export default function App() {
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:16 }}>{p.name}</div>
                     <button onClick={(e)=>{ e.stopPropagation(); openAddressInMaps(p.address || selD.name); }} style={{ background:"none", border:"none", padding:0, marginTop:3, color:T.mid, fontSize:12, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline", textAlign:"left" }}>
-                      📍 {p.address || selD.name}
+                      {formatPlaceAddressLabel(p.address || selD.name)}
                     </button>
                   </div>
                   <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
@@ -2548,7 +2559,7 @@ export default function App() {
                     </span>
                   </div>
                 </div>
-                <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ ...twoLineClampStyle, fontSize:13, color:T.mid }}>💡 {limitCardText(p.tip)}</div></div>
+                <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ ...twoLineClampStyle, fontSize:13, color:T.mid }}>{limitCardText(p.tip)}</div></div>
                 <div style={{ marginTop:10, fontSize:11, color:T.light }}>от {p.addedBy}</div>
               </div>
             </button>
@@ -2562,11 +2573,10 @@ export default function App() {
           <div style={{ ...cd, overflow:"hidden", borderColor:T.borderL }}>
             <div style={{ padding:16 }}>
               <div style={{ display:"flex", gap:14, marginBottom:12, alignItems:"flex-start" }}>
-                <div style={{ width:56, height:56, borderRadius:14, background:`${selPC.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>{activePlace.img}</div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:700, fontSize:20, lineHeight:1.2 }}>{activePlace.name}</div>
                   <button onClick={() => openAddressInMaps(activePlace.address || selD.name)} style={{ background:"none", border:"none", padding:0, marginTop:5, color:T.mid, fontSize:13, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline", textAlign:"left" }}>
-                    📍 {activePlace.address || selD.name}
+                    {formatPlaceAddressLabel(activePlace.address || selD.name)}
                   </button>
                   <div style={{ marginTop:5, fontSize:12, color:T.light }}>от {activePlace.addedBy}</div>
                 </div>
@@ -2577,7 +2587,7 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6, whiteSpace:"pre-wrap", overflowWrap:"anywhere", wordBreak:"break-word" }}>💡 {limitCardText(activePlace.tip)}</div></div>
+              <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6, whiteSpace:"pre-wrap", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(activePlace.tip)}</div></div>
 
               {activePlace.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
@@ -3005,7 +3015,7 @@ export default function App() {
               return (
                 <button
                   key={h.id}
-                  onClick={() => { setSelHousing({ id: h.id }); setScr("housing-item"); }}
+                  onClick={() => { setHousingTextCollapsed(false); setSelHousing({ id: h.id }); setScr("housing-item"); }}
                   style={{ ...cd, width:"100%", overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 3px 14px rgba(0,0,0,0.08)", padding:0, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", background:T.card }}
                 >
                   <div style={{ position:"relative", height:188, background:"#E9EDF2" }}>
@@ -3052,7 +3062,7 @@ export default function App() {
             : (activeHousing.photo ? [activeHousing.photo] : []);
           return (
             <div>
-              <div style={{ position:"relative", height:"calc(100vh - 122px)", overflowY:"auto", borderRadius:18, border:`1px solid ${T.border}`, background:"#0f1116", boxShadow:T.sh }}>
+              <div style={{ position:"relative", height:"calc(100vh - 122px)", overflowY:"auto", borderRadius:18, border:`1px solid ${T.border}`, background:"transparent", boxShadow:T.sh }}>
                 <button onClick={() => setScr("housing")} style={{ position:"sticky", top:10, left:10, zIndex:4, margin:10, width:44, height:44, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.92)", color:"#222", fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }} title="Закрыть">×</button>
                 {galleryPhotos.length ? (
                   <div style={{ marginTop:-64 }}>
@@ -3071,14 +3081,24 @@ export default function App() {
                 )}
 
                 <div style={{ position:"sticky", bottom:0, zIndex:3, background:T.card, borderTop:`1px solid ${T.border}`, borderRadius:"18px 18px 0 0", padding:"14px 14px calc(14px + env(safe-area-inset-bottom))" }}>
-                  <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}</div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:8 }}>
+                    <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}</div>
+                    {!!activeHousing.comment && (
+                      <button
+                        onClick={() => setHousingTextCollapsed((v) => !v)}
+                        style={{ ...pl(false), padding:"6px 10px", fontSize:11, whiteSpace:"nowrap" }}
+                      >
+                        {housingTextCollapsed ? "Развернуть текст" : "Свернуть текст"}
+                      </button>
+                    )}
+                  </div>
                   <button
                     onClick={() => openAddressInMaps(activeHousing.address)}
                     style={{ background:"none", border:"none", padding:0, marginBottom:6, fontWeight:700, fontSize:16, color:T.text, textAlign:"left", cursor:"pointer", fontFamily:"inherit", textDecoration:"underline" }}
                   >
                     {activeHousing.address}
                   </button>
-                  {!!activeHousing.comment && <div style={{ fontSize:13, lineHeight:1.55, color:T.mid, marginBottom:8 }}>{activeHousing.comment}</div>}
+                  {!!activeHousing.comment && !housingTextCollapsed && <div style={{ fontSize:13, lineHeight:1.55, color:T.mid, marginBottom:8 }}>{activeHousing.comment}</div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
                     {Number(activeHousing.beds || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds} beds</span>}
                     {Number(activeHousing.baths || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths} baths</span>}
