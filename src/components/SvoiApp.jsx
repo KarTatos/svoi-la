@@ -420,7 +420,7 @@ export default function App() {
   const [showAddHousing, setShowAddHousing] = useState(false);
   const [editingHousing, setEditingHousing] = useState(null);
   const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
-  const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" });
+  const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
   const [newHousingPhotos, setNewHousingPhotos] = useState([]);
   const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -567,6 +567,12 @@ export default function App() {
       const tagList = Array.isArray(h.tags) ? h.tags : [];
       const tgTag = tagList.find((t) => String(t).startsWith("contact_tg:"));
       const msgTag = tagList.find((t) => String(t).startsWith("contact_msg:"));
+      const commentTag = tagList.find((t) => String(t).startsWith("comment:"));
+      let commentText = "";
+      if (commentTag) {
+        const raw = String(commentTag).replace("comment:", "");
+        try { commentText = decodeURIComponent(raw); } catch { commentText = raw; }
+      }
       return {
         id: h.id,
         title: h.title || "",
@@ -578,7 +584,8 @@ export default function App() {
         beds: Number(h.beds ?? 0),
         baths: Number(h.baths ?? 0),
         updatedLabel: h.updated_label || h.updatedLabel || "",
-        tags: tagList.filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:")),
+        tags: tagList.filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:") && !String(t).startsWith("comment:")),
+        comment: commentText,
         telegram: tgTag ? String(tgTag).replace("contact_tg:", "").trim() : "",
         messageContact: msgTag ? String(msgTag).replace("contact_msg:", "").trim() : "",
         photos,
@@ -639,7 +646,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -750,22 +757,6 @@ export default function App() {
         ))}
       </span>
     );
-  };
-  const openFilterDatePicker = () => {
-    const input = datePickerRef.current;
-    if (!input) return;
-    try {
-      if (typeof input.showPicker === "function") {
-        input.showPicker();
-        return;
-      }
-    } catch {}
-    try {
-      input.focus({ preventScroll: true });
-    } catch {}
-    try {
-      input.click();
-    } catch {}
   };
   const normalizeExternalUrl = (url) => {
     const v = (url || "").trim();
@@ -1101,17 +1092,23 @@ export default function App() {
 
         const hasBounds = !bounds.isEmpty();
         if (hasBounds) {
-          map.fitBounds(bounds, 70);
+          map.fitBounds(bounds, 130);
+          if (mapPlaces.length === 1) map.setZoom(12);
+          else if (map.getZoom() > 14) map.setZoom(14);
         } else if (selD) {
           map.setCenter({ lat: selD.lat, lng: selD.lng });
-          map.setZoom(13);
+          map.setZoom(12);
         }
         setTimeout(() => {
           maps.event.trigger(map, "resize");
-          if (hasBounds) map.fitBounds(bounds, 70);
+          if (hasBounds) {
+            map.fitBounds(bounds, 130);
+            if (mapPlaces.length === 1) map.setZoom(12);
+            else if (map.getZoom() > 14) map.setZoom(14);
+          }
           else if (selD) {
             map.setCenter({ lat: selD.lat, lng: selD.lng });
-            map.setZoom(13);
+            map.setZoom(12);
           }
         }, 0);
       } catch (e) {
@@ -1125,7 +1122,6 @@ export default function App() {
   useEffect(() => {
     if (!selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
     googleMapRef.current.panTo({ lat: selectedMapPlace.lat, lng: selectedMapPlace.lng });
-    googleMapRef.current.setZoom(15);
   }, [selectedMapPlace]);
 
   useEffect(() => {
@@ -1474,6 +1470,7 @@ export default function App() {
           type: h.type,
           address: h.address,
           minPrice: h.minPrice,
+          comment: h.comment || "",
           telegram: h.telegram,
           messageContact: h.messageContact,
         })),
@@ -1733,8 +1730,10 @@ export default function App() {
     const contactTags = [];
     const tg = (newHousing.telegram || "").trim();
     const msg = (newHousing.messageContact || "").trim();
+    const comment = String(newHousing.comment || "").slice(0, 1000).trim();
     if (tg) contactTags.push(`contact_tg:${tg}`);
     if (msg) contactTags.push(`contact_msg:${msg}`);
+    if (comment) contactTags.push(`comment:${encodeURIComponent(comment)}`);
     const payload = {
       title,
       address: newHousing.address.trim(),
@@ -1771,7 +1770,12 @@ export default function App() {
         beds: Number(row.beds || 0),
         baths: Number(row.baths || 0),
         updatedLabel: row.updated_label || "",
-        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:")),
+        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:") && !String(t).startsWith("comment:")),
+        comment: (() => {
+          const c = (Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("comment:")) || "";
+          const raw = String(c).replace("comment:", "");
+          try { return decodeURIComponent(raw); } catch { return raw; }
+        })(),
         telegram: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_tg:")) || "").replace("contact_tg:", ""),
         messageContact: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_msg:")) || "").replace("contact_msg:", ""),
         photos: decodeHousingPhotos(row.photo),
@@ -1792,7 +1796,12 @@ export default function App() {
         beds: Number(row.beds || 0),
         baths: Number(row.baths || 0),
         updatedLabel: row.updated_label || "",
-        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:")),
+        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:") && !String(t).startsWith("comment:")),
+        comment: (() => {
+          const c = (Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("comment:")) || "";
+          const raw = String(c).replace("comment:", "");
+          try { return decodeURIComponent(raw); } catch { return raw; }
+        })(),
         telegram: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_tg:")) || "").replace("contact_tg:", ""),
         messageContact: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_msg:")) || "").replace("contact_msg:", ""),
         photos: decodeHousingPhotos(row.photo),
@@ -1802,7 +1811,7 @@ export default function App() {
         fromDB: true,
       }, ...prev]);
     }
-    setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" });
+    setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
     setNewHousingPhotos([]);
     setAddrValidHousing(false);
     setAddrOptionsHousing([]);
@@ -1817,6 +1826,7 @@ export default function App() {
       district: item.district || "",
       type: item.type || "studio",
       minPrice: String(item.minPrice || ""),
+      comment: item.comment || "",
       telegram: item.telegram || "",
       messageContact: item.messageContact || "",
     });
@@ -2639,7 +2649,7 @@ export default function App() {
               })}
               {/* Calendar picker — always visible */}
               <div style={{ position:"relative", minWidth:0 }}>
-                <button onClick={openFilterDatePicker}
+                <button
                   style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${T.border}`, background:T.card, color:T.mid, fontSize:15, cursor:"pointer", fontFamily:"inherit", width:"100%", height:"100%", minHeight:42, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   📅
                 </button>
@@ -2647,7 +2657,7 @@ export default function App() {
                   ref={datePickerRef}
                   type="date"
                   onChange={(e)=>{ if (e.target.value) setFilterDate(e.target.value+"T00:00"); }}
-                  style={{ position:"absolute", width:1, height:1, opacity:0, pointerEvents:"none" }}
+                  style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer", WebkitAppearance:"none", appearance:"none" }}
                 />
               </div>
             </div>
@@ -2825,9 +2835,10 @@ export default function App() {
                     </button>
                   </div>
                   <div style={{ padding:"10px 12px 12px" }}>
-                    <div style={{ fontSize:24, fontWeight:900, lineHeight:1.05, marginBottom:6, letterSpacing:"-0.2px", fontFamily:"inherit" }}>${formatHousingPrice(h.minPrice)}+</div>
+                    <div style={{ fontSize:24, fontWeight:900, lineHeight:1.05, marginBottom:6, letterSpacing:"-0.2px", fontFamily:"inherit" }}>${formatHousingPrice(h.minPrice)}</div>
                     <div style={{ fontSize:15, lineHeight:1.35, color:"#2E2E3A", marginBottom:4 }}>{h.address}</div>
                     <div style={{ fontSize:12, color:T.mid }}>{formatHousingType(h.type)} · {h.district || "LA"}</div>
+                    {!!h.comment && <div style={{ fontSize:12, lineHeight:1.45, color:T.mid, marginTop:6, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{h.comment}</div>}
                   </div>
                 </button>
               );
@@ -2837,7 +2848,7 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+          <button onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
 
         </div>)}
 
@@ -2867,8 +2878,9 @@ export default function App() {
                 )}
 
                 <div style={{ position:"sticky", bottom:0, zIndex:3, background:T.card, borderTop:`1px solid ${T.border}`, borderRadius:"18px 18px 0 0", padding:"14px 14px calc(14px + env(safe-area-inset-bottom))" }}>
-                  <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}+</div>
+                  <div style={{ fontSize:28, fontWeight:900, lineHeight:1.05, marginBottom:8, letterSpacing:"-0.2px" }}>${formatHousingPrice(activeHousing.minPrice)}</div>
                   <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{activeHousing.address}</div>
+                  {!!activeHousing.comment && <div style={{ fontSize:13, lineHeight:1.55, color:T.mid, marginBottom:8 }}>{activeHousing.comment}</div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
                     {Number(activeHousing.beds || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.beds} beds</span>}
                     {Number(activeHousing.baths || 0) > 0 && <span style={{ fontSize:12, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid }}>{activeHousing.baths} baths</span>}
@@ -2890,7 +2902,7 @@ export default function App() {
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                     <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}</button>
                     <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится">{liked[`housing-${activeHousing.id}`] ? "♥" : "♡"} <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
-                    <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}+`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
+                    <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                     <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
                   </div>
                 </div>
@@ -2945,6 +2957,12 @@ export default function App() {
                   <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Цена от *</label>
                   <input type="number" value={newHousing.minPrice} onChange={(e)=>setNewHousing((s)=>({ ...s, minPrice:e.target.value }))} placeholder="1850" style={{ ...iS, marginBottom:0 }} />
                 </div>
+              </div>
+
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Комментарий</label>
+                <textarea value={newHousing.comment || ""} maxLength={1000} onChange={(e)=>setNewHousing((s)=>({ ...s, comment:e.target.value.slice(0, 1000) }))} placeholder="Описание жилья, условия, детали..." style={{ ...iS, minHeight:92, resize:"vertical", marginBottom:6 }} />
+                <div style={{ fontSize:11, color:T.light, textAlign:"right" }}>{(newHousing.comment || "").length}/1000</div>
               </div>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
