@@ -354,6 +354,67 @@ function HeartIcon({ active = false, size = 16 }) {
   );
 }
 
+function HomeIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M3.5 10.5 12 3.8l8.5 6.7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 9.8v9.2h13V9.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 19v-4.5h5V19"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CalendarIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M7.5 3.5v3M16.5 3.5v3M3.5 9h17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="8" cy="13" r="1" fill="currentColor" />
+      <circle cx="12" cy="13" r="1" fill="currentColor" />
+      <circle cx="16" cy="13" r="1" fill="currentColor" />
+      <circle cx="8" cy="16.5" r="1" fill="currentColor" />
+      <circle cx="12" cy="16.5" r="1" fill="currentColor" />
+      <circle cx="16" cy="16.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function StarIcon({ active = false, size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="m12 3.8 2.57 5.2 5.73.83-4.15 4.05.98 5.72L12 16.9l-5.13 2.7.98-5.72-4.15-4.05 5.73-.83L12 3.8z"
+        fill={active ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function decodeHousingPhotos(raw) {
   if (Array.isArray(raw)) return raw.filter(Boolean);
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -418,7 +479,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
-  const [np, setNp] = useState({ name:"", cat:"", address:"", tip:"" });
+  const [np, setNp] = useState({ name:"", cat:"", district:"", address:"", tip:"" });
   const [nPhotos, setNPhotos] = useState([]);
   const [editingPlace, setEditingPlace] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1002,7 +1063,7 @@ export default function App() {
 
   useEffect(() => {
     const q = (np.name || "").trim();
-    if (!showAdd || !selD) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
+    if (!showAdd || !selD || addrValidPlace) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
     if (q.length < 3) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
     let canceled = false;
     const t = setTimeout(async () => {
@@ -1013,7 +1074,7 @@ export default function App() {
       setNameLoadingPlace(false);
     }, 320);
     return () => { canceled = true; clearTimeout(t); };
-  }, [np.name, showAdd, selD]);
+  }, [np.name, showAdd, selD, addrValidPlace]);
 
   useEffect(() => {
     const q = (newEvent.location || "").trim();
@@ -1508,6 +1569,11 @@ export default function App() {
   const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); setFavorites({}); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
+    const selectedDistrictId = np.district || selD?.id;
+    if (!selectedDistrictId) {
+      alert("Выберите район.");
+      return;
+    }
     if (!np.address.trim() || !addrValidPlace) {
       alert("Выберите реальный адрес из подсказок.");
       return;
@@ -1528,18 +1594,20 @@ export default function App() {
       }
       if (editingPlace) {
         const allPhotos = uploadedUrls;
-        const updates = { name:np.name, category:np.cat, address:np.address, tip:safeTip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
+        const updates = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
         if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
-        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : p));
-        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : prev);
+        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : p));
+        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : prev);
+        const nextDistrict = DISTRICTS.find((d) => d.id === selectedDistrictId) || null;
+        if (nextDistrict) setSelD(nextDistrict);
         setEditingPlace(null);
       } else {
-        const dbData = { name:np.name, category:np.cat, district:selD.id, address:np.address||'', tip:safeTip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
+        const dbData = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address||'', tip:safeTip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
         const { data } = await dbAddPlace(dbData);
         const newId = data?.[0]?.id || Date.now();
-        setPlaces(prev => [{ id:newId, cat:np.cat, district:selD.id, name:np.name, address:np.address, tip:safeTip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
+        setPlaces(prev => [{ id:newId, cat:np.cat, district:selectedDistrictId, name:np.name, address:np.address, tip:safeTip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, comments:[], fromDB:true }, ...prev]);
       }
-      setNp({ name:"", cat:"", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
+      setNp({ name:"", cat:"", district:selD?.id || "", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
     } catch(err) {
       console.error('Add place error:', err);
       alert('Ошибка при сохранении. Попробуйте ещё раз.');
@@ -1562,7 +1630,7 @@ export default function App() {
   };
   const startEditPlace = (p) => {
     setEditingPlace(p);
-    setNp({ name:p.name, cat:p.cat, address:p.address||"", tip:p.tip });
+    setNp({ name:p.name, cat:p.cat, district:p.district || selD?.id || "", address:p.address||"", tip:p.tip });
     setNPhotos((p.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
     setAddrValidPlace(!!(p.address || "").trim());
     setNameOptionsPlace([]);
@@ -1572,7 +1640,7 @@ export default function App() {
   const openAddForm = () => {
     if (!user) { handleLogin(); return; }
     setEditingPlace(null);
-    setNp({ name:"", cat:selPC?.id||"", address:"", tip:"" });
+    setNp({ name:"", cat:selPC?.id||"", district:selD?.id || "", address:"", tip:"" });
     setNPhotos([]);
     setAddrValidPlace(false);
     setNameOptionsPlace([]);
@@ -2100,7 +2168,9 @@ export default function App() {
                     style={{ ...cd, padding:"20px 10px", cursor:s.soon?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", fontFamily:"inherit", color:T.text, position:"relative", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:`all 0.4s ease ${i*0.05}s` }}
                     onMouseEnter={e=>{if(!s.soon)e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
                     {s.soon && <div style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, color:T.light, background:T.bg, padding:"2px 6px", borderRadius:4, textTransform:"uppercase" }}>скоро</div>}
-                    <div style={{ fontSize:28, marginBottom:8, filter:s.soon?"grayscale(0.6) opacity(0.4)":"none" }}>{s.icon}</div>
+                    <div style={{ fontSize:28, marginBottom:8, filter:s.soon?"grayscale(0.6) opacity(0.4)":"none", display:"inline-flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>
+                      {s.id === "housing" ? <HomeIcon size={28} /> : s.id === "events" ? <CalendarIcon size={28} /> : s.icon}
+                    </div>
                     <div style={{ fontWeight:700, fontSize:13, opacity:s.soon?0.4:1 }}>{s.title}</div>
                     <div style={{ fontSize:11, color:T.mid, marginTop:3, opacity:s.soon?0.3:0.7 }}>{s.desc}</div>
                   </button>
@@ -2258,7 +2328,9 @@ export default function App() {
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
             {!user ? (<div style={{ textAlign:"center", padding:"20px 0" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
-              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{editingPlace ? "✏️ Редактировать место" : "Новое место"} · {selD.name}</h3>
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>
+                {editingPlace ? "✏️ Редактировать место" : "Новое место"} · {(DISTRICTS.find((d) => d.id === (np.district || selD?.id))?.name || selD.name)}
+              </h3>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
               <input
                 value={np.name}
@@ -2294,13 +2366,22 @@ export default function App() {
               <select value={np.cat} onChange={e=>setNp({...np,cat:e.target.value})} style={{ ...iS, marginBottom:14, appearance:"none", color:np.cat?T.text:T.light }}>
                 <option value="">Выберите</option>{PLACE_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
               </select>
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Район *</label>
+              <select
+                value={np.district || selD?.id || ""}
+                onChange={e=>setNp((prev)=>({ ...prev, district:e.target.value }))}
+                style={{ ...iS, marginBottom:14, appearance:"none", color:(np.district || selD?.id)?T.text:T.light }}
+              >
+                <option value="">Выберите район</option>
+                {DISTRICTS.map((d)=><option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
               <input value={np.address} onChange={e=>{setNp({...np,address:e.target.value}); setAddrValidPlace(false);}} placeholder="Адрес" style={{ ...iS, marginBottom:6, borderColor:np.address && !addrValidPlace ? "#f5b7b1" : T.border }} />
               {addrLoadingPlace && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем адрес...</div>}
               {!addrLoadingPlace && addrOptionsPlace.length > 0 && !addrValidPlace && (
                 <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
                   {addrOptionsPlace.map((opt, i) => (
-                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); setAddrValidPlace(true); setAddrOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); setAddrValidPlace(true); setAddrOptionsPlace([]); setNameOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                       {opt.label}
                     </button>
                   ))}
@@ -2365,7 +2446,7 @@ export default function App() {
               style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF8E8", color:"#D68910", fontWeight:700, fontSize:12, lineHeight:1 }}
               title="Сортировать по избранному"
             >
-              ★ {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              <StarIcon active={true} size={13} /> {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
             </button>
             <button
               onClick={() => {
@@ -2391,7 +2472,7 @@ export default function App() {
                     </button>
                   </div>
                   <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
-                    <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1 }} title="Избранное">{favorites[`place-${p.id}`] ? "★" : "☆"}</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${p.id}`]} size={13} /></button>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${p.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${p.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
                       <HeartIcon active={!!liked[`place-${p.id}`]} size={13} /> {p.likes || 0}
                     </span>
@@ -2420,7 +2501,7 @@ export default function App() {
                   <div style={{ marginTop:5, fontSize:12, color:T.light }}>от {activePlace.addedBy}</div>
                 </div>
                 <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
-                  <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1 }} title="Избранное">{favorites[`place-${activePlace.id}`] ? "★" : "☆"}</button>
+                  <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={13} /></button>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${activePlace.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${activePlace.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
                     <HeartIcon active={!!liked[`place-${activePlace.id}`]} size={13} /> {activePlace.likes || 0}
                   </span>
@@ -2438,7 +2519,7 @@ export default function App() {
               {activePlace.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginBottom:10 }}>Листайте фото →</div>}
 
               <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
-                <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`place-${activePlace.id}`] ? "★" : "☆"}</button>
+                <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={18} /></button>
                 <button onClick={() => handleToggleLike(activePlace.id,"place")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`place-${activePlace.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`place-${activePlace.id}`]} /> <span style={{ fontSize:14 }}>{activePlace.likes||0}</span></button>
                 <button onClick={()=> setShowComments(`place-${activePlace.id}`)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(activePlace.comments||[]).length}</span></button>
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
@@ -2494,7 +2575,7 @@ export default function App() {
                             style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
                             title="Избранное"
                           >
-                            {isF ? "★" : "☆"}
+                            <StarIcon active={!!isF} size={14} />
                           </button>
                           <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
                           <span>💬 {(tip.comments||[]).length}</span>
@@ -2504,7 +2585,7 @@ export default function App() {
                     </div>
                     {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
                       <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
+                        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">↤</button>
@@ -2558,7 +2639,7 @@ export default function App() {
                       style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
                       title="Избранное"
                     >
-                      {isF ? "★" : "☆"}
+                      <StarIcon active={!!isF} size={14} />
                     </button>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
                     <span>💬 {tip.comments.length}</span>
@@ -2571,7 +2652,7 @@ export default function App() {
                   <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}>{isL ? <HeartIcon active={true} size={14} /> : <HeartIcon active={false} size={14} />} {isL ? "Понравилось" : "Нравится"}</button>
                 </div>
                 <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
                   <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
@@ -2666,7 +2747,7 @@ export default function App() {
               <div style={{ position:"relative", minWidth:0 }}>
                 <button
                   style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${T.border}`, background:T.card, color:T.mid, fontSize:15, cursor:"pointer", fontFamily:"inherit", width:"100%", height:"100%", minHeight:42, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  📅
+                  <CalendarIcon size={16} />
                 </button>
                 <input
                   ref={datePickerRef}
@@ -2678,7 +2759,7 @@ export default function App() {
             </div>
             {filterDate && (
               <div style={{ fontSize:12, color:T.mid, marginTop:6, display:"flex", alignItems:"center", gap:6 }}>
-                📅 {fmtDate(filterDate).split(",").slice(0,2).join(",")}
+                <CalendarIcon size={14} /> {fmtDate(filterDate).split(",").slice(0,2).join(",")}
                 <button onClick={() => setFilterDate(null)} style={{ background:"none", border:"none", color:T.primary, cursor:"pointer", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:0 }}>✕ сбросить</button>
               </div>
             )}
@@ -2687,7 +2768,7 @@ export default function App() {
             <div onClick={() => setExp(isEvExp?null:`ev-${ev.id}`)} style={{ padding:18, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
               <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>{ev.title}</div>
               <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:10 }}>
-                <div style={{ fontSize:13, color:T.mid }}>📅 {fmtDate(ev.date)}</div>
+                <div style={{ fontSize:13, color:T.mid, display:"inline-flex", alignItems:"center", gap:5 }}><CalendarIcon size={13} /> {fmtDate(ev.date)}</div>
                 {ev.location && <div style={{ fontSize:13, color:T.mid }}>📍 {ev.location}</div>}
               </div>
               {isEvExp && ev.location && (
@@ -2718,7 +2799,7 @@ export default function App() {
                     style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
                     title="Избранное"
                   >
-                    {isF ? "★" : "☆"}
+                    <StarIcon active={!!isF} size={14} />
                   </button>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid }}><HeartIcon active={!!liked[`event-${ev.id}`]} size={14} /> {ev.likes}</span>
                   <span>💬 {(ev.comments||[]).length}</span>
@@ -2728,7 +2809,7 @@ export default function App() {
             </div>
             {isEvExp && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
               <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                <button onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное">{isF ? "★" : "☆"}</button>
+                <button onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
                 <button onClick={(e)=>{e.stopPropagation(); handleToggleLike(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`event-${ev.id}`]} /> <span style={{ fontSize:14 }}>{ev.likes||0}</span></button>
                 <button onClick={(e)=>{e.stopPropagation(); setShowComments(`event-${ev.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(ev.comments||[]).length}</span></button>
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
@@ -2800,7 +2881,7 @@ export default function App() {
         {scr==="housing" && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>🏠 Жильё в LA</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:0, display:"inline-flex", alignItems:"center", gap:8 }}><HomeIcon size={18} /> Жильё в LA</h2>
             <button
               onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
@@ -2855,7 +2936,7 @@ export default function App() {
                       style={{ position:"absolute", top:10, right:10, width:42, height:42, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.9)", color:isFav ? "#D68910" : "#1E4D97", fontSize:22, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}
                       title="Избранное"
                     >
-                      {isFav ? "★" : "☆"}
+                      <StarIcon active={!!isFav} size={20} />
                     </button>
                   </div>
                   <div style={{ padding:"10px 12px 12px" }}>
@@ -2924,7 +3005,7 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                    <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное">{favorites[`housing-${activeHousing.id}`] ? "★" : "☆"}</button>
+                    <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное"><StarIcon active={!!favorites[`housing-${activeHousing.id}`]} size={18} /></button>
                     <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`housing-${activeHousing.id}`]} /> <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
                     <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                     <button onClick={() => openAddressInMaps(activeHousing.address)} style={{ marginLeft:"auto", ...pl(false), padding:"8px 12px", fontSize:12 }}>Открыть в Maps</button>
@@ -2945,7 +3026,7 @@ export default function App() {
           >
             <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
               <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px" }}>🏠 {editingHousing ? "Редактировать жильё" : "Новое жильё"}</h3>
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px", display:"inline-flex", alignItems:"center", gap:8 }}><HomeIcon size={18} /> {editingHousing ? "Редактировать жильё" : "Новое жильё"}</h3>
 
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
               <input value={newHousing.address} onChange={(e)=>{ setNewHousing((s)=>({ ...s, address:e.target.value })); setAddrValidHousing(false); }} placeholder="1457 N Main St, Los Angeles, CA" style={{ ...iS, marginBottom:6, borderColor:newHousing.address && !addrValidHousing ? "#f5b7b1" : T.border }} />
