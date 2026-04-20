@@ -21,7 +21,7 @@ import {
 
 const TABS = ["places", "housing", "tips", "events", "comments", "likes"];
 const PLACE_CATEGORIES = ["restaurants", "bars", "coffee", "hiking", "interesting", "music"];
-const DISTRICTS = ["weho", "hollywood", "glendale", "dtla", "valley", "silverlake", "westside", "pasadena", "midcity"];
+const DISTRICTS = ["weho", "hollywood", "glendale", "dtla", "valley", "silverlake", "westside", "southbay", "pasadena", "midcity"];
 
 const initialForm = {
   id: "",

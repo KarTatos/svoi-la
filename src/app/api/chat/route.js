@@ -14,6 +14,7 @@ const DISTRICT_ALIASES = {
   valley: ["valley", "studio city", "north hollywood", "РґРѕР»РёРЅР°", "СЃС‚СѓРґРёРѕ СЃРёС‚Рё", "РЅРѕСЂС‚ С…РѕР»Р»РёРІСѓРґ"],
   silverlake: ["silver lake", "los feliz", "СЃРёР»СЊРІРµСЂ Р»РµР№Рє", "Р»РѕСЃ С„РµР»РёР·"],
   westside: ["westside", "santa monica", "venice", "СЃР°РЅС‚Р° РјРѕРЅРёРєР°", "РІРµРЅРёСЃ"],
+  southbay: ["south bay", "manhattan beach", "hermosa beach", "redondo beach", "long beach", "СЃР°СѓС‚С… Р±РµР№", "РјР°РЅС…СЌС‚С‚РµРЅ Р±РёС‡", "С…РµСЂРјРѕСЃР° Р±РёС‡", "СЂРµРґРѕРЅРґРѕ Р±РёС‡", "Р»РѕРЅРі Р±РёС‡"],
   pasadena: ["pasadena", "РїР°СЃР°РґРµРЅР°"],
   midcity: ["mid-city", "midcity", "melrose", "РјРёРґ СЃРёС‚Рё", "РјРµР»СЂРѕСѓР·"],
 };

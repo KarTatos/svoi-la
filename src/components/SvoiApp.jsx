@@ -12,6 +12,7 @@ const DISTRICTS = [
   { id:"valley", name:"Studio City / Valley", emoji:"🎬", desc:"Speakeasy bars", lat:34.1486, lng:-118.3965 },
   { id:"silverlake", name:"Silver Lake / Los Feliz", emoji:"🎨", desc:"Indie, observatory", lat:34.0869, lng:-118.2702 },
   { id:"westside", name:"Santa Monica / Venice", emoji:"🏖️", desc:"Beach, canals", lat:34.0195, lng:-118.4912 },
+  { id:"southbay", name:"South Bay / Beach", emoji:"🌊", desc:"Manhattan Beach, Hermosa Beach, Redondo Beach, Long Beach", lat:33.8622, lng:-118.3995 },
   { id:"pasadena", name:"Pasadena", emoji:"🌸", desc:"Nature, trails", lat:34.1478, lng:-118.1445 },
   { id:"midcity", name:"Mid-City / Melrose", emoji:"🛍️", desc:"Shopping, cafes", lat:34.0771, lng:-118.3442 },
 ];
