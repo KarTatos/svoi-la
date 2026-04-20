@@ -1355,6 +1355,18 @@ export default function App() {
   }, [showMapModal, mapLoading, mapPlaces, selectedMapPlace, selD]);
 
   useEffect(() => {
+    if (showMapModal) return;
+    googleMarkersRef.current.forEach((m) => m.setMap(null));
+    googleMarkersRef.current = [];
+    if (googleDirectionsRendererRef.current) {
+      googleDirectionsRendererRef.current.setMap(null);
+      googleDirectionsRendererRef.current = null;
+    }
+    googleMapRef.current = null;
+    if (mapContainerRef.current) mapContainerRef.current.innerHTML = "";
+  }, [showMapModal]);
+
+  useEffect(() => {
     if (!selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
     googleMapRef.current.panTo({ lat: selectedMapPlace.lat, lng: selectedMapPlace.lng });
   }, [selectedMapPlace]);
@@ -2243,10 +2255,17 @@ export default function App() {
   useEffect(() => {
     if (scr !== "housing-item") viewedRef.current.housing = null;
   }, [scr]);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
   const catEvents = selEC ? events.filter(e=>{
     if (e.cat !== selEC.id) return false;
+    const eventDate = new Date(e.date);
+    if (Number.isNaN(eventDate.getTime())) return false;
+    const eventDayStart = new Date(eventDate);
+    eventDayStart.setHours(0, 0, 0, 0);
+    if (eventDayStart < todayStart) return false;
     if (filterDate) {
-      const evDate = new Date(e.date).toDateString();
+      const evDate = eventDate.toDateString();
       const fDate = new Date(filterDate).toDateString();
       return evDate === fDate;
     }
@@ -2406,6 +2425,11 @@ export default function App() {
         {scr==="uscis" && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
           <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 14px" }}>📋 Справочник USCIS</h2>
+          <div style={{ ...cd, marginBottom:12, padding:"10px 12px", border:`1px solid #FDE2C7`, background:"#FFF8F1" }}>
+            <div style={{ fontSize:12, color:T.mid, lineHeight:1.45 }}>
+              Важно: информация в этом разделе только для ознакомления. Обязательно проверяйте актуальные требования на официальном сайте USCIS и при необходимости консультируйтесь с иммиграционным адвокатом.
+            </div>
+          </div>
           <div style={{ position:"relative", marginBottom:14 }}>
             <div style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.light, pointerEvents:"none" }}>🔎</div>
             <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Поиск формы..." style={{ ...iS, paddingLeft:42, borderColor:srch?T.primary:T.border }} />
@@ -2536,7 +2560,15 @@ export default function App() {
         {showAdd && selD && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>setShowAdd(false)}>
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-            {!user ? (<div style={{ textAlign:"center", padding:"20px 0" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
+            {!user ? (
+              <div style={{ textAlign:"center", padding:"20px 0" }}>
+                <div style={{ fontSize:48, marginBottom:16 }}>🔐</div>
+                <button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button>
+                <div style={{ marginTop:10, fontSize:12, color:T.mid, background:T.bg, border:`1px solid ${T.borderL}`, borderRadius:10, padding:"10px 12px", lineHeight:1.45 }}>
+                  Вход через Google безопасен: мы не видим ваш пароль Google. Сохраняются только имя, email и аватар для работы аккаунта.
+                </div>
+              </div>
+            ) : (<>
               <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>
                 {editingPlace ? "✏️ Редактировать место" : "Новое место"} · {(DISTRICTS.find((d) => d.id === (np.district || selD?.id))?.name || selD.name)}
               </h3>
@@ -3084,7 +3116,15 @@ export default function App() {
         {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}}>
           <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-            {!user ? (<div style={{ textAlign:"center", padding:"20px 0" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
+            {!user ? (
+              <div style={{ textAlign:"center", padding:"20px 0" }}>
+                <div style={{ fontSize:48, marginBottom:16 }}>🔐</div>
+                <button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button>
+                <div style={{ marginTop:10, fontSize:12, color:T.mid, background:T.bg, border:`1px solid ${T.borderL}`, borderRadius:10, padding:"10px 12px", lineHeight:1.45 }}>
+                  Вход через Google безопасен: мы не видим ваш пароль Google. Сохраняются только имя, email и аватар для работы аккаунта.
+                </div>
+              </div>
+            ) : (<>
               <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{editingEvent ? "✏️ Редактировать событие" : "🎉 Новое событие"}</h3>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
               <input value={newEvent.title} onChange={e=>setNewEvent({...newEvent,title:e.target.value})} placeholder="Что за мероприятие?" style={{ ...iS, marginBottom:14 }} />
@@ -3383,7 +3423,16 @@ export default function App() {
         {/* CHAT */}
         {scr==="chat" && (<div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 120px)" }}>
           <button onClick={goHome} style={bk}>← Главная</button>
-          {!user ? (<div style={{ textAlign:"center", padding:"40px 20px" }}><div style={{ fontSize:48, marginBottom:16 }}>🔐</div><h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>Войдите для AI-чата</h3><button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button></div>) : (<>
+          {!user ? (
+            <div style={{ textAlign:"center", padding:"40px 20px" }}>
+              <div style={{ fontSize:48, marginBottom:16 }}>🔐</div>
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>Войдите для AI-чата</h3>
+              <button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button>
+              <div style={{ margin:"10px auto 0", maxWidth:420, fontSize:12, color:T.mid, background:T.bg, border:`1px solid ${T.borderL}`, borderRadius:10, padding:"10px 12px", lineHeight:1.45 }}>
+                Вход через Google безопасен: мы не видим ваш пароль Google. Сохраняются только имя, email и аватар для работы аккаунта.
+              </div>
+            </div>
+          ) : (<>
             <div style={{ flex:1, overflowY:"auto", paddingBottom:12 }}>
               {chat.map((m,i) => (<div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start", marginBottom:10 }}>
                 <div style={{ maxWidth:"85%", padding:"12px 16px", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?T.primary:T.card, color:m.role==="user"?"#fff":T.text, fontSize:14, lineHeight:1.55, boxShadow:m.role==="user"?"0 2px 10px rgba(244,123,32,0.25)":T.sh, border:m.role==="user"?"none":`1px solid ${T.borderL}` }}>{renderChatText(m.text, m.role==="user")}</div>
