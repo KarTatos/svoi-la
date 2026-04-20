@@ -2250,7 +2250,7 @@ export default function App() {
     if (viewedRef.current.place === activePlace.id) return;
     viewedRef.current.place = activePlace.id;
     trackCardView("place", activePlace);
-  }, [scr, activePlace?.id]);
+  }, [scr, activePlace?.id, authReady]);
   useEffect(() => {
     if (scr !== "place-item") viewedRef.current.place = null;
   }, [scr]);
@@ -2259,7 +2259,7 @@ export default function App() {
     if (viewedRef.current.housing === activeHousing.id) return;
     viewedRef.current.housing = activeHousing.id;
     trackCardView("housing", activeHousing);
-  }, [scr, activeHousing?.id]);
+  }, [scr, activeHousing?.id, authReady]);
   useEffect(() => {
     if (scr !== "housing-item") viewedRef.current.housing = null;
   }, [scr]);
