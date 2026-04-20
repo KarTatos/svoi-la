@@ -454,7 +454,8 @@ function encodeHousingPhotos(urls = []) {
 function formatPlaceAddressLabel(address = "") {
   const raw = String(address || "").trim();
   if (!raw) return "";
-  return raw.replace(/,\s*CA(?:\s+\d{5}(?:-\d{4})?)?$/i, "").trim();
+  const noState = raw.replace(/,\s*CA(?:\s+\d{5}(?:-\d{4})?)?$/i, "").trim();
+  return noState.split(",")[0].trim();
 }
 
 export default function App() {
@@ -1819,7 +1820,7 @@ export default function App() {
       const { error } = await dbDeletePlace(placeId);
       if (error) {
         alert(error.message || "Не удалось удалить место");
-        return;
+        return false;
       }
       setPlaces(prev => prev.filter(p => p.id !== placeId));
       if (selPlace?.id === placeId) {
@@ -1827,7 +1828,14 @@ export default function App() {
         setScr("places-cat");
       }
       setExp(null);
+      if (editingPlace?.id === placeId) {
+        setShowAdd(false);
+        setEditingPlace(null);
+        setNPhotos([]);
+      }
+      return true;
     }
+    return false;
   };
   const startEditPlace = (p) => {
     setEditingPlace(p);
@@ -2638,7 +2646,11 @@ export default function App() {
                 {nPhotos.map((p,i) => (<div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>{p.preview ? <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /> : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", background:T.bg, fontSize:10, color:T.mid, padding:4 }}>📷</div>}<button onClick={()=>setNPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button></div>))}
                 {nPhotos.length<5 && <button onClick={()=>fileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото</button>}
               </div>
-              <div style={{ display:"flex", gap:10 }}><button onClick={()=>{setShowAdd(false);setNPhotos([])}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button><button onClick={handleAddPlace} disabled={!np.name||!np.cat||!np.tip||uploading} style={{ ...pl(true), flex:2, padding:14, opacity:(!np.name||!np.cat||!np.tip||uploading)?0.5:1 }}>{uploading ? '⏳ Загрузка...' : editingPlace ? 'Сохранить' : 'Опубликовать'}</button></div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={()=>{setShowAdd(false);setNPhotos([])}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+                {editingPlace && <button onClick={()=>handleDeletePlace(editingPlace.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+                <button onClick={handleAddPlace} disabled={!np.name||!np.cat||!np.tip||uploading} style={{ ...pl(true), flex:2, padding:14, opacity:(!np.name||!np.cat||!np.tip||uploading)?0.5:1 }}>{uploading ? '⏳ Загрузка...' : editingPlace ? 'Сохранить' : 'Опубликовать'}</button>
+              </div>
             </>)}
           </div>
         </div>)}
@@ -2717,11 +2729,15 @@ export default function App() {
                       {formatPlaceAddressLabel(p.address || selD.name)}
                     </button>
                   </div>
-                  <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
-                    <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${p.id}`]} size={13} /></button>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${p.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${p.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
-                      <HeartIcon active={!!liked[`place-${p.id}`]} size={13} /> {p.likes || 0}
-                    </span>
+                  <div style={{ minWidth:118, display:"flex", justifyContent:"flex-end", gap:6 }}>
+                    <button onClick={(e)=>{ e.stopPropagation(); toggleFavorite(p.id,"place"); }} style={{ border:"none", background:favorites[`place-${p.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${p.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"5px 9px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${p.id}`]} size={15} /></button>
+                    <button
+                      onClick={(e)=>{ e.stopPropagation(); handleToggleLike(p.id,"place"); }}
+                      style={{ border:"none", background:liked[`place-${p.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${p.id}`] ? "#C0392B" : T.mid, borderRadius:999, padding:"5px 9px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", gap:4 }}
+                      title="Нравится"
+                    >
+                      <HeartIcon active={!!liked[`place-${p.id}`]} size={15} /> {p.likes || 0}
+                    </button>
                   </div>
                 </div>
                 <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ ...twoLineClampStyle, fontSize:13, color:T.mid }}>{limitCardText(p.tip)}</div></div>
@@ -2762,12 +2778,16 @@ export default function App() {
                   </button>
                   <div style={{ marginTop:5, fontSize:12, color:T.light }}>от {activePlace.addedBy}</div>
                 </div>
-                <div style={{ minWidth:110, display:"flex", justifyContent:"flex-end", gap:6 }}>
-                  <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={13} /></button>
+                <div style={{ minWidth:118, display:"flex", justifyContent:"flex-end", gap:6 }}>
+                  <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"5px 9px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={15} /></button>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}><ViewIcon size={13} /> {activePlace.views || 0}</span>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:liked[`place-${activePlace.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${activePlace.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
-                    <HeartIcon active={!!liked[`place-${activePlace.id}`]} size={13} /> {activePlace.likes || 0}
-                  </span>
+                  <button
+                    onClick={() => handleToggleLike(activePlace.id,"place")}
+                    style={{ border:"none", borderRadius:999, padding:"5px 9px", background:liked[`place-${activePlace.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${activePlace.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", gap:4, cursor:"pointer", fontFamily:"inherit" }}
+                    title="Нравится"
+                  >
+                    <HeartIcon active={!!liked[`place-${activePlace.id}`]} size={15} /> {activePlace.likes || 0}
+                  </button>
                 </div>
               </div>
               <div style={{ marginBottom:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ fontSize:14, color:T.mid, lineHeight:1.6, whiteSpace:"pre-wrap", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(activePlace.tip)}</div></div>
@@ -2792,7 +2812,6 @@ export default function App() {
               {user && (user.id === activePlace.userId || user.name === activePlace.addedBy) && (
                 <div style={{ paddingTop:4, display:"flex", gap:8 }}>
                   <button onClick={()=>startEditPlace(activePlace)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:T.card, color:T.mid }}>✏️ Редактировать</button>
-                  <button onClick={()=>handleDeletePlace(activePlace.id)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:"1.5px solid #fecaca", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:"#FFF5F5", color:"#E74C3C" }}>🗑 Удалить</button>
                 </div>
               )}
             </div>
