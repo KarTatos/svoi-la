@@ -996,16 +996,16 @@ export default function App() {
   };
   const trackCardView = async (itemType, item) => {
     const itemId = item?.id;
-    if (!itemId || !item?.fromDB) return;
-    if (!authReady) return;
+    if (!itemId || !item?.fromDB) return false;
+    if (!authReady) return false;
     const viewerKey = getViewerKey();
-    if (!viewerKey) return;
+    if (!viewerKey) return false;
     const viewedStorageKey = `viewed_once_${viewerKey}`;
     const viewedItemKey = `${itemType}:${itemId}`;
     try {
       const viewedRaw = localStorage.getItem(viewedStorageKey);
       const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-      if (viewedMap?.[viewedItemKey]) return;
+      if (viewedMap?.[viewedItemKey]) return true;
     } catch {}
     try {
       const response = await fetch("/api/views", {
@@ -1022,8 +1022,14 @@ export default function App() {
           viewedMap[viewedItemKey] = true;
           localStorage.setItem(viewedStorageKey, JSON.stringify(viewedMap));
         } catch {}
+        return true;
       }
-    } catch {}
+      console.error("View track failed:", itemType, itemId, payload?.error || response.status);
+      return false;
+    } catch (err) {
+      console.error("View track request error:", itemType, itemId, err);
+      return false;
+    }
   };
   const saveGeocodeCache = (place, coords) => {
     if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return;
@@ -2273,8 +2279,12 @@ export default function App() {
   useEffect(() => {
     if (scr !== "place-item" || !activePlace?.id) return;
     if (viewedRef.current.place === activePlace.id) return;
-    viewedRef.current.place = activePlace.id;
-    trackCardView("place", activePlace);
+    let canceled = false;
+    (async () => {
+      const ok = await trackCardView("place", activePlace);
+      if (!canceled && ok) viewedRef.current.place = activePlace.id;
+    })();
+    return () => { canceled = true; };
   }, [scr, activePlace?.id, authReady]);
   useEffect(() => {
     if (scr !== "place-item") viewedRef.current.place = null;
@@ -2282,8 +2292,12 @@ export default function App() {
   useEffect(() => {
     if (scr !== "housing-item" || !activeHousing?.id) return;
     if (viewedRef.current.housing === activeHousing.id) return;
-    viewedRef.current.housing = activeHousing.id;
-    trackCardView("housing", activeHousing);
+    let canceled = false;
+    (async () => {
+      const ok = await trackCardView("housing", activeHousing);
+      if (!canceled && ok) viewedRef.current.housing = activeHousing.id;
+    })();
+    return () => { canceled = true; };
   }, [scr, activeHousing?.id, authReady]);
   useEffect(() => {
     if (scr !== "housing-item") viewedRef.current.housing = null;
