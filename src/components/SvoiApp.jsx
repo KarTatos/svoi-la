@@ -2671,6 +2671,18 @@ export default function App() {
                   </div>
                 </div>
                 <div style={{ marginTop:12, padding:12, background:T.bg, borderRadius:10, borderLeft:`3px solid ${selPC.color}` }}><div style={{ ...twoLineClampStyle, fontSize:13, color:T.mid }}>{limitCardText(p.tip)}</div></div>
+                {Array.isArray(p.photos) && p.photos.length > 0 && (
+                  <div style={{ marginTop:10, display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6 }}>
+                    {p.photos.slice(0, 3).map((ph, pi) => (
+                      <img
+                        key={pi}
+                        src={ph}
+                        alt=""
+                        style={{ width:"100%", height:105, objectFit:"cover", borderRadius:10, border:`1px solid ${T.borderL}`, display:"block" }}
+                      />
+                    ))}
+                  </div>
+                )}
                 <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
                   <span style={{ fontSize:11, color:T.light }}>от {p.addedBy}</span>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
