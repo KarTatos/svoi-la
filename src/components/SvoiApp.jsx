@@ -1517,8 +1517,30 @@ export default function App() {
         miniGoogleMarkersRef.current = [];
         if (miniGoogleUserMarkerRef.current) miniGoogleUserMarkerRef.current.setMap(null);
 
+        const districtPlaces = places.filter((p) => p.district === selD?.id && p.cat === selPC.id && PLACE_CAT_IDS.has(p.cat));
+        const sortedPlaces = [...districtPlaces].sort((a, b) => {
+          let cmp = 0;
+          if (placeSortField === "name") {
+            cmp = (a.name || "").localeCompare(b.name || "", "en", { sensitivity: "base" });
+          } else if (placeSortField === "favorites") {
+            cmp = (favorites[`place-${a.id}`] ? 1 : 0) - (favorites[`place-${b.id}`] ? 1 : 0);
+            if (cmp === 0) cmp = (a.likes || 0) - (b.likes || 0);
+          } else {
+            cmp = (a.likes || 0) - (b.likes || 0);
+          }
+          return placeSortDir === "asc" ? cmp : -cmp;
+        });
+        const orderedPlaces = miniSelectedPlaceId
+          ? [
+              ...sortedPlaces.filter((p) => p.id === miniSelectedPlaceId),
+              ...sortedPlaces.filter((p) => p.id !== miniSelectedPlaceId),
+            ]
+          : sortedPlaces;
+        const coordsById = new Map(miniMapPlaces.map((p) => [p.id, p]));
+        const markerPlaces = orderedPlaces.map((p) => coordsById.get(p.id)).filter(Boolean);
+
         const bounds = new maps.LatLngBounds();
-        miniMapPlaces.forEach((p, idx) => {
+        markerPlaces.forEach((p, idx) => {
           const marker = new maps.Marker({
             position: { lat: p.lat, lng: p.lng },
             map,
@@ -1560,7 +1582,7 @@ export default function App() {
     };
     initMiniMap();
     return () => { disposed = true; };
-  }, [scr, selPC, selD, miniMapLoading, miniMapPlaces, userCoords]);
+  }, [scr, selPC, selD, miniMapLoading, miniMapPlaces, userCoords, places, favorites, placeSortField, placeSortDir, miniSelectedPlaceId]);
 
   useEffect(() => {
     if (scr !== "places-cat") return;
