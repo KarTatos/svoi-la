@@ -620,6 +620,22 @@ export default function App() {
       }
     } catch {}
   }, []);
+  const fetchViewCounts = async (itemType, ids = []) => {
+    const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
+    if (!cleanIds.length) return {};
+    try {
+      const query = new URLSearchParams({
+        itemType,
+        itemIds: cleanIds.join(","),
+      });
+      const res = await fetch(`/api/views?${query.toString()}`);
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
+      return payload.counts || {};
+    } catch {
+      return {};
+    }
+  };
   const loadAllData = async (authUser = null) => {
     const [
       { data: dbPlaces, error: placesError },
@@ -653,21 +669,17 @@ export default function App() {
     const eventCommentsByItem = groupComments(eventComments);
 
     const mappedPlaces = (dbPlaces || [])
-      .map((p) => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||"", tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||"📍", photos:p.photos||[], likes:p.likes_count||0, views:Number(p.views||0), comments: placeCommentsByItem[p.id] || [], fromDB:true }))
+      .map((p) => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||"", tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||"📍", photos:p.photos||[], likes:p.likes_count||0, views:0, comments: placeCommentsByItem[p.id] || [], fromDB:true }))
       .filter((p) => PLACE_CAT_IDS.has(p.cat));
-    if (!placesError) setPlaces(mappedPlaces);
-
     const mappedTips = (dbTips || []).map((t) => {
       const rich = decodeRichText(t.text);
-      return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, views:Number(t.views||0), comments: tipCommentsByItem[t.id] || [], fromDB:true };
+      return { id:t.id, cat:t.category, title:t.title, text:rich.text, photos:rich.photos, author:t.author, userId:t.user_id, likes:t.likes_count||0, views:0, comments: tipCommentsByItem[t.id] || [], fromDB:true };
     });
-    if (!tipsError) setTips(mappedTips);
 
     const mappedEvents = (dbEvents || []).map((e) => {
       const rich = decodeRichText(e.description);
-      return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||"", desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, views:Number(e.views||0), comments: eventCommentsByItem[e.id] || [], fromDB:true };
+      return { id:e.id, cat:e.category, title:e.title, date:e.date, location:e.location||"", desc:rich.text, website:rich.website, photos:rich.photos, author:e.author, userId:e.user_id, likes:e.likes_count||0, views:0, comments: eventCommentsByItem[e.id] || [], fromDB:true };
     });
-    if (!eventsError) setEvents(mappedEvents);
 
     const mappedHousing = (dbHousing || []).map((h) => {
       const photos = decodeHousingPhotos(h.photo);
@@ -699,11 +711,24 @@ export default function App() {
         photo: photos[0] || "",
         userId: h.user_id,
         likes: h.likes_count || 0,
-        views: Number(h.views || 0),
+        views: 0,
         fromDB: true,
       };
     });
-    if (!housingError) setHousing(mappedHousing);
+
+    const [placeViews, tipViews, eventViews, housingViews] = await Promise.all([
+      fetchViewCounts("place", mappedPlaces.map((x) => x.id)),
+      fetchViewCounts("tip", mappedTips.map((x) => x.id)),
+      fetchViewCounts("event", mappedEvents.map((x) => x.id)),
+      fetchViewCounts("housing", mappedHousing.map((x) => x.id)),
+    ]);
+
+    const withViews = (rows, viewMap) => rows.map((row) => ({ ...row, views: Number(viewMap?.[row.id] || 0) }));
+
+    if (!placesError) setPlaces(withViews(mappedPlaces, placeViews));
+    if (!tipsError) setTips(withViews(mappedTips, tipViews));
+    if (!eventsError) setEvents(withViews(mappedEvents, eventViews));
+    if (!housingError) setHousing(withViews(mappedHousing, housingViews));
     else setHousing(INIT_HOUSING);
 
     if (authUser?.id) {
@@ -3335,7 +3360,7 @@ export default function App() {
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                     <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное"><StarIcon active={!!favorites[`housing-${activeHousing.id}`]} size={18} /></button>
                     <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`housing-${activeHousing.id}`]} /> <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {activeHousing.views || 0}</span>
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}><ViewIcon size={15} /> {activeHousing.views || 0}</span>
                     <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                   </div>
                 </div>

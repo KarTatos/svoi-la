@@ -16,29 +16,61 @@ function getAdminClient() {
 }
 
 async function incrementViews(admin, table, itemId) {
-  const { data: row, error: readError } = await admin
-    .from(table)
-    .select("id,views")
-    .eq("id", itemId)
-    .single();
+  const { count, error } = await admin
+    .from("card_views")
+    .select("id", { count: "exact", head: true })
+    .eq("item_type", table)
+    .eq("item_id", itemId);
 
-  if (readError || !row?.id) {
-    return { error: readError?.message || "Item not found.", status: 404 };
+  if (error) return { error: error.message, status: 500 };
+  return { views: Number(count || 0) };
+}
+
+export async function GET(request) {
+  try {
+    const url = new URL(request.url);
+    const itemType = String(url.searchParams.get("itemType") || "").trim();
+    const itemIdsParam = String(url.searchParams.get("itemIds") || "").trim();
+    const table = TABLE_BY_TYPE[itemType];
+
+    if (!table || !itemIdsParam) {
+      return Response.json({ error: "Invalid query." }, { status: 400 });
+    }
+
+    const itemIds = itemIdsParam
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .slice(0, 200);
+
+    if (!itemIds.length) {
+      return Response.json({ ok: true, counts: {} });
+    }
+
+    const admin = getAdminClient();
+    if (!admin) {
+      return Response.json({ error: "Supabase service role is not configured." }, { status: 500 });
+    }
+
+    const { data, error } = await admin
+      .from("card_views")
+      .select("item_id")
+      .eq("item_type", itemType)
+      .in("item_id", itemIds);
+
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    const counts = {};
+    itemIds.forEach((id) => { counts[id] = 0; });
+    (data || []).forEach((row) => {
+      const id = String(row.item_id || "");
+      counts[id] = Number(counts[id] || 0) + 1;
+    });
+
+    return Response.json({ ok: true, counts });
+  } catch (error) {
+    return Response.json({ error: error?.message || "Server error." }, { status: 500 });
   }
-
-  const nextViews = Number(row.views || 0) + 1;
-  const { data, error } = await admin
-    .from(table)
-    .update({ views: nextViews })
-    .eq("id", itemId)
-    .select("views")
-    .single();
-
-  if (error) {
-    return { error: error.message, status: 500 };
-  }
-
-  return { views: Number(data?.views ?? nextViews) };
 }
 
 export async function POST(request) {
@@ -68,20 +100,14 @@ export async function POST(request) {
 
     if (insertError) {
       if (insertError.code === "23505") {
-        const { data: existing, error: existingError } = await admin
-          .from(table)
-          .select("views")
-          .eq("id", itemId)
-          .single();
-        if (existingError) {
-          return Response.json({ error: existingError.message }, { status: 500 });
-        }
-        return Response.json({ ok: true, counted: false, views: Number(existing?.views || 0) });
+        const existing = await incrementViews(admin, itemType, itemId);
+        if (existing?.error) return Response.json({ error: existing.error }, { status: existing.status || 500 });
+        return Response.json({ ok: true, counted: false, views: Number(existing.views || 0) });
       }
       return Response.json({ error: insertError.message }, { status: 500 });
     }
 
-    const incremented = await incrementViews(admin, table, itemId);
+    const incremented = await incrementViews(admin, itemType, itemId);
     if (incremented?.error) {
       return Response.json({ error: incremented.error }, { status: incremented.status || 500 });
     }
