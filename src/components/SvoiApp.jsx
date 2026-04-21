@@ -2040,6 +2040,10 @@ export default function App() {
   const handleAddHousing = async () => {
     if (!user) { handleLogin(); return; }
     if (!newHousing.address.trim() || !newHousing.minPrice) return;
+    if (editingHousing && (!editingHousing.userId || editingHousing.userId !== user.id)) {
+      alert("Редактировать жильё может только автор объявления.");
+      return;
+    }
     const uploaded = [];
     for (const p of newHousingPhotos) {
       if (p.file) {
@@ -2074,7 +2078,7 @@ export default function App() {
     };
     const saveFn = editingHousing ? dbUpdateHousing : dbAddHousing;
     const saveRes = editingHousing
-      ? await saveFn(editingHousing.id, payload)
+      ? await saveFn(editingHousing.id, payload, user.id)
       : await saveFn(payload);
     const { data, error } = saveRes || {};
     if (error) {
@@ -2146,6 +2150,10 @@ export default function App() {
   };
   const startEditHousing = (item) => {
     if (!item) return;
+    if (!user?.id || !item.userId || item.userId !== user.id) {
+      alert("Редактировать жильё может только автор объявления.");
+      return;
+    }
     setEditingHousing(item);
     setNewHousing({
       address: item.address || "",
@@ -2163,8 +2171,13 @@ export default function App() {
   };
   const handleDeleteHousing = async (housingId) => {
     if (!housingId) return;
+    const item = housing.find((h) => h.id === housingId);
+    if (!user?.id || !item?.userId || item.userId !== user.id) {
+      alert("Удалять жильё может только автор объявления.");
+      return;
+    }
     if (!confirm("Удалить это жильё?")) return;
-    const { error } = await dbDeleteHousing(housingId);
+    const { error } = await dbDeleteHousing(housingId, user.id);
     if (error) {
       alert(error.message || "Не удалось удалить жильё");
       return;
@@ -2277,6 +2290,7 @@ export default function App() {
     openExternalUrl(`sms:${encodeURIComponent(digits)}`);
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
+  const canManageActiveHousing = !!(user?.id && activeHousing?.userId && user.id === activeHousing.userId);
   useEffect(() => {
     if (scr !== "place-item" || !activePlace?.id) return;
     if (viewedRef.current.place === activePlace.id) return;
@@ -2334,7 +2348,7 @@ export default function App() {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
-    if (!showAddHousing) return;
+    if (!showAddHousing && !showAddEvent) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = "hidden";
@@ -2343,7 +2357,7 @@ export default function App() {
       document.body.style.overflow = prevOverflow;
       document.body.style.overscrollBehavior = prevOverscroll;
     };
-  }, [showAddHousing]);
+  }, [showAddHousing, showAddEvent]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -3172,8 +3186,8 @@ export default function App() {
         </div>)}
 
         {/* ADD EVENT MODAL */}
-        {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}}>
-          <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+        {showAddEvent && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }} onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}}>
+          <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
             {!user ? (
               <div style={{ textAlign:"center", padding:"20px 0" }}>
@@ -3366,7 +3380,7 @@ export default function App() {
                       {!!activeHousing.messageContact && <button onClick={() => openMessageContact(activeHousing.messageContact)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Сообщение</button>}
                     </div>
                   )}
-                  {user && (
+                  {canManageActiveHousing && (
                     <div style={{ display:"flex", gap:8, marginBottom:10 }}>
                       <button onClick={() => startEditHousing(activeHousing)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Редактировать</button>
                       <button onClick={() => handleDeleteHousing(activeHousing.id)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>
@@ -3472,7 +3486,7 @@ export default function App() {
 
               <div style={{ display:"flex", gap:10 }}>
                 <button onClick={()=>{ setShowAddHousing(false); setEditingHousing(null); setAddrOptionsHousing([]); setAddrValidHousing(false); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-                {editingHousing && <button onClick={() => handleDeleteHousing(editingHousing.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+                {editingHousing && user?.id === editingHousing.userId && <button onClick={() => handleDeleteHousing(editingHousing.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
                 <button onClick={handleAddHousing} disabled={!newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>{editingHousing ? "Сохранить" : "Опубликовать"}</button>
               </div>
             </div>

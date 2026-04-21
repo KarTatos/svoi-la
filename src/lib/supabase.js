@@ -105,13 +105,17 @@ export async function addHousing(housing) {
   return { data, error };
 }
 
-export async function updateHousing(id, updates) {
-  const { data, error } = await supabase.from('housing').update(updates).eq('id', id).select();
+export async function updateHousing(id, updates, userId = null) {
+  let query = supabase.from('housing').update(updates).eq('id', id);
+  if (userId) query = query.eq('user_id', userId);
+  const { data, error } = await query.select();
   return { data, error };
 }
 
-export async function deleteHousing(id) {
-  const { error } = await supabase.from('housing').delete().eq('id', id);
+export async function deleteHousing(id, userId = null) {
+  let query = supabase.from('housing').delete().eq('id', id);
+  if (userId) query = query.eq('user_id', userId);
+  const { error } = await query;
   if (error) return { error };
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'housing');
   return { error: null };
