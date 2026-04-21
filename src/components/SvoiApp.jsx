@@ -5,6 +5,8 @@ import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
+import UscisScreen from "./svoi/screens/UscisScreen";
+import UscisCategoryScreen from "./svoi/screens/UscisCategoryScreen";
 
 export default function App() {
   const ADMIN_EMAIL = "kushnir4work@gmail.com";
@@ -2119,74 +2121,36 @@ export default function App() {
           );
         })()}
 
-        {/* USCIS */}
-        {scr==="uscis" && (<div>
-          <button onClick={goHome} style={bk}>← Главная</button>
-          <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 14px" }}>📋 Справочник USCIS</h2>
-          <div style={{ ...cd, marginBottom:12, padding:"10px 12px", border:`1px solid #FDE2C7`, background:"#FFF8F1" }}>
-            <div style={{ fontSize:12, color:T.mid, lineHeight:1.45 }}>
-              Важно: информация в этом разделе только для ознакомления. Обязательно проверяйте актуальные требования на официальном сайте USCIS и при необходимости консультируйтесь с иммиграционным адвокатом.
-            </div>
-          </div>
-          <div style={{ position:"relative", marginBottom:14 }}>
-            <div style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.light, pointerEvents:"none" }}>🔎</div>
-            <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Поиск формы..." style={{ ...iS, paddingLeft:42, borderColor:srch?T.primary:T.border }} />
-          </div>
-          {srch.trim().length>=2 ? (<div>{sRes.map((d,i) => { return (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
-            <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center", flexWrap:"wrap" }}>
-              {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
-              <span style={{ fontSize:11, color:T.mid }}>{d.cI} {d.cT}</span>
-            </div>
-            <div style={{ fontWeight:600, fontSize:14 }}>{d.name}</div><div style={{ fontSize:12, color:T.mid, marginTop:3 }}>{d.desc}</div>
-          </div>); })}{sRes.length===0 && <p style={{ fontSize:13, color:T.mid }}>Не найдено</p>}</div>) : (<><div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {USCIS_CATS.map(c => (<button key={c.id} onClick={() => { setSelU(c); setScr("uscis-cat"); setExpF(null); }}
-              style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
-              onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-              <div style={{ width:48, height:48, borderRadius:T.rs, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{c.icon}</div>
-              <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{c.subtitle}</div></div>
-              <div style={{ color:T.light }}>›</div>
-            </button>))}
-          </div>
-          {/* Case status checker */}
-          <div style={{ ...cd, marginTop:14, padding:"18px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}><span style={{ fontSize:20 }}>🔍</span><span style={{ fontWeight:700, fontSize:15 }}>Проверить статус кейса</span></div>
-            <p style={{ fontSize:13, color:T.mid, margin:"0 0 12px" }}>Введите receipt number</p>
-            <div style={{ display:"flex", gap:8 }}>
-              <input placeholder="EAC-XX-XXX-XXXXX" style={{ ...iS, flex:1, width:"auto" }} />
-              <a href="https://egov.uscis.gov/casestatussearchwidget" target="_blank" rel="noopener noreferrer" style={{ ...pl(true), textDecoration:"none", display:"flex", alignItems:"center" }}>Проверить</a>
-            </div>
-          </div>
-          </>)}
-        </div>)}
+        {scr==="uscis" && (
+          <UscisScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            pl={pl}
+            iS={iS}
+            srch={srch}
+            setSrch={setSrch}
+            searchResults={sRes}
+            uscisCategories={USCIS_CATS}
+            onOpenCategory={(category) => { setSelU(category); setScr("uscis-cat"); setExpF(null); }}
+            onGoHome={goHome}
+          />
+        )}
 
-        {/* USCIS CAT */}
-        {scr==="uscis-cat" && selU && (<div>
-          <button onClick={() => setScr("uscis")} style={bk}>← Справочник</button>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"4px 0 20px" }}>
-            <div style={{ width:48, height:48, borderRadius:14, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28 }}>{selU.icon}</div>
-            <div><h2 style={{ fontSize:22, fontWeight:700, margin:0 }}>{selU.title}</h2></div>
-          </div>
-          {selU.docs.map((d, i) => { const isE = expF===i; const pdfUrl = getUscisPdfUrl(d); return (<div key={i} style={{ ...cd, marginBottom:10, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-            <div onClick={() => setExpF(isE?null:i)} style={{ padding:"16px", cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                  {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
-                </div>
-                <span style={{ fontSize:11, color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
-              </div>
-              <div style={{ fontWeight:600, fontSize:14, marginTop:10 }}>{d.name}</div>
-              <div style={{ fontSize:12, color:T.mid, marginTop:4 }}>{d.desc}</div>
-            </div>
-            {isE && (<div style={{ padding:"0 16px 16px", borderTop:`1px solid ${T.borderL}` }}>
-              <div style={{ padding:14, background:T.bg, borderRadius:10, marginTop:12, fontSize:13, lineHeight:1.65, color:T.mid }}>{d.detail}</div>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
-                {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", ...pl(true), textDecoration:"none", fontSize:12 }}>uscis.gov ↗</a>}
-                {pdfUrl && <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download style={{ ...pl(false), textDecoration:"none", fontSize:12, display:"inline-flex", alignItems:"center" }}>Открыть PDF</a>}
-              </div>
-              {d.isTest && <button onClick={startTest} style={{ ...pl(true), marginTop:12, width:"100%" }}>🇺🇸 Start Civics Test</button>}
-            </div>)}
-          </div>); })}
-        </div>)}
+        {scr==="uscis-cat" && selU && (
+          <UscisCategoryScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            pl={pl}
+            selectedCategory={selU}
+            expandedIndex={expF}
+            onExpand={setExpF}
+            onBack={() => setScr("uscis")}
+            onStartTest={startTest}
+            getPdfUrl={getUscisPdfUrl}
+          />
+        )}
 
         {/* CIVICS TEST — English, shuffled answers */}
         {scr==="test" && (
