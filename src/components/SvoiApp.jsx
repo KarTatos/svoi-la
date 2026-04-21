@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { useCivicsTest } from "./svoi/useCivicsTest";
+import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 
 export default function App() {
   const ADMIN_EMAIL = "kushnir4work@gmail.com";
@@ -90,12 +92,10 @@ export default function App() {
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
-  const [tQ, setTQ] = useState(0);
-  const [tAns, setTAns] = useState({});
-  const [tShuf, setTShuf] = useState([]);
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
+  const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
   const isAdmin = (user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
@@ -1844,18 +1844,9 @@ export default function App() {
   };
 
   const startTest = () => {
-    setTShuf(shuffleTest(CIVICS_RAW));
-    setTQ(0);
-    setTAns({});
+    civicsTest.start();
     setScr("test");
   };
-  const ansTest = (i) => {
-    if (!tShuf[tQ]) return;
-    setTAns((prev) => ({ ...prev, [tQ]: i }));
-  };
-  const testAnsweredCount = tShuf.reduce((acc, _q, idx) => (Object.prototype.hasOwnProperty.call(tAns, idx) ? acc + 1 : acc), 0);
-  const testCorrectCount = tShuf.reduce((acc, q, idx) => (tAns[idx] === q.correctIdx ? acc + 1 : acc), 0);
-  const testWrongCount = tShuf.reduce((acc, q, idx) => (Object.prototype.hasOwnProperty.call(tAns, idx) && tAns[idx] !== q.correctIdx ? acc + 1 : acc), 0);
 
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
   const dPlaces = selD ? places.filter(p=>p.district===selD.id && PLACE_CAT_IDS.has(p.cat)) : [];
@@ -2198,60 +2189,25 @@ export default function App() {
         </div>)}
 
         {/* CIVICS TEST — English, shuffled answers */}
-        {scr==="test" && (<div>
-          <button onClick={goHome} style={bk}>← Exit</button>
-          <div>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:16 }}><h2 style={{ fontSize:18, fontWeight:700, margin:0 }}>🇺🇸 Civics Test</h2><span style={{ fontSize:13, color:T.mid, fontWeight:600 }}>{tQ+1}/{tShuf.length}</span></div>
-            <div style={{ width:"100%", height:4, background:T.borderL, borderRadius:2, marginBottom:20 }}><div style={{ width:`${((tQ+1)/tShuf.length)*100}%`, height:4, background:T.primary, borderRadius:2, transition:"width 0.3s" }} /></div>
-            <div style={{ ...cd, padding:20 }}>
-              <p style={{ fontSize:16, fontWeight:600, lineHeight:1.5, margin:"0 0 20px" }}>{tShuf[tQ]?.q}</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {tShuf[tQ]?.opts.map((opt,oi) => {
-                  const selectedIdx = Object.prototype.hasOwnProperty.call(tAns, tQ) ? tAns[tQ] : null;
-                  const hasAnswer = selectedIdx !== null && selectedIdx !== undefined;
-                  const isCorrect = oi === tShuf[tQ]?.correctIdx;
-                  const isSelected = oi === selectedIdx;
-                  const showCorrect = hasAnswer && isCorrect;
-                  const showWrongSelected = hasAnswer && isSelected && !isCorrect;
-                  return (
-                    <button
-                      key={oi}
-                      onClick={() => ansTest(oi)}
-                      style={{
-                        ...cd,
-                        padding:"14px 16px",
-                        cursor:"pointer",
-                        fontFamily:"inherit",
-                        color:showWrongSelected ? "#8A1C12" : T.text,
-                        textAlign:"left",
-                        fontSize:14,
-                        fontWeight:500,
-                        boxShadow:"none",
-                        border:`1.5px solid ${showCorrect ? "#27AE60" : showWrongSelected ? "#E74C3C" : T.border}`,
-                        background:showCorrect ? "#ECF9F1" : showWrongSelected ? "#FFF1F1" : T.card,
-                      }}
-                      onMouseEnter={e=>{ if (!hasAnswer) { e.currentTarget.style.borderColor=T.primary; e.currentTarget.style.background=T.primaryLight; } }}
-                      onMouseLeave={e=>{ if (!hasAnswer) { e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background=T.card; } }}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{ display:"flex", gap:10, marginTop:16 }}>
-                <button onClick={() => setTQ((q) => Math.max(0, q - 1))} disabled={tQ === 0} style={{ ...pl(false), flex:1, padding:12, opacity:tQ===0 ? 0.45 : 1, cursor:tQ===0 ? "default" : "pointer" }}>← Prev</button>
-                <button onClick={() => setTQ((q) => Math.min(tShuf.length - 1, q + 1))} disabled={tQ >= tShuf.length - 1 || !Object.prototype.hasOwnProperty.call(tAns, tQ)} style={{ ...pl(true), flex:1, padding:12, opacity:(tQ>=tShuf.length-1 || !Object.prototype.hasOwnProperty.call(tAns, tQ)) ? 0.45 : 1, cursor:(tQ>=tShuf.length-1 || !Object.prototype.hasOwnProperty.call(tAns, tQ)) ? "default" : "pointer" }}>Next →</button>
-              </div>
-            </div>
-            <div style={{ marginTop:12, fontSize:12, color:T.mid, textAlign:"center" }}>
-              ✅ {testCorrectCount} · ❌ {testWrongCount} · Ответов: {testAnsweredCount}/{tShuf.length}
-            </div>
-            <div style={{ display:"flex", gap:10, marginTop:12 }}>
-              <button onClick={startTest} style={{ ...pl(true), flex:1, padding:14 }}>🔄 Retry</button>
-              <button onClick={goHome} style={{ ...pl(false), flex:1, padding:14 }}>← Home</button>
-            </div>
-          </div>
-        </div>)}
+        {scr==="test" && (
+          <CivicsTestScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            pl={pl}
+            questionIndex={civicsTest.questionIndex}
+            shuffledQuestions={civicsTest.shuffledQuestions}
+            answersByIndex={civicsTest.answersByIndex}
+            correctCount={civicsTest.correctCount}
+            wrongCount={civicsTest.wrongCount}
+            answeredCount={civicsTest.answeredCount}
+            onAnswer={civicsTest.answer}
+            onPrev={civicsTest.prev}
+            onNext={civicsTest.next}
+            onRetry={startTest}
+            onExit={goHome}
+          />
+        )}
 
         {/* PLACES → DISTRICTS */}
         {scr==="places" && (<div>
