@@ -5,6 +5,7 @@ import { signInWithGoogle, signOut, getUser, getPlaces as fetchPlaces, addPlace 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 
 export default function App() {
+  const ADMIN_EMAIL = "kushnir4work@gmail.com";
   const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useState(() => { try { const d = sessionStorage.getItem('selD'); return d ? JSON.parse(d) : null; } catch { return null; } });
@@ -96,6 +97,18 @@ export default function App() {
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
+  const isAdmin = (user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
+  const canManageByOwnership = (itemUserId, itemAuthorName) => {
+    if (!user) return false;
+    if (isAdmin) return true;
+    if (itemUserId && user.id === itemUserId) return true;
+    if (!itemUserId && itemAuthorName && user.name === itemAuthorName) return true;
+    return false;
+  };
+  const canManagePlace = (item) => canManageByOwnership(item?.userId, item?.addedBy);
+  const canManageTip = (item) => canManageByOwnership(item?.userId, item?.author);
+  const canManageEvent = (item) => canManageByOwnership(item?.userId, item?.author);
+  const canManageHousing = (item) => canManageByOwnership(item?.userId, null);
 
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
@@ -1438,6 +1451,11 @@ export default function App() {
     } finally { setUploading(false); }
   };
   const handleDeletePlace = async (placeId) => {
+    const item = places.find((p) => p.id === placeId);
+    if (!canManagePlace(item)) {
+      alert("Редактировать и удалять это место может только автор или админ.");
+      return false;
+    }
     if (window.confirm("Удалить это место?")) {
       const { error } = await dbDeletePlace(placeId);
       if (error) {
@@ -1460,6 +1478,10 @@ export default function App() {
     return false;
   };
   const startEditPlace = (p) => {
+    if (!canManagePlace(p)) {
+      alert("Редактировать это место может только автор или админ.");
+      return;
+    }
     setEditingPlace(p);
     setNp({ name:p.name, cat:p.cat, district:p.district || selD?.id || "", address:p.address||"", tip:p.tip });
     setPlaceCoords({
@@ -1499,6 +1521,10 @@ export default function App() {
     setNewEventPhotos(prev => [...prev, ...newFiles].slice(0, 3));
   };
   const startEditEvent = (ev) => {
+    if (!canManageEvent(ev)) {
+      alert("Редактировать событие может только автор или админ.");
+      return;
+    }
     setEditingEvent(ev);
     setNewEvent({
       title: ev.title || "",
@@ -1514,6 +1540,11 @@ export default function App() {
     setShowAddEvent(true);
   };
   const handleDeleteEvent = async (eventId) => {
+    const item = events.find((e) => e.id === eventId);
+    if (!canManageEvent(item)) {
+      alert("Удалять событие может только автор или админ.");
+      return;
+    }
     if (!window.confirm("Удалить событие?")) return;
     const { error } = await dbDeleteEvent(eventId);
     if (error) {
@@ -1526,12 +1557,21 @@ export default function App() {
     setExp(null);
   };
   const startEditTip = (tip) => {
+    if (!canManageTip(tip)) {
+      alert("Редактировать совет может только автор или админ.");
+      return;
+    }
     setEditingTip(tip);
     setNewTip({ title: tip.title || "", text: tip.text || "" });
     setNewTipPhotos((tip.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
     setShowAddTip(true);
   };
   const handleDeleteTip = async (tipId) => {
+    const item = tips.find((t) => t.id === tipId);
+    if (!canManageTip(item)) {
+      alert("Удалять совет может только автор или админ.");
+      return;
+    }
     if (!window.confirm("Удалить совет?")) return;
     const { error } = await dbDeleteTip(tipId);
     if (error) {
@@ -1635,8 +1675,8 @@ export default function App() {
   const handleAddHousing = async () => {
     if (!user) { handleLogin(); return; }
     if (!newHousing.address.trim() || !newHousing.minPrice) return;
-    if (editingHousing && (!editingHousing.userId || editingHousing.userId !== user.id)) {
-      alert("Редактировать жильё может только автор объявления.");
+    if (editingHousing && !canManageHousing(editingHousing)) {
+      alert("Редактировать жильё может только автор или админ.");
       return;
     }
     const uploaded = [];
@@ -1673,7 +1713,7 @@ export default function App() {
     };
     const saveFn = editingHousing ? dbUpdateHousing : dbAddHousing;
     const saveRes = editingHousing
-      ? await saveFn(editingHousing.id, payload, user.id)
+      ? await saveFn(editingHousing.id, payload, isAdmin ? null : user.id)
       : await saveFn(payload);
     const { data, error } = saveRes || {};
     if (error) {
@@ -1745,8 +1785,8 @@ export default function App() {
   };
   const startEditHousing = (item) => {
     if (!item) return;
-    if (!user?.id || !item.userId || item.userId !== user.id) {
-      alert("Редактировать жильё может только автор объявления.");
+    if (!canManageHousing(item)) {
+      alert("Редактировать жильё может только автор или админ.");
       return;
     }
     setEditingHousing(item);
@@ -1767,12 +1807,12 @@ export default function App() {
   const handleDeleteHousing = async (housingId) => {
     if (!housingId) return;
     const item = housing.find((h) => h.id === housingId);
-    if (!user?.id || !item?.userId || item.userId !== user.id) {
-      alert("Удалять жильё может только автор объявления.");
+    if (!canManageHousing(item)) {
+      alert("Удалять жильё может только автор или админ.");
       return;
     }
     if (!confirm("Удалить это жильё?")) return;
-    const { error } = await dbDeleteHousing(housingId, user.id);
+    const { error } = await dbDeleteHousing(housingId, isAdmin ? null : user.id);
     if (error) {
       alert(error.message || "Не удалось удалить жильё");
       return;
@@ -1885,7 +1925,7 @@ export default function App() {
     openExternalUrl(`sms:${encodeURIComponent(digits)}`);
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
-  const canManageActiveHousing = !!(user?.id && activeHousing?.userId && user.id === activeHousing.userId);
+  const canManageActiveHousing = canManageHousing(activeHousing);
   useEffect(() => {
     if (scr !== "place-item" || !activePlace?.id) return;
     if (viewedRef.current.place === activePlace.id) return;
@@ -2465,7 +2505,7 @@ export default function App() {
 
               {renderComments(activePlace, "place", addPlaceComment)}
 
-              {user && (user.id === activePlace.userId || user.name === activePlace.addedBy) && (
+              {canManagePlace(activePlace) && (
                 <div style={{ paddingTop:4, display:"flex", gap:8 }}>
                   <button onClick={()=>startEditPlace(activePlace)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:T.card, color:T.mid }}>✏️ Редактировать</button>
                 </div>
@@ -2608,7 +2648,7 @@ export default function App() {
                   <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
                 </div>
                 {renderComments(tip, "tip", handleAddComment)}
-                {user && (user.id === tip.userId || user.name === tip.author) && (
+                {canManageTip(tip) && (
                   <div style={{ padding:"0 16px 16px", display:"flex", gap:8 }}>
                     <button onClick={(e)=>{e.stopPropagation(); startEditTip(tip);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12 }}>✏️ Редактировать</button>
                     <button onClick={(e)=>{e.stopPropagation(); handleDeleteTip(tip.id);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>🗑 Удалить</button>
@@ -2642,7 +2682,7 @@ export default function App() {
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={()=>{setShowAddTip(false); setNewTipPhotos([]); setEditingTip(null);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-              {editingTip && <button onClick={()=>handleDeleteTip(editingTip.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+              {editingTip && canManageTip(editingTip) && <button onClick={()=>handleDeleteTip(editingTip.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
               <button onClick={handleAddTip} disabled={!newTip.title||!newTip.text} style={{ ...pl(true), flex:2, padding:14, opacity:(!newTip.title||!newTip.text)?0.5:1 }}>{editingTip ? "Сохранить" : "Опубликовать"}</button>
             </div>
           </div>
@@ -2773,7 +2813,7 @@ export default function App() {
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
               </div>
               {renderComments(ev, "event", addEventComment)}
-              {user && (user.id === ev.userId || user.name === ev.author) && (
+              {canManageEvent(ev) && (
                 <div style={{ padding:"0 16px 16px" }}>
                   <button onClick={(e)=>{e.stopPropagation(); startEditEvent(ev);}} style={{ width:"100%", padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.primary}55`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, background:T.primaryLight, color:T.primary }}>Редактировать событие</button>
                 </div>
@@ -2836,7 +2876,7 @@ export default function App() {
               </div>
               <div style={{ display:"flex", gap:10 }}>
                 <button onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-                {editingEvent && <button onClick={()=>handleDeleteEvent(editingEvent.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+                {editingEvent && canManageEvent(editingEvent) && <button onClick={()=>handleDeleteEvent(editingEvent.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
                 <button onClick={handleAddEvent} disabled={!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat} style={{ ...pl(true), flex:2, padding:14, opacity:(!newEvent.title||!newEvent.date||!newEvent.desc||!newEvent.cat)?0.5:1 }}>{editingEvent ? "Сохранить" : "Опубликовать"}</button>
               </div>
             </>)}
@@ -3084,7 +3124,7 @@ export default function App() {
 
               <div style={{ display:"flex", gap:10 }}>
                 <button onClick={()=>{ setShowAddHousing(false); setEditingHousing(null); setAddrOptionsHousing([]); setAddrValidHousing(false); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-                {editingHousing && user?.id === editingHousing.userId && <button onClick={() => handleDeleteHousing(editingHousing.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
+              {editingHousing && canManageHousing(editingHousing) && <button onClick={() => handleDeleteHousing(editingHousing.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
                 <button onClick={handleAddHousing} disabled={!newHousing.address.trim() || !newHousing.minPrice} style={{ ...pl(true), flex:2, padding:14, opacity:(!newHousing.address.trim() || !newHousing.minPrice) ? 0.5 : 1 }}>{editingHousing ? "Сохранить" : "Опубликовать"}</button>
               </div>
             </div>

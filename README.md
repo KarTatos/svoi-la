@@ -164,5 +164,6 @@ Use ordered migration files from [`sql/migrations`](./sql/migrations):
 3. `003_views_counters.sql`
 4. `004_indexes.sql`
 5. `005_places_lat_lng.sql`
+6. `006_admin_email_access.sql`
 
 Quick guide: [sql/migrations/README.md](./sql/migrations/README.md)
