@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { logError, logInfo, requestMeta } from "@/lib/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -52,57 +53,98 @@ async function requireAdmin(request) {
 }
 
 export async function GET(request) {
-  const adminCheck = await requireAdmin(request);
-  if (adminCheck.error) return adminCheck.error;
+  const meta = requestMeta(request);
+  try {
+    const adminCheck = await requireAdmin(request);
+    if (adminCheck.error) return adminCheck.error;
 
-  const { data, error } = await getAdminClient().from("places").select("*").order("created_at", { ascending: false });
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ data: data || [] });
+    const { data, error } = await getAdminClient().from("places").select("*").order("created_at", { ascending: false });
+    if (error) {
+      logError("admin.places.get.db_error", new Error(error.message), meta);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+    return Response.json({ data: data || [] });
+  } catch (error) {
+    logError("admin.places.get.unhandled", error, meta);
+    return Response.json({ error: "Server error." }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
-  const adminCheck = await requireAdmin(request);
-  if (adminCheck.error) return adminCheck.error;
+  const meta = requestMeta(request);
+  try {
+    const adminCheck = await requireAdmin(request);
+    if (adminCheck.error) return adminCheck.error;
 
-  const body = await request.json();
-  const payload = body?.place;
-  if (!payload?.name || !payload?.category || !payload?.district || !payload?.tip) {
-    return Response.json({ error: "Missing required fields." }, { status: 400 });
+    const body = await request.json();
+    const payload = body?.place;
+    if (!payload?.name || !payload?.category || !payload?.district || !payload?.tip) {
+      logInfo("admin.places.post.bad_request", meta);
+      return Response.json({ error: "Missing required fields." }, { status: 400 });
+    }
+
+    const { data, error } = await getAdminClient().from("places").insert([payload]).select().single();
+    if (error) {
+      logError("admin.places.post.db_error", new Error(error.message), meta);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+    return Response.json({ data });
+  } catch (error) {
+    logError("admin.places.post.unhandled", error, meta);
+    return Response.json({ error: "Server error." }, { status: 500 });
   }
-
-  const { data, error } = await getAdminClient().from("places").insert([payload]).select().single();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ data });
 }
 
 export async function PATCH(request) {
-  const adminCheck = await requireAdmin(request);
-  if (adminCheck.error) return adminCheck.error;
+  const meta = requestMeta(request);
+  try {
+    const adminCheck = await requireAdmin(request);
+    if (adminCheck.error) return adminCheck.error;
 
-  const body = await request.json();
-  const id = body?.id;
-  const updates = body?.updates;
-  if (!id || !updates || typeof updates !== "object") {
-    return Response.json({ error: "Invalid patch payload." }, { status: 400 });
+    const body = await request.json();
+    const id = body?.id;
+    const updates = body?.updates;
+    if (!id || !updates || typeof updates !== "object") {
+      logInfo("admin.places.patch.bad_request", meta);
+      return Response.json({ error: "Invalid patch payload." }, { status: 400 });
+    }
+
+    const { data, error } = await getAdminClient().from("places").update(updates).eq("id", id).select().single();
+    if (error) {
+      logError("admin.places.patch.db_error", new Error(error.message), meta);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+    return Response.json({ data });
+  } catch (error) {
+    logError("admin.places.patch.unhandled", error, meta);
+    return Response.json({ error: "Server error." }, { status: 500 });
   }
-
-  const { data, error } = await getAdminClient().from("places").update(updates).eq("id", id).select().single();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ data });
 }
 
 export async function DELETE(request) {
-  const adminCheck = await requireAdmin(request);
-  if (adminCheck.error) return adminCheck.error;
+  const meta = requestMeta(request);
+  try {
+    const adminCheck = await requireAdmin(request);
+    if (adminCheck.error) return adminCheck.error;
 
-  const body = await request.json();
-  const id = body?.id;
-  if (!id) return Response.json({ error: "Missing id." }, { status: 400 });
+    const body = await request.json();
+    const id = body?.id;
+    if (!id) {
+      logInfo("admin.places.delete.bad_request", meta);
+      return Response.json({ error: "Missing id." }, { status: 400 });
+    }
 
-  const client = getAdminClient();
-  await client.from("comments").delete().eq("item_id", id).eq("item_type", "place");
-  await client.from("likes").delete().eq("item_id", id).eq("item_type", "place");
-  const { error } = await client.from("places").delete().eq("id", id);
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ ok: true });
+    const client = getAdminClient();
+    await client.from("comments").delete().eq("item_id", id).eq("item_type", "place");
+    await client.from("likes").delete().eq("item_id", id).eq("item_type", "place");
+    const { error } = await client.from("places").delete().eq("id", id);
+    if (error) {
+      logError("admin.places.delete.db_error", new Error(error.message), meta);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+    return Response.json({ ok: true });
+  } catch (error) {
+    logError("admin.places.delete.unhandled", error, meta);
+    return Response.json({ error: "Server error." }, { status: 500 });
+  }
 }

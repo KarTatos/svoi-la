@@ -1,5 +1,6 @@
 ﻿import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { logError, logInfo, requestMeta } from "@/lib/logger";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -216,7 +217,8 @@ async function fetchSupabaseDataFallback(query) {
         };
       }),
     };
-  } catch {
+  } catch (error) {
+    logError("chat.fallback_query.error", error, { query: String(query || "").slice(0, 120) });
     return { places: [], tips: [], events: [], housing: [] };
   }
 }
@@ -276,9 +278,11 @@ function buildLocalContext(message, data) {
 }
 
 export async function POST(request) {
+  const meta = requestMeta(request);
   try {
     const { message, history = [], appData = null } = await request.json();
     if (!message || typeof message !== "string") {
+      logInfo("chat.bad_request", meta);
       return Response.json({ error: "РџСѓСЃС‚РѕРµ СЃРѕРѕР±С‰РµРЅРёРµ" }, { status: 400 });
     }
 
@@ -336,7 +340,7 @@ export async function POST(request) {
 
     return Response.json({ text: text || "РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РѕС‚РІРµС‚.", queryType, localDataUsed: localContext.hasData });
   } catch (error) {
-    console.error("Chat API error:", error?.message || error);
+    logError("chat.unhandled", error, meta);
     if (error?.status === 401) return Response.json({ error: "РћС€РёР±РєР° API РєР»СЋС‡Р°." }, { status: 500 });
     if (error?.status === 429) return Response.json({ error: "РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ Р·Р°РїСЂРѕСЃРѕРІ. РџРѕРґРѕР¶РґРёС‚Рµ." }, { status: 429 });
     return Response.json({ error: "РћС€РёР±РєР° СЃРµСЂРІРµСЂР°." }, { status: 500 });

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { logError, logInfo, requestMeta } from "@/lib/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,6 +28,7 @@ async function incrementViews(admin, table, itemId) {
 }
 
 export async function GET(request) {
+  const meta = requestMeta(request);
   try {
     const url = new URL(request.url);
     const itemType = String(url.searchParams.get("itemType") || "").trim();
@@ -34,6 +36,7 @@ export async function GET(request) {
     const table = TABLE_BY_TYPE[itemType];
 
     if (!table || !itemIdsParam) {
+      logInfo("views.get.bad_request", { ...meta, itemType, hasItemIds: Boolean(itemIdsParam) });
       return Response.json({ error: "Invalid query." }, { status: 400 });
     }
 
@@ -49,6 +52,7 @@ export async function GET(request) {
 
     const admin = getAdminClient();
     if (!admin) {
+      logError("views.get.missing_service_role", new Error("Missing SUPABASE_SERVICE_ROLE_KEY"), meta);
       return Response.json({ error: "Supabase service role is not configured." }, { status: 500 });
     }
 
@@ -58,7 +62,10 @@ export async function GET(request) {
       .eq("item_type", itemType)
       .in("item_id", itemIds);
 
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) {
+      logError("views.get.db_error", new Error(error.message), { ...meta, itemType, itemIdsCount: itemIds.length });
+      return Response.json({ error: error.message }, { status: 500 });
+    }
 
     const counts = {};
     itemIds.forEach((id) => { counts[id] = 0; });
@@ -69,11 +76,13 @@ export async function GET(request) {
 
     return Response.json({ ok: true, counts });
   } catch (error) {
+    logError("views.get.unhandled", error, meta);
     return Response.json({ error: error?.message || "Server error." }, { status: 500 });
   }
 }
 
 export async function POST(request) {
+  const meta = requestMeta(request);
   try {
     const body = await request.json();
     const itemType = String(body?.itemType || "").trim();
@@ -82,11 +91,13 @@ export async function POST(request) {
     const table = TABLE_BY_TYPE[itemType];
 
     if (!table || !itemId || !viewerKey) {
+      logInfo("views.post.bad_request", { ...meta, itemType, hasItemId: Boolean(itemId), hasViewerKey: Boolean(viewerKey) });
       return Response.json({ error: "Invalid payload." }, { status: 400 });
     }
 
     const admin = getAdminClient();
     if (!admin) {
+      logError("views.post.missing_service_role", new Error("Missing SUPABASE_SERVICE_ROLE_KEY"), meta);
       return Response.json({ error: "Supabase service role is not configured." }, { status: 500 });
     }
 
@@ -104,6 +115,7 @@ export async function POST(request) {
         if (existing?.error) return Response.json({ error: existing.error }, { status: existing.status || 500 });
         return Response.json({ ok: true, counted: false, views: Number(existing.views || 0) });
       }
+      logError("views.post.insert_error", new Error(insertError.message), { ...meta, itemType, itemId });
       return Response.json({ error: insertError.message }, { status: 500 });
     }
 
@@ -114,6 +126,7 @@ export async function POST(request) {
 
     return Response.json({ ok: true, counted: true, views: Number(incremented.views || 0) });
   } catch (error) {
+    logError("views.post.unhandled", error, meta);
     return Response.json({ error: error?.message || "Server error." }, { status: 500 });
   }
 }

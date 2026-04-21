@@ -143,3 +143,14 @@ npm run typecheck
 
 Generated file: `src/lib/database.types.ts`  
 Typed client: `src/lib/supabase-typed.ts`
+
+## Sentry + structured logs
+
+1. Create Sentry project for Next.js.
+2. Set env vars:
+   - `NEXT_PUBLIC_SENTRY_DSN`
+   - `SENTRY_DSN`
+   - `NEXT_PUBLIC_APP_ENV` (for example: `production`)
+3. Redeploy app.
+
+Structured logs are emitted as JSON via `src/lib/logger.js` from API routes.
