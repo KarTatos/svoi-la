@@ -129,8 +129,8 @@ export default function App() {
   const googleMarkersRef = useRef([]);
   const miniGoogleMarkersRef = useRef([]);
   const miniGoogleUserMarkerRef = useRef(null);
-  const googleDirectionsRendererRef = useRef(null);
-  const miniGoogleDirectionsRendererRef = useRef(null);
+  const googleRouteLineRef = useRef(null);
+  const miniGoogleRouteLineRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
   const datePickerRef = useRef(null);
   const googleAutocompleteRef = useRef(null);
@@ -651,6 +651,39 @@ export default function App() {
       : `https://maps.apple.com/?daddr=${destination}`;
     openExternalUrl(url);
   };
+  const getStraightRouteInfo = (origin, destination) => {
+    const toRad = (v) => (v * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(destination.lat - origin.lat);
+    const dLng = toRad(destination.lng - origin.lng);
+    const lat1 = toRad(origin.lat);
+    const lat2 = toRad(destination.lat);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const km = earthRadiusKm * c;
+    const miles = km * 0.621371;
+    const minutes = Math.max(2, Math.round((miles / 28) * 60));
+    return {
+      distance: `${miles.toFixed(1)} mi`,
+      duration: `${minutes} mins`,
+    };
+  };
+  const drawSimpleRouteLine = (maps, map, lineRef, origin, destination, color) => {
+    if (lineRef.current) {
+      lineRef.current.setMap(null);
+      lineRef.current = null;
+    }
+    lineRef.current = new maps.Polyline({
+      path: [origin, destination],
+      geodesic: true,
+      strokeColor: color,
+      strokeOpacity: 0.95,
+      strokeWeight: 4,
+    });
+    lineRef.current.setMap(map);
+  };
   const openPhotoViewer = (photos, startIndex = 0) => {
     const normalized = (Array.isArray(photos) ? photos : [])
       .filter((ph) => typeof ph === "string")
@@ -881,12 +914,6 @@ export default function App() {
               { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8edf5" }] },
             ],
           });
-          googleDirectionsRendererRef.current = new maps.DirectionsRenderer({
-            suppressMarkers: true,
-            preserveViewport: true,
-            polylineOptions: { strokeColor: "#F47B20", strokeOpacity: 0.9, strokeWeight: 5 },
-          });
-          googleDirectionsRendererRef.current.setMap(googleMapRef.current);
         }
 
         const map = googleMapRef.current;
@@ -952,9 +979,9 @@ export default function App() {
     if (showMapModal) return;
     googleMarkersRef.current.forEach((m) => m.setMap(null));
     googleMarkersRef.current = [];
-    if (googleDirectionsRendererRef.current) {
-      googleDirectionsRendererRef.current.setMap(null);
-      googleDirectionsRendererRef.current = null;
+    if (googleRouteLineRef.current) {
+      googleRouteLineRef.current.setMap(null);
+      googleRouteLineRef.current = null;
     }
     googleMapRef.current = null;
     if (mapContainerRef.current) mapContainerRef.current.innerHTML = "";
@@ -970,9 +997,6 @@ export default function App() {
     if (!navigator.geolocation) return;
     let canceled = false;
     const maps = window.google.maps;
-    const renderer = googleDirectionsRendererRef.current;
-    if (!renderer) return;
-
     const getPosition = () => new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 7000, maximumAge: 120000 });
     });
@@ -982,18 +1006,15 @@ export default function App() {
       try {
         const pos = await getPosition();
         if (canceled) return;
-        const service = new maps.DirectionsService();
-        const res = await service.route({
-          origin: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          destination: { lat: selectedMapPlace.lat, lng: selectedMapPlace.lng },
-          travelMode: maps.TravelMode.DRIVING,
-        });
-        if (canceled) return;
-        renderer.setDirections(res);
-        const leg = res?.routes?.[0]?.legs?.[0];
-        setRouteInfo(leg ? { distance: leg.distance?.text || "", duration: leg.duration?.text || "" } : null);
+        const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const destination = { lat: selectedMapPlace.lat, lng: selectedMapPlace.lng };
+        drawSimpleRouteLine(maps, googleMapRef.current, googleRouteLineRef, origin, destination, "#F47B20");
+        setRouteInfo(getStraightRouteInfo(origin, destination));
       } catch {
-        renderer.set("directions", null);
+        if (googleRouteLineRef.current) {
+          googleRouteLineRef.current.setMap(null);
+          googleRouteLineRef.current = null;
+        }
         setRouteInfo(null);
       } finally {
         if (!canceled) setRouteLoading(false);
@@ -1061,9 +1082,9 @@ export default function App() {
     // Force a fresh mini-map instance when category/district changes.
     miniGoogleMarkersRef.current.forEach((m) => m.setMap(null));
     miniGoogleMarkersRef.current = [];
-    if (miniGoogleDirectionsRendererRef.current) {
-      miniGoogleDirectionsRendererRef.current.setMap(null);
-      miniGoogleDirectionsRendererRef.current = null;
+    if (miniGoogleRouteLineRef.current) {
+      miniGoogleRouteLineRef.current.setMap(null);
+      miniGoogleRouteLineRef.current = null;
     }
     if (miniGoogleUserMarkerRef.current) {
       miniGoogleUserMarkerRef.current.setMap(null);
@@ -1105,14 +1126,6 @@ export default function App() {
         }
 
         const map = miniGoogleMapRef.current;
-        if (!miniGoogleDirectionsRendererRef.current) {
-          miniGoogleDirectionsRendererRef.current = new maps.DirectionsRenderer({
-            suppressMarkers: true,
-            preserveViewport: true,
-            polylineOptions: { strokeColor: "#E74C3C", strokeOpacity: 0.95, strokeWeight: 4 },
-          });
-        }
-        miniGoogleDirectionsRendererRef.current.setMap(map);
         map.setOptions({
           mapTypeControl: false,
           streetViewControl: false,
@@ -1192,14 +1205,16 @@ export default function App() {
 
   useEffect(() => {
     if (scr !== "places-cat") return;
-    const renderer = miniGoogleDirectionsRendererRef.current;
     if (!miniSelectedPlaceId) {
-      if (renderer) renderer.set("directions", null);
+      if (miniGoogleRouteLineRef.current) {
+        miniGoogleRouteLineRef.current.setMap(null);
+        miniGoogleRouteLineRef.current = null;
+      }
       setMiniRouteInfo(null);
       setMiniRouteLoading(false);
       return;
     }
-    if (!window.google?.maps || !miniGoogleMapRef.current || !renderer) return;
+    if (!window.google?.maps || !miniGoogleMapRef.current) return;
     if (!navigator.geolocation) {
       setMiniRouteInfo(null);
       return;
@@ -1218,18 +1233,15 @@ export default function App() {
       try {
         const pos = await getPosition();
         if (canceled) return;
-        const service = new maps.DirectionsService();
-        const res = await service.route({
-          origin: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          destination: { lat: target.lat, lng: target.lng },
-          travelMode: maps.TravelMode.DRIVING,
-        });
-        if (canceled) return;
-        renderer.setDirections(res);
-        const leg = res?.routes?.[0]?.legs?.[0];
-        setMiniRouteInfo(leg ? { distance: leg.distance?.text || "", duration: leg.duration?.text || "" } : null);
+        const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const destination = { lat: target.lat, lng: target.lng };
+        drawSimpleRouteLine(maps, miniGoogleMapRef.current, miniGoogleRouteLineRef, origin, destination, "#E74C3C");
+        setMiniRouteInfo(getStraightRouteInfo(origin, destination));
       } catch {
-        renderer.set("directions", null);
+        if (miniGoogleRouteLineRef.current) {
+          miniGoogleRouteLineRef.current.setMap(null);
+          miniGoogleRouteLineRef.current = null;
+        }
         setMiniRouteInfo(null);
       } finally {
         if (!canceled) setMiniRouteLoading(false);
