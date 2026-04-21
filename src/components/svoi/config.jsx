@@ -191,11 +191,16 @@ export const CIVICS_RAW = [
 
 // Shuffle options for each question, tracking correct answer
 export function shuffleTest(questions) {
-  return questions.map(q => {
+  const shuffled = questions.map(q => {
     const indices = q.opts.map((_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [indices[i], indices[j]] = [indices[j], indices[i]]; }
     return { q: q.q, opts: indices.map(i => q.opts[i]), correctIdx: indices.indexOf(q.c) };
-  }).sort(() => Math.random() - 0.5);
+  });
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 // ─── TIPS CATEGORIES ───

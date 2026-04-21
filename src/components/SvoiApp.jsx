@@ -91,8 +91,7 @@ export default function App() {
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
   const [tQ, setTQ] = useState(0);
-  const [tAns, setTAns] = useState([]);
-  const [tDone, setTDone] = useState(false);
+  const [tAns, setTAns] = useState({});
   const [tShuf, setTShuf] = useState([]);
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
@@ -1844,8 +1843,19 @@ export default function App() {
     setFavorites(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const startTest = () => { setTShuf(shuffleTest(CIVICS_RAW)); setTQ(0); setTAns([]); setTDone(false); setScr("test"); };
-  const ansTest = (i) => { setTAns(p => [...p, { correct: i === tShuf[tQ].correctIdx }]); if (tQ+1 >= tShuf.length) setTDone(true); else setTQ(tQ+1); };
+  const startTest = () => {
+    setTShuf(shuffleTest(CIVICS_RAW));
+    setTQ(0);
+    setTAns({});
+    setScr("test");
+  };
+  const ansTest = (i) => {
+    if (!tShuf[tQ]) return;
+    setTAns((prev) => ({ ...prev, [tQ]: i }));
+  };
+  const testAnsweredCount = tShuf.reduce((acc, _q, idx) => (Object.prototype.hasOwnProperty.call(tAns, idx) ? acc + 1 : acc), 0);
+  const testCorrectCount = tShuf.reduce((acc, q, idx) => (tAns[idx] === q.correctIdx ? acc + 1 : acc), 0);
+  const testWrongCount = tShuf.reduce((acc, q, idx) => (Object.prototype.hasOwnProperty.call(tAns, idx) && tAns[idx] !== q.correctIdx ? acc + 1 : acc), 0);
 
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
   const dPlaces = selD ? places.filter(p=>p.district===selD.id && PLACE_CAT_IDS.has(p.cat)) : [];
@@ -2190,30 +2200,57 @@ export default function App() {
         {/* CIVICS TEST — English, shuffled answers */}
         {scr==="test" && (<div>
           <button onClick={goHome} style={bk}>← Exit</button>
-          {!tDone ? (<div>
+          <div>
             <div style={{ display:"flex", justifyContent:"space-between", marginBottom:16 }}><h2 style={{ fontSize:18, fontWeight:700, margin:0 }}>🇺🇸 Civics Test</h2><span style={{ fontSize:13, color:T.mid, fontWeight:600 }}>{tQ+1}/{tShuf.length}</span></div>
             <div style={{ width:"100%", height:4, background:T.borderL, borderRadius:2, marginBottom:20 }}><div style={{ width:`${((tQ+1)/tShuf.length)*100}%`, height:4, background:T.primary, borderRadius:2, transition:"width 0.3s" }} /></div>
             <div style={{ ...cd, padding:20 }}>
               <p style={{ fontSize:16, fontWeight:600, lineHeight:1.5, margin:"0 0 20px" }}>{tShuf[tQ]?.q}</p>
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {tShuf[tQ]?.opts.map((opt,oi) => (
-                  <button key={oi} onClick={() => ansTest(oi)} style={{ ...cd, padding:"14px 16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", fontSize:14, fontWeight:500, boxShadow:"none", border:`1.5px solid ${T.border}` }}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor=T.primary;e.currentTarget.style.background=T.primaryLight}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.background=T.card}}>
-                    {opt}
-                  </button>
-                ))}
+                {tShuf[tQ]?.opts.map((opt,oi) => {
+                  const selectedIdx = Object.prototype.hasOwnProperty.call(tAns, tQ) ? tAns[tQ] : null;
+                  const hasAnswer = selectedIdx !== null && selectedIdx !== undefined;
+                  const isCorrect = oi === tShuf[tQ]?.correctIdx;
+                  const isSelected = oi === selectedIdx;
+                  const showCorrect = hasAnswer && isCorrect;
+                  const showWrongSelected = hasAnswer && isSelected && !isCorrect;
+                  return (
+                    <button
+                      key={oi}
+                      onClick={() => ansTest(oi)}
+                      style={{
+                        ...cd,
+                        padding:"14px 16px",
+                        cursor:"pointer",
+                        fontFamily:"inherit",
+                        color:showWrongSelected ? "#8A1C12" : T.text,
+                        textAlign:"left",
+                        fontSize:14,
+                        fontWeight:500,
+                        boxShadow:"none",
+                        border:`1.5px solid ${showCorrect ? "#27AE60" : showWrongSelected ? "#E74C3C" : T.border}`,
+                        background:showCorrect ? "#ECF9F1" : showWrongSelected ? "#FFF1F1" : T.card,
+                      }}
+                      onMouseEnter={e=>{ if (!hasAnswer) { e.currentTarget.style.borderColor=T.primary; e.currentTarget.style.background=T.primaryLight; } }}
+                      onMouseLeave={e=>{ if (!hasAnswer) { e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background=T.card; } }}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display:"flex", gap:10, marginTop:16 }}>
+                <button onClick={() => setTQ((q) => Math.max(0, q - 1))} disabled={tQ === 0} style={{ ...pl(false), flex:1, padding:12, opacity:tQ===0 ? 0.45 : 1, cursor:tQ===0 ? "default" : "pointer" }}>← Prev</button>
+                <button onClick={() => setTQ((q) => Math.min(tShuf.length - 1, q + 1))} disabled={tQ >= tShuf.length - 1} style={{ ...pl(true), flex:1, padding:12, opacity:tQ>=tShuf.length-1 ? 0.45 : 1, cursor:tQ>=tShuf.length-1 ? "default" : "pointer" }}>Next →</button>
               </div>
             </div>
-            <div style={{ marginTop:12, fontSize:12, color:T.mid, textAlign:"center" }}>✅ {tAns.filter(a=>a.correct).length} · ❌ {tAns.filter(a=>!a.correct).length}</div>
-          </div>) : (<div style={{ textAlign:"center" }}>
-            <div style={{ fontSize:60, marginBottom:16 }}>{tAns.filter(a=>a.correct).length >= Math.floor(tShuf.length*0.6) ? "🎉" : "📚"}</div>
-            <h2 style={{ fontSize:22, fontWeight:700, margin:"0 0 8px" }}>Test Complete!</h2>
-            <div style={{ ...cd, padding:24, margin:"16px 0" }}>
-              <div style={{ fontSize:48, fontWeight:900, color:tAns.filter(a=>a.correct).length>=Math.floor(tShuf.length*0.6)?"#27AE60":T.primary }}>{tAns.filter(a=>a.correct).length} / {tShuf.length}</div>
-              <p style={{ fontSize:14, color:T.mid, marginTop:8 }}>correct answers</p>
+            <div style={{ marginTop:12, fontSize:12, color:T.mid, textAlign:"center" }}>
+              ✅ {testCorrectCount} · ❌ {testWrongCount} · Ответов: {testAnsweredCount}/{tShuf.length}
             </div>
-            <div style={{ display:"flex", gap:10 }}><button onClick={startTest} style={{ ...pl(true), flex:1, padding:14 }}>🔄 Retry</button><button onClick={goHome} style={{ ...pl(false), flex:1, padding:14 }}>← Home</button></div>
-          </div>)}
+            <div style={{ display:"flex", gap:10, marginTop:12 }}>
+              <button onClick={startTest} style={{ ...pl(true), flex:1, padding:14 }}>🔄 Retry</button>
+              <button onClick={goHome} style={{ ...pl(false), flex:1, padding:14 }}>← Home</button>
+            </div>
+          </div>
         </div>)}
 
         {/* PLACES → DISTRICTS */}
