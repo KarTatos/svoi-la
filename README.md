@@ -125,3 +125,21 @@ npm install
 cp .env.example .env.local     # Заполни свои ключи
 npm run dev                     # http://localhost:3000
 ```
+
+## TypeScript + Supabase types
+
+```bash
+# one-time install (already in package.json devDependencies)
+npm install
+
+# generate typed DB schema from Supabase project
+# requires Supabase CLI auth + project id
+set SUPABASE_PROJECT_ID=YOUR_PROJECT_ID
+npm run supabase:types
+
+# static type check
+npm run typecheck
+```
+
+Generated file: `src/lib/database.types.ts`  
+Typed client: `src/lib/supabase-typed.ts`

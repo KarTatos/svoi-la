@@ -696,7 +696,7 @@ export default function App() {
       return {
         id: h.id,
         title: h.title || "",
-        address: h.address || "",
+        address: normalizeAddressText(h.address || ""),
         district: h.district || "",
         type: h.type || "studio",
         minPrice: Number(h.min_price ?? h.minPrice ?? 0),
@@ -1140,6 +1140,22 @@ export default function App() {
     const found = (components || []).find((c) => (c.types || []).includes(type));
     if (!found) return "";
     return mode === "short" ? (found.short_name || "") : (found.long_name || "");
+  };
+  const normalizeAddressText = (value = "") => {
+    const noHtml = String(value || "")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const firstVariant = noHtml.split(" / ")[0].split("/")[0].trim();
+    const normalized = (firstVariant || noHtml)
+      .replace(/\s*,\s*/g, ", ")
+      .replace(/(,\s*){2,}/g, ", ")
+      .replace(/,\s*$/, "")
+      .trim();
+    const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 4) return parts.slice(0, 4).join(", ");
+    return normalized;
   };
   const shortAddressFromGoogle = (components, fallback = "") => {
     const streetNumber = getGoogleComponent(components, "street_number");
@@ -2064,7 +2080,7 @@ export default function App() {
     if (comment) contactTags.push(`comment:${encodeURIComponent(comment)}`);
     const payload = {
       title,
-      address: newHousing.address.trim(),
+      address: normalizeAddressText(newHousing.address.trim()),
       district: newHousing.district.trim(),
       type: (newHousing.type || "studio").trim(),
       min_price: Number(newHousing.minPrice || 0),
@@ -2090,7 +2106,7 @@ export default function App() {
       setHousing((prev) => prev.map((h) => h.id === editingHousing.id ? {
         id: row.id,
         title: row.title || "",
-        address: row.address || "",
+        address: normalizeAddressText(row.address || ""),
         district: row.district || "",
         type: row.type || "studio",
         minPrice: Number(row.min_price || 0),
@@ -2117,7 +2133,7 @@ export default function App() {
       setHousing((prev) => [{
         id: row.id,
         title: row.title || "",
-        address: row.address || "",
+        address: normalizeAddressText(row.address || ""),
         district: row.district || "",
         type: row.type || "studio",
         minPrice: Number(row.min_price || 0),
@@ -3158,20 +3174,17 @@ export default function App() {
                   >
                     <StarIcon active={!!isF} size={14} />
                   </button>
-                  <span>👁 {ev.views || 0}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                    <ViewIcon size={13} /> {ev.views || 0}
+                  </span>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid }}><HeartIcon active={!!liked[`event-${ev.id}`]} size={14} /> {ev.likes}</span>
-                  <span>💬 {(ev.comments||[]).length}</span>
                   <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
                 </div>
               </div>
             </div>
             {isEvExp && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-              <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                <button onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
-                <button onClick={(e)=>{e.stopPropagation(); handleToggleLike(ev.id,"event");}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`event-${ev.id}`]} /> <span style={{ fontSize:14 }}>{ev.likes||0}</span></button>
-                <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {ev.views || 0}</span>
-                <button onClick={(e)=>{e.stopPropagation(); setShowComments(`event-${ev.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(ev.comments||[]).length}</span></button>
-                <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
+              <div style={{ padding:"14px 16px 10px", display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
+                <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:18, color:T.mid, padding:0 }} title="Поделиться">➤</button>
               </div>
               {renderComments(ev, "event", addEventComment)}
               {user && (user.id === ev.userId || user.name === ev.author) && (
@@ -3382,8 +3395,7 @@ export default function App() {
                   )}
                   {canManageActiveHousing && (
                     <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-                      <button onClick={() => startEditHousing(activeHousing)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Редактировать</button>
-                      <button onClick={() => handleDeleteHousing(activeHousing.id)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>
+                      <button onClick={() => startEditHousing(activeHousing)} style={{ ...pl(false), width:"100%", padding:"8px 10px", fontSize:12 }}>Редактировать</button>
                     </div>
                   )}
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
