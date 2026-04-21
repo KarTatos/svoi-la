@@ -50,6 +50,7 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
   const [np, setNp] = useState({ name:"", cat:"", district:"", address:"", tip:"" });
+  const [placeCoords, setPlaceCoords] = useState({ lat: null, lng: null });
   const [nPhotos, setNPhotos] = useState([]);
   const [editingPlace, setEditingPlace] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -215,7 +216,24 @@ export default function App() {
     const eventCommentsByItem = groupComments(eventComments);
 
     const mappedPlaces = (dbPlaces || [])
-      .map((p) => ({ id:p.id, cat:p.category, district:p.district, name:p.name, address:p.address||"", tip:p.tip, addedBy:p.added_by, userId:p.user_id, img:p.img||"📍", photos:p.photos||[], likes:p.likes_count||0, views:0, comments: placeCommentsByItem[p.id] || [], fromDB:true }))
+      .map((p) => ({
+        id:p.id,
+        cat:p.category,
+        district:p.district,
+        name:p.name,
+        address:p.address||"",
+        tip:p.tip,
+        addedBy:p.added_by,
+        userId:p.user_id,
+        img:p.img||"📍",
+        photos:p.photos||[],
+        likes:p.likes_count||0,
+        views:0,
+        comments: placeCommentsByItem[p.id] || [],
+        lat: Number.isFinite(Number(p.lat)) ? Number(p.lat) : null,
+        lng: Number.isFinite(Number(p.lng)) ? Number(p.lng) : null,
+        fromDB:true,
+      }))
       .filter((p) => PLACE_CAT_IDS.has(p.cat));
     const mappedTips = (dbTips || []).map((t) => {
       const rich = decodeRichText(t.text);
@@ -584,6 +602,9 @@ export default function App() {
     if (byAddress) geocodeCacheRef.current[byAddress] = coords;
   };
   const geocodePlace = async (place) => {
+    if (Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng))) {
+      return { lat: Number(place.lat), lng: Number(place.lng) };
+    }
     const { primary, byAddress } = getGeocodeCacheKeys(place);
     if (primary && geocodeCacheRef.current[primary]) return geocodeCacheRef.current[primary];
     if (byAddress && geocodeCacheRef.current[byAddress]) return geocodeCacheRef.current[byAddress];
@@ -785,6 +806,7 @@ export default function App() {
       const seen = new Set();
       for (const item of detailed) {
         if (!item?.value) continue;
+        if (!Number.isFinite(item.lat) || !Number.isFinite(item.lng)) continue;
         const key = `${item.value}|${item.label}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -1376,6 +1398,10 @@ export default function App() {
       alert("Выберите реальный адрес из подсказок.");
       return;
     }
+    if (!Number.isFinite(placeCoords.lat) || !Number.isFinite(placeCoords.lng)) {
+      alert("Выберите адрес из подсказок, чтобы сохранить точку на карте.");
+      return;
+    }
     setUploading(true);
     try {
       const safeTip = limitCardText(np.tip).trim();
@@ -1392,20 +1418,20 @@ export default function App() {
       }
       if (editingPlace) {
         const allPhotos = uploadedUrls;
-        const updates = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos };
+        const updates = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos, lat: placeCoords.lat, lng: placeCoords.lng };
         if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
-        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : p));
-        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos } : prev);
+        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos, lat: placeCoords.lat, lng: placeCoords.lng } : p));
+        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos, lat: placeCoords.lat, lng: placeCoords.lng } : prev);
         const nextDistrict = DISTRICTS.find((d) => d.id === selectedDistrictId) || null;
         if (nextDistrict) setSelD(nextDistrict);
         setEditingPlace(null);
       } else {
-        const dbData = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address||'', tip:safeTip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls };
+        const dbData = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address||'', tip:safeTip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls, lat: placeCoords.lat, lng: placeCoords.lng };
         const { data } = await dbAddPlace(dbData);
         const newId = data?.[0]?.id || Date.now();
-        setPlaces(prev => [{ id:newId, cat:np.cat, district:selectedDistrictId, name:np.name, address:np.address, tip:safeTip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, views:0, comments:[], fromDB:true }, ...prev]);
+        setPlaces(prev => [{ id:newId, cat:np.cat, district:selectedDistrictId, name:np.name, address:np.address, tip:safeTip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, views:0, comments:[], lat: placeCoords.lat, lng: placeCoords.lng, fromDB:true }, ...prev]);
       }
-      setNp({ name:"", cat:"", district:selD?.id || "", address:"", tip:"" }); setNPhotos([]); setShowAdd(false);
+      setNp({ name:"", cat:"", district:selD?.id || "", address:"", tip:"" }); setPlaceCoords({ lat: null, lng: null }); setNPhotos([]); setShowAdd(false);
     } catch(err) {
       console.error('Add place error:', err);
       alert('Ошибка при сохранении. Попробуйте ещё раз.');
@@ -1436,8 +1462,12 @@ export default function App() {
   const startEditPlace = (p) => {
     setEditingPlace(p);
     setNp({ name:p.name, cat:p.cat, district:p.district || selD?.id || "", address:p.address||"", tip:p.tip });
+    setPlaceCoords({
+      lat: Number.isFinite(Number(p.lat)) ? Number(p.lat) : null,
+      lng: Number.isFinite(Number(p.lng)) ? Number(p.lng) : null,
+    });
     setNPhotos((p.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setAddrValidPlace(!!(p.address || "").trim());
+    setAddrValidPlace(Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)));
     setNameOptionsPlace([]);
     setAddrOptionsPlace([]);
     setShowAdd(true);
@@ -1446,6 +1476,7 @@ export default function App() {
     if (!user) { handleLogin(); return; }
     setEditingPlace(null);
     setNp({ name:"", cat:selPC?.id||"", district:selD?.id || "", address:"", tip:"" });
+    setPlaceCoords({ lat: null, lng: null });
     setNPhotos([]);
     setAddrValidPlace(false);
     setNameOptionsPlace([]);
@@ -2205,6 +2236,7 @@ export default function App() {
                   const v = e.target.value;
                   setNp({...np,name:v});
                   setAddrValidPlace(false);
+                  setPlaceCoords({ lat: null, lng: null });
                   setAddrOptionsPlace([]);
                 }}
                 placeholder="Название"
@@ -2218,8 +2250,14 @@ export default function App() {
                       key={`${opt.value}-${i}`}
                       onClick={() => {
                         setNp(prev => ({ ...prev, name: opt.placeName || prev.name, address: opt.value }));
-                        if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: opt.placeName || np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
-                        setAddrValidPlace(true);
+                        if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) {
+                          saveGeocodeCache({ name: opt.placeName || np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
+                          setPlaceCoords({ lat: opt.lat, lng: opt.lng });
+                          setAddrValidPlace(true);
+                        } else {
+                          setPlaceCoords({ lat: null, lng: null });
+                          setAddrValidPlace(false);
+                        }
                         setNameOptionsPlace([]);
                         setAddrOptionsPlace([]);
                       }}
@@ -2244,12 +2282,12 @@ export default function App() {
                 {DISTRICTS.map((d)=><option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Адрес *</label>
-              <input value={np.address} onChange={e=>{setNp({...np,address:e.target.value}); setAddrValidPlace(false);}} placeholder="Адрес" style={{ ...iS, marginBottom:6, borderColor:np.address && !addrValidPlace ? "#f5b7b1" : T.border }} />
+              <input value={np.address} onChange={e=>{setNp({...np,address:e.target.value}); setAddrValidPlace(false); setPlaceCoords({ lat: null, lng: null });}} placeholder="Адрес" style={{ ...iS, marginBottom:6, borderColor:np.address && !addrValidPlace ? "#f5b7b1" : T.border }} />
               {addrLoadingPlace && <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Ищем адрес...</div>}
               {!addrLoadingPlace && addrOptionsPlace.length > 0 && !addrValidPlace && (
                 <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
                   {addrOptionsPlace.map((opt, i) => (
-                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng }); setAddrValidPlace(true); setAddrOptionsPlace([]); setNameOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                    <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) { saveGeocodeCache({ name: np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng }); setPlaceCoords({ lat: opt.lat, lng: opt.lng }); setAddrValidPlace(true); } else { setPlaceCoords({ lat: null, lng: null }); setAddrValidPlace(false); } setAddrOptionsPlace([]); setNameOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                       {opt.label}
                     </button>
                   ))}

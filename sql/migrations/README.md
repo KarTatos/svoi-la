@@ -6,6 +6,7 @@ Run in Supabase SQL Editor in this exact order:
 2. `sql/migrations/002_likes_polymorphic.sql`
 3. `sql/migrations/003_views_counters.sql`
 4. `sql/migrations/004_indexes.sql`
+5. `sql/migrations/005_places_lat_lng.sql`
 
 Notes:
 - All files are idempotent (`IF NOT EXISTS`, safe `DROP POLICY IF EXISTS`, etc.).

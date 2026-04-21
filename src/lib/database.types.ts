@@ -19,6 +19,8 @@ export type Database = {
           photos: string[] | null;
           likes_count: number | null;
           views: number | null;
+          lat: number | null;
+          lng: number | null;
         };
         Insert: Partial<Database["public"]["Tables"]["places"]["Row"]> & {
           name: string;
@@ -150,4 +152,3 @@ export type Database = {
     CompositeTypes: Record<string, never>;
   };
 };
-

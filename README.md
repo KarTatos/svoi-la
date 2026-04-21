@@ -163,5 +163,6 @@ Use ordered migration files from [`sql/migrations`](./sql/migrations):
 2. `002_likes_polymorphic.sql`
 3. `003_views_counters.sql`
 4. `004_indexes.sql`
+5. `005_places_lat_lng.sql`
 
 Quick guide: [sql/migrations/README.md](./sql/migrations/README.md)
