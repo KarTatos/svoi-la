@@ -475,7 +475,7 @@ export default function App() {
     if (typeof window === "undefined") return Promise.reject(new Error("No browser"));
     if (window.google?.maps) return Promise.resolve(window.google.maps);
     if (googleMapsLoaderRef.current) return googleMapsLoaderRef.current;
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCF1UVftmKSfE5x6QY2DoKIT9udSpyNaLM";
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) return Promise.reject(new Error("Google Maps API key is missing"));
 
     googleMapsLoaderRef.current = new Promise((resolve, reject) => {
@@ -740,6 +740,9 @@ export default function App() {
     };
     autocomplete.getPlacePredictions(req, (predictions, status) => {
       const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
+      if (!ok && status !== window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+        console.error("Autocomplete status:", status);
+      }
       resolve(ok ? predictions || [] : []);
     });
   });
@@ -788,7 +791,8 @@ export default function App() {
         uniq.push(item);
       }
       return uniq;
-    } catch {
+    } catch (err) {
+      console.error("Address suggestions failed:", err);
       return [];
     }
   };

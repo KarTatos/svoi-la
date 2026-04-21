@@ -8,22 +8,22 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 const RICH_PREFIX = "__LA_RICH_V1__";
 
 const DISTRICT_ALIASES = {
-  weho: ["weho", "west hollywood", "РІРµСЃС‚ РіРѕР»Р»РёРІСѓРґ", "СѓСЌСЃС‚ РіРѕР»Р»РёРІСѓРґ"],
-  hollywood: ["hollywood", "РіРѕР»Р»РёРІСѓРґ", "РіРѕР»РёРІСѓРґ"],
-  glendale: ["glendale", "РіР»РµРЅРґРµР№Р»"],
-  dtla: ["dtla", "downtown la", "downtown", "РґР°СѓРЅС‚Р°СѓРЅ", "С†РµРЅС‚СЂ Р»Р°"],
-  valley: ["valley", "studio city", "north hollywood", "РґРѕР»РёРЅР°", "СЃС‚СѓРґРёРѕ СЃРёС‚Рё", "РЅРѕСЂС‚ С…РѕР»Р»РёРІСѓРґ"],
-  silverlake: ["silver lake", "los feliz", "СЃРёР»СЊРІРµСЂ Р»РµР№Рє", "Р»РѕСЃ С„РµР»РёР·"],
-  westside: ["westside", "santa monica", "venice", "СЃР°РЅС‚Р° РјРѕРЅРёРєР°", "РІРµРЅРёСЃ"],
-  southbay: ["south bay", "manhattan beach", "hermosa beach", "redondo beach", "long beach", "СЃР°СѓС‚С… Р±РµР№", "РјР°РЅС…СЌС‚С‚РµРЅ Р±РёС‡", "С…РµСЂРјРѕСЃР° Р±РёС‡", "СЂРµРґРѕРЅРґРѕ Р±РёС‡", "Р»РѕРЅРі Р±РёС‡"],
-  pasadena: ["pasadena", "РїР°СЃР°РґРµРЅР°"],
-  midcity: ["mid-city", "midcity", "melrose", "РјРёРґ СЃРёС‚Рё", "РјРµР»СЂРѕСѓР·"],
+  weho: ["weho", "west hollywood", "вест голливуд", "уэст голливуд"],
+  hollywood: ["hollywood", "голливуд", "голивуд"],
+  glendale: ["glendale", "глендейл"],
+  dtla: ["dtla", "downtown la", "downtown", "даунтаун", "центр ла"],
+  valley: ["valley", "studio city", "north hollywood", "долина", "студио сити", "норт холливуд", "норт голливуд"],
+  silverlake: ["silver lake", "los feliz", "сильвер лейк", "лос фелиз"],
+  westside: ["westside", "santa monica", "venice", "санта моника", "венис"],
+  southbay: ["south bay", "manhattan beach", "hermosa beach", "redondo beach", "long beach", "саут бей", "манхэттен бич", "хермоса бич", "редондо бич", "лонг бич"],
+  pasadena: ["pasadena", "пасадена"],
+  midcity: ["mid-city", "midcity", "melrose", "мид сити", "мелроуз"],
 };
 
 function normalizeText(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/[С‘]/g, "Рµ")
+    .replace(/[ё]/g, "е")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -45,13 +45,13 @@ function decodeRichText(raw) {
 function classifyQuery(query) {
   const q = normalizeText(query);
   const uscisKeywords = [
-    "uscis", "С„РѕСЂРјР°", "РІРёР·Р°", "РіСЂРёРЅ", "РєР°СЂС‚Р°", "РіСЂР°Р¶РґР°РЅСЃС‚РІРѕ", "РЅР°С‚СѓСЂР°Р»РёР·Р°С†", "asylum",
-    "СѓР±РµР¶РёС‰", "ead", "i-", "n-", "ds-", "tps", "РїРµС‚РёС†Рё", "СЃС‚Р°С‚СѓСЃ", "РєРµР№СЃ", "receipt",
-    "РёРјРјРёРіСЂР°", "РґРµРїРѕСЂС‚Р°С†", "РїРѕС€Р»РёРЅ", "ssn", "РґРѕРєСѓРјРµРЅС‚",
+    "uscis", "форма", "виза", "грин", "карта", "гражданство", "натурализац", "asylum",
+    "убежищ", "ead", "i-", "n-", "ds-", "tps", "петици", "статус", "кейс", "receipt",
+    "иммигра", "депортац", "пошлин", "ssn", "документ",
   ];
   const localKeywords = [
-    "СЂРµСЃС‚РѕСЂР°РЅ", "Р±Р°СЂ", "РєР°С„Рµ", "РєРѕС„Рµ", "С…Р°Р№Рє", "РїРѕРµСЃС‚СЊ", "РїРѕРіСѓР»СЏС‚СЊ", "РєСѓРґР°", "РјРµСЃС‚",
-    "СЂР°Р№РѕРЅ", "СЃРѕР±С‹С‚Рё", "РјРµСЂРѕРїСЂРёСЏС‚", "СЃРѕРІРµС‚", "Р¶РёР»СЊ", "Р°СЂРµРЅРґ", "СЂР°Р±РѕС‚", "РІР°РєР°РЅ",
+    "ресторан", "бар", "кафе", "кофе", "хайк", "поесть", "погулять", "куда", "мест",
+    "район", "событи", "мероприяти", "совет", "жиль", "аренд", "работ", "вакан",
   ];
   const uScore = uscisKeywords.filter((k) => q.includes(k)).length;
   const lScore = localKeywords.filter((k) => q.includes(k)).length;
@@ -86,15 +86,15 @@ function scoreByQuery(item, query) {
 }
 
 function formatPlaceLine(place) {
-  return `- ${place.name} (${place.district || "unknown district"}, ${place.cat || place.category || "category"}) вЂ” ${place.tip || "Р±РµР· РѕРїРёСЃР°РЅРёСЏ"} | РђРґСЂРµСЃ: ${place.address || "РЅРµ СѓРєР°Р·Р°РЅ"} | link: app://place/${place.id}`;
+  return `- ${place.name} (${place.district || "unknown district"}, ${place.cat || place.category || "category"}) — ${place.tip || "без описания"} | Адрес: ${place.address || "не указан"} | link: app://place/${place.id}`;
 }
 
 function formatHousingLine(item) {
-  const price = Number(item.minPrice || 0) > 0 ? `$${Number(item.minPrice).toLocaleString("en-US")}+` : "С†РµРЅР° РЅРµ СѓРєР°Р·Р°РЅР°";
+  const price = Number(item.minPrice || 0) > 0 ? `$${Number(item.minPrice).toLocaleString("en-US")}+` : "цена не указана";
   const area = item.district || "LA";
-  const type = item.type || "Р¶РёР»СЊС‘";
-  const contact = item.telegram ? `tg: @${String(item.telegram).replace(/^@/, "")}` : (item.messageContact ? `sms: ${item.messageContact}` : "РєРѕРЅС‚Р°РєС‚ РЅРµ СѓРєР°Р·Р°РЅ");
-  return `- ${item.title || item.address || "Р–РёР»СЊС‘"} (${type}, ${area}) вЂ” ${price} | РђРґСЂРµСЃ: ${item.address || "РЅРµ СѓРєР°Р·Р°РЅ"} | РљРѕРЅС‚Р°РєС‚: ${contact} | link: app://housing/${item.id}`;
+  const type = item.type || "жильё";
+  const contact = item.telegram ? `tg: @${String(item.telegram).replace(/^@/, "")}` : (item.messageContact ? `sms: ${item.messageContact}` : "контакт не указан");
+  return `- ${item.title || item.address || "Жильё"} (${type}, ${area}) — ${price} | Адрес: ${item.address || "не указан"} | Контакт: ${contact} | link: app://housing/${item.id}`;
 }
 
 function sanitizeClientData(appData) {
@@ -258,13 +258,13 @@ function buildLocalContext(message, data) {
 
   const parts = [];
   if (bestPlaces.length) {
-    parts.push(`РњРµСЃС‚Р° (${bestPlaces.length}):\n${bestPlaces.map(formatPlaceLine).join("\n")}`);
+    parts.push(`Места (${bestPlaces.length}):\n${bestPlaces.map(formatPlaceLine).join("\n")}`);
   }
   if (tips.length) {
-    parts.push(`РЎРѕРІРµС‚С‹:\n${tips.map((t) => `- ${t.title} (${t.category}): ${String(t.text || "").slice(0, 180)} | link: app://tip/${t.id}`).join("\n")}`);
+    parts.push(`Советы:\n${tips.map((t) => `- ${t.title} (${t.category}): ${String(t.text || "").slice(0, 180)} | link: app://tip/${t.id}`).join("\n")}`);
   }
   if (events.length) {
-    parts.push(`РЎРѕР±С‹С‚РёСЏ:\n${events.map((e) => `- ${e.title} (${e.category}) ${e.date ? `вЂ” ${e.date}` : ""} ${e.location ? `РІ ${e.location}` : ""}: ${String(e.desc || "").slice(0, 160)} | link: app://event/${e.id}`).join("\n")}`);
+    parts.push(`События:\n${events.map((e) => `- ${e.title} (${e.category}) ${e.date ? `— ${e.date}` : ""} ${e.location ? `в ${e.location}` : ""}: ${String(e.desc || "").slice(0, 160)} | link: app://event/${e.id}`).join("\n")}`);
   }
   if (housing.length) {
     parts.push(`Жильё:\n${housing.map(formatHousingLine).join("\n")}`);
@@ -283,7 +283,7 @@ export async function POST(request) {
     const { message, history = [], appData = null } = await request.json();
     if (!message || typeof message !== "string") {
       logInfo("chat.bad_request", meta);
-      return Response.json({ error: "РџСѓСЃС‚РѕРµ СЃРѕРѕР±С‰РµРЅРёРµ" }, { status: 400 });
+      return Response.json({ error: "Пустое сообщение" }, { status: 400 });
     }
 
     const queryType = classifyQuery(message);
@@ -300,18 +300,18 @@ export async function POST(request) {
 
     const localContext = buildLocalContext(message, mergedData);
     const localDataBlock = localContext.hasData
-      ? `\n\nР”РђРќРќР«Р• РџР РР›РћР–Р•РќРРЇ (РёСЃРїРѕР»СЊР·СѓР№ С‚РѕР»СЊРєРѕ РёС… РґР»СЏ СЂРµРєРѕРјРµРЅРґР°С†РёР№):\n${localContext.context}`
-      : "\n\nР”РђРќРќР«Р• РџР РР›РћР–Р•РќРРЇ: РїРѕРґС…РѕРґСЏС‰РёС… Р·Р°РїРёСЃРµР№ РЅРµ РЅР°Р№РґРµРЅРѕ.";
+      ? `\n\nДАННЫЕ ПРИЛОЖЕНИЯ (используй только их для рекомендаций):\n${localContext.context}`
+      : "\n\nДАННЫЕ ПРИЛОЖЕНИЯ: подходящих записей не найдено.";
 
-    const systemPrompt = `РўС‹ вЂ” AI-РїРѕРјРѕС‰РЅРёРє РїСЂРёР»РѕР¶РµРЅРёСЏ "РњС‹ РІ LA".
+    const systemPrompt = `Ты — AI-помощник приложения "Мы в LA".
 
-РџСЂР°РІРёР»Р°:
-1. РќРёРєРѕРіРґР° РЅРµ РёСЃРїРѕР»СЊР·СѓР№ СЃР»РѕРІРѕ "СЂСѓСЃСЃРєРѕСЏР·С‹С‡РЅС‹Рµ" РёР»Рё РµРіРѕ С„РѕСЂРјС‹.
-2. РћС‚РІРµС‡Р°Р№ С‚РѕР»СЊРєРѕ РїРѕ С‚РµРјР°Рј: USCIS/РёРјРјРёРіСЂР°С†РёСЏ, РјРµСЃС‚Р° РІ LA, СЃРѕР±С‹С‚РёСЏ, СЃРѕРІРµС‚С‹, Р¶РёР»СЊРµ, СЂР°Р±РѕС‚Р°.
-3. Р•СЃР»Рё РІРѕРїСЂРѕСЃ РїСЂРѕ РјРµСЃС‚Р°/СЃРѕР±С‹С‚РёСЏ/СЃРѕРІРµС‚С‹, РѕС‚РІРµС‡Р°Р№ СЃС‚СЂРѕРіРѕ РЅР° РѕСЃРЅРѕРІРµ РґР°РЅРЅС‹С… РїСЂРёР»РѕР¶РµРЅРёСЏ РЅРёР¶Рµ.
-4. Р•СЃР»Рё РґР°РЅРЅС‹С… РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ, С‡РµСЃС‚РЅРѕ СЃРєР°Р¶Рё РѕР± СЌС‚РѕРј Рё РїСЂРµРґР»РѕР¶Рё РґРѕР±Р°РІРёС‚СЊ Р·Р°РїРёСЃСЊ РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ СЂР°Р·РґРµР».
-5. РћС‚РІРµС‡Р°Р№ РєСЂР°С‚РєРѕ, РїРѕ РґРµР»Сѓ, РЅР° СЂСѓСЃСЃРєРѕРј.
-6. Р”Р»СЏ USCIS РґРѕР±Р°РІР»СЏР№ РґРёСЃРєР»РµР№РјРµСЂ: "Р­С‚Рѕ РёРЅС„РѕСЂРјР°С†РёРѕРЅРЅР°СЏ РїРѕРјРѕС‰СЊ, РЅРµ СЋСЂРёРґРёС‡РµСЃРєР°СЏ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёСЏ. РџСЂРѕРІРµСЂСЏР№С‚Рµ Р°РєС‚СѓР°Р»СЊРЅС‹Рµ РїСЂР°РІРёР»Р° РЅР° uscis.gov".
+Правила:
+1. Никогда не используй слово "русскоязычные" или его формы.
+2. Отвечай только по темам: USCIS/иммиграция, места в LA, события, советы, жильё, работа.
+3. Если вопрос про места/события/советы, отвечай строго на основе данных приложения ниже.
+4. Если данных недостаточно, честно скажи об этом и предложи добавить запись в соответствующий раздел.
+5. Отвечай кратко, по делу, на русском.
+6. Для USCIS добавляй дисклеймер: "Это информационная помощь, не юридическая консультация. Проверяйте актуальные правила на uscis.gov".
 7. Use formal Russian style. No emojis.
 8. Do not use markdown formatting. Do not use asterisks (*) in replies.
 9. For each found record from app data, include a direct card link as plain text:
@@ -338,11 +338,11 @@ export async function POST(request) {
       .join("\n")
       .trim();
 
-    return Response.json({ text: text || "РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РѕС‚РІРµС‚.", queryType, localDataUsed: localContext.hasData });
+    return Response.json({ text: text || "Не удалось получить ответ.", queryType, localDataUsed: localContext.hasData });
   } catch (error) {
     logError("chat.unhandled", error, meta);
-    if (error?.status === 401) return Response.json({ error: "РћС€РёР±РєР° API РєР»СЋС‡Р°." }, { status: 500 });
-    if (error?.status === 429) return Response.json({ error: "РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ Р·Р°РїСЂРѕСЃРѕРІ. РџРѕРґРѕР¶РґРёС‚Рµ." }, { status: 429 });
-    return Response.json({ error: "РћС€РёР±РєР° СЃРµСЂРІРµСЂР°." }, { status: 500 });
+    if (error?.status === 401) return Response.json({ error: "Ошибка API ключа." }, { status: 500 });
+    if (error?.status === 429) return Response.json({ error: "Слишком много запросов. Подождите." }, { status: 429 });
+    return Response.json({ error: "Ошибка сервера." }, { status: 500 });
   }
 }
