@@ -9,9 +9,12 @@ import UscisScreen from "./svoi/screens/UscisScreen";
 import UscisCategoryScreen from "./svoi/screens/UscisCategoryScreen";
 import HomeScreen from "./svoi/screens/HomeScreen";
 import ChatScreen from "./svoi/screens/ChatScreen";
+import PlacesDistrictsScreen from "./svoi/screens/PlacesDistrictsScreen";
+import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
 import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
+import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
 
 export default function App() {
   const ADMIN_EMAIL = "kushnir4work@gmail.com";
@@ -2138,42 +2141,32 @@ export default function App() {
           />
         )}
 
-        {/* PLACES → DISTRICTS */}
-        {scr==="places" && (<div>
-          <button onClick={goHome} style={bk}>← Главная</button>
-          <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 16px" }}>📍 Выбери район</h2>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {DISTRICTS.map((d, i) => { const cnt = places.filter(p=>p.district===d.id).length; return (
-              <button key={d.id} onClick={() => { setSelD(d); setScr("district"); }}
-                style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", opacity:mt?1:0, transition:`all 0.4s ease ${i*0.04}s` }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-                <div style={{ width:48, height:48, borderRadius:T.rs, background:T.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{d.emoji}</div>
-                <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{d.name}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{d.desc}</div></div>
-                <div style={{ textAlign:"right" }}><span style={{ fontSize:13, fontWeight:700, color:T.primary }}>{cnt}</span><br/><span style={{ fontSize:10, color:T.light }}>мест</span></div>
-              </button>
-            ); })}
-          </div>
-        </div>)}
+        {scr==="places" && (
+          <PlacesDistrictsScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            mt={mt}
+            districts={DISTRICTS}
+            places={places}
+            onGoHome={goHome}
+            onSelectDistrict={(d) => { setSelD(d); setScr("district"); }}
+          />
+        )}
 
-        {/* DISTRICT → CATEGORIES */}
-        {scr==="district" && selD && (<div>
-          <button onClick={() => { setScr("places"); setSelD(null); }} style={bk}>← Районы</button>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"4px 0 18px" }}>
-            <div style={{ width:48, height:48, borderRadius:14, background:T.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selD.emoji}</div>
-            <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selD.name}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{dPlaces.length} мест</p></div>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {PLACE_CATS.map(c => { const cnt = dPlaces.filter(p=>p.cat===c.id).length; if (!cnt) return null; return (
-              <button key={c.id} onClick={() => { setSelPC(c); setScr("places-cat"); }}
-                style={{ ...cd, padding:"18px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-                <div style={{ width:40, height:40, borderRadius:10, background:`${c.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
-                <div><div style={{ fontWeight:700, fontSize:14 }}>{c.title}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{cnt} мест</div></div>
-              </button>
-            ); })}
-          </div>
-          <button onClick={() => { openAddForm(); }} style={{ ...cd, width:"100%", marginTop:14, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить место</button>
-        </div>)}
+        {scr==="district" && selD && (
+          <DistrictCategoriesScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            selectedDistrict={selD}
+            districtPlaces={dPlaces}
+            placeCategories={PLACE_CATS}
+            onBack={() => { setScr("places"); setSelD(null); }}
+            onSelectCategory={(c) => { setSelPC(c); setScr("places-cat"); }}
+            onOpenAdd={openAddForm}
+          />
+        )}
 
         {/* ADD PLACE MODAL */}
         {showAdd && selD && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }} onClick={()=>setShowAdd(false)}>
@@ -3096,41 +3089,16 @@ export default function App() {
         />
       )}
 
-      {photoViewer && (
-        <div onClick={closePhotoViewer} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16, touchAction:"none" }}>
-          <button
-            onClick={(e)=>{e.stopPropagation(); closePhotoViewer();}}
-            style={{ position:"absolute", top:"max(14px, env(safe-area-inset-top))", right:14, width:40, height:40, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.45)", background:"rgba(0,0,0,0.45)", color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", zIndex:5 }}
-          >
-            X
-          </button>
-          {photoViewer.photos.length > 1 && (
-            <>
-              <button onClick={(e)=>{e.stopPropagation(); goPrevPhoto();}} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:4 }}>‹</button>
-              <button onClick={(e)=>{e.stopPropagation(); goNextPhoto();}} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", width:42, height:42, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(0,0,0,0.35)", color:"#fff", fontSize:22, cursor:"pointer", zIndex:4 }}>›</button>
-            </>
-          )}
-          <div
-            onClick={(e)=>e.stopPropagation()}
-            onTouchStart={onPhotoTouchStart}
-            onTouchMove={onPhotoTouchMove}
-            onTouchEnd={onPhotoTouchEnd}
-            style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", touchAction:"none" }}
-          >
-            <img
-              src={photoViewer.photos[photoViewer.index]}
-              alt=""
-              draggable={false}
-              style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)", transform:`scale(${photoZoom})`, transformOrigin:"center center", transition:photoZoom === 1 ? "transform 0.2s ease" : "none", userSelect:"none", WebkitUserSelect:"none" }}
-            />
-          </div>
-          {photoViewer.photos.length > 1 && (
-            <div style={{ position:"absolute", bottom:14, left:"50%", transform:"translateX(-50%)", color:"#fff", fontSize:12, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(255,255,255,0.25)", padding:"5px 10px", borderRadius:999 }}>
-              {photoViewer.index + 1} / {photoViewer.photos.length}
-            </div>
-          )}
-        </div>
-      )}
+      <PhotoViewerModal
+        photoViewer={photoViewer}
+        photoZoom={photoZoom}
+        onClose={closePhotoViewer}
+        onPrev={goPrevPhoto}
+        onNext={goNextPhoto}
+        onTouchStart={onPhotoTouchStart}
+        onTouchMove={onPhotoTouchMove}
+        onTouchEnd={onPhotoTouchEnd}
+      />
 
       <style>{`
         @keyframes pulse { 0%,100% { opacity:.3; transform:scale(1) } 50% { opacity:1; transform:scale(1.2) } }
