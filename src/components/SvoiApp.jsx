@@ -2240,7 +2240,7 @@ export default function App() {
               </div>
               <div style={{ display:"flex", gap:10, marginTop:16 }}>
                 <button onClick={() => setTQ((q) => Math.max(0, q - 1))} disabled={tQ === 0} style={{ ...pl(false), flex:1, padding:12, opacity:tQ===0 ? 0.45 : 1, cursor:tQ===0 ? "default" : "pointer" }}>← Prev</button>
-                <button onClick={() => setTQ((q) => Math.min(tShuf.length - 1, q + 1))} disabled={tQ >= tShuf.length - 1} style={{ ...pl(true), flex:1, padding:12, opacity:tQ>=tShuf.length-1 ? 0.45 : 1, cursor:tQ>=tShuf.length-1 ? "default" : "pointer" }}>Next →</button>
+                <button onClick={() => setTQ((q) => Math.min(tShuf.length - 1, q + 1))} disabled={tQ >= tShuf.length - 1 || !Object.prototype.hasOwnProperty.call(tAns, tQ)} style={{ ...pl(true), flex:1, padding:12, opacity:(tQ>=tShuf.length-1 || !Object.prototype.hasOwnProperty.call(tAns, tQ)) ? 0.45 : 1, cursor:(tQ>=tShuf.length-1 || !Object.prototype.hasOwnProperty.call(tAns, tQ)) ? "default" : "pointer" }}>Next →</button>
               </div>
             </div>
             <div style={{ marginTop:12, fontSize:12, color:T.mid, textAlign:"center" }}>
