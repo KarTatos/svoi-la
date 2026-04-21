@@ -154,3 +154,14 @@ Typed client: `src/lib/supabase-typed.ts`
 3. Redeploy app.
 
 Structured logs are emitted as JSON via `src/lib/logger.js` from API routes.
+
+## SQL migrations (ordered)
+
+Use ordered migration files from [`sql/migrations`](./sql/migrations):
+
+1. `001_housing_schema.sql`
+2. `002_likes_polymorphic.sql`
+3. `003_views_counters.sql`
+4. `004_indexes.sql`
+
+Quick guide: [sql/migrations/README.md](./sql/migrations/README.md)
