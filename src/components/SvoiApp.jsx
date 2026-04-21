@@ -2183,8 +2183,8 @@ export default function App() {
         </div>)}
 
         {/* ADD PLACE MODAL */}
-        {showAdd && selD && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>setShowAdd(false)}>
-          <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+        {showAdd && selD && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }} onClick={()=>setShowAdd(false)}>
+          <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
             {!user ? (
               <div style={{ textAlign:"center", padding:"20px 0" }}>
