@@ -8,6 +8,7 @@ import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
 import UscisCategoryScreen from "./svoi/screens/UscisCategoryScreen";
 import HomeScreen from "./svoi/screens/HomeScreen";
+import ChatScreen from "./svoi/screens/ChatScreen";
 
 export default function App() {
   const ADMIN_EMAIL = "kushnir4work@gmail.com";
@@ -3066,33 +3067,26 @@ export default function App() {
           </div>
         )}
 
-        {/* CHAT */}
-        {scr==="chat" && (<div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 120px)" }}>
-          <button onClick={goHome} style={bk}>← Главная</button>
-          {!user ? (
-            <div style={{ textAlign:"center", padding:"40px 20px" }}>
-              <div style={{ fontSize:48, marginBottom:16 }}>🔐</div>
-              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>Войдите для AI-чата</h3>
-              <button onClick={handleLogin} style={{ ...pl(true), padding:"14px 28px" }}>Войти через Google</button>
-              <div style={{ margin:"10px auto 0", maxWidth:420, fontSize:12, color:T.mid, background:T.bg, border:`1px solid ${T.borderL}`, borderRadius:10, padding:"10px 12px", lineHeight:1.45 }}>
-                Вход через Google безопасен: мы не видим ваш пароль Google. Сохраняются только имя, email и аватар для работы аккаунта.
-              </div>
-            </div>
-          ) : (<>
-            <div style={{ flex:1, overflowY:"auto", paddingBottom:12 }}>
-              {chat.map((m,i) => (<div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start", marginBottom:10 }}>
-                <div style={{ maxWidth:"85%", padding:"12px 16px", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?T.primary:T.card, color:m.role==="user"?"#fff":T.text, fontSize:14, lineHeight:1.55, boxShadow:m.role==="user"?"0 2px 10px rgba(244,123,32,0.25)":T.sh, border:m.role==="user"?"none":`1px solid ${T.borderL}` }}>{renderChatText(m.text, m.role==="user")}</div>
-              </div>))}
-              {typing && <div style={{ display:"flex", marginBottom:10 }}><div style={{ ...cd, padding:"14px 20px", display:"flex", gap:5 }}>{[0,1,2].map(j=><div key={j} style={{ width:7, height:7, borderRadius:"50%", background:T.primary, opacity:0.4, animation:`pulse 1.2s ease ${j*0.2}s infinite` }} />)}</div></div>}
-              <div ref={chatEnd} />
-            </div>
-            {chat.length<=1 && <div style={{ marginBottom:12 }}><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{["Грин-карта через брак?","Стоимость N-400?","Работа без EAD?","Статус кейса?"].map((s,i)=><button key={i} onClick={()=>handleSend(s)} style={pl(false)}>{s}</button>)}</div></div>}
-            <div style={{ display:"flex", gap:8, padding:"12px 0", borderTop:`1px solid ${T.borderL}` }}>
-              <input ref={inpRef} value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()} placeholder="Задайте вопрос..." style={{ ...iS, flex:1, width:"auto" }} />
-              <button onClick={()=>handleSend()} disabled={!inp.trim()} style={{ width:48, height:48, borderRadius:14, border:"none", background:inp.trim()?T.primary:T.bg, color:inp.trim()?"#fff":T.light, fontSize:20, cursor:inp.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>↑</button>
-            </div>
-          </>)}
-        </div>)}
+        {scr==="chat" && (
+          <ChatScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            pl={pl}
+            iS={iS}
+            user={user}
+            chat={chat}
+            typing={typing}
+            inp={inp}
+            setInp={setInp}
+            chatEndRef={chatEnd}
+            inpRef={inpRef}
+            renderChatText={renderChatText}
+            onGoHome={goHome}
+            onLogin={handleLogin}
+            onSend={handleSend}
+          />
+        )}
       </main>
 
       {uscisPdfViewer && (
