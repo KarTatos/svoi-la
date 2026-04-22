@@ -29,6 +29,12 @@ export async function getUser() {
   return user;
 }
 
+// SUPPORT
+export async function addSupportRequest(payload) {
+  const { data, error } = await supabase.from('support_requests').insert([payload]).select().single();
+  return { data, error };
+}
+
 // ═══ PLACES ═══
 export async function getPlaces() {
   const { data, error } = await supabase.from('places').select('*').order('created_at', { ascending: false });

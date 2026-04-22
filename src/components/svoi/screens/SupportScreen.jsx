@@ -12,16 +12,21 @@ export default function SupportScreen({
 }) {
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   const canSend = text.trim().length >= 5;
 
   const submit = async () => {
     if (!canSend) return;
+    setError("");
+    setSent(false);
     const ok = await onSubmit(text.trim());
     if (ok) {
       setSent(true);
       setText("");
+      return;
     }
+    setError("Не удалось отправить запрос. Попробуйте еще раз.");
   };
 
   return (
@@ -31,7 +36,7 @@ export default function SupportScreen({
       <div style={{ ...cd, padding: 16, marginBottom: 12 }}>
         <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Написать в поддержку</div>
         <div style={{ fontSize: 13, color: T.mid, marginBottom: 10 }}>
-          Опишите проблему или вопрос. Мы откроем ваше почтовое приложение с готовым черновиком.
+          Опишите проблему или вопрос. Запрос отправляется напрямую в поддержку из приложения.
         </div>
 
         <div style={{ fontSize: 12, color: T.light, marginBottom: 6 }}>Ваш аккаунт</div>
@@ -60,7 +65,12 @@ export default function SupportScreen({
 
         {sent && (
           <div style={{ marginTop: 10, fontSize: 12, color: "#2f855a" }}>
-            Черновик письма открыт. Отправьте его в почтовом приложении.
+            Запрос отправлен в поддержку.
+          </div>
+        )}
+        {!!error && (
+          <div style={{ marginTop: 10, fontSize: 12, color: "#E74C3C" }}>
+            {error}
           </div>
         )}
       </div>

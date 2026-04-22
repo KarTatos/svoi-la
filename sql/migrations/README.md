@@ -8,6 +8,7 @@ Run in Supabase SQL Editor in this exact order:
 4. `sql/migrations/004_indexes.sql`
 5. `sql/migrations/005_places_lat_lng.sql`
 6. `sql/migrations/006_admin_email_access.sql`
+7. `sql/migrations/007_support_requests.sql`
 
 Notes:
 - All files are idempotent (`IF NOT EXISTS`, safe `DROP POLICY IF EXISTS`, etc.).
