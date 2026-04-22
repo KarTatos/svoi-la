@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { addSupportRequest as dbAddSupportRequest, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 import { useAppData } from "../hooks/useAppData";
 import { useAuth } from "../hooks/useAuth";
+import { useViewTracker } from "../hooks/useViewTracker";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -162,7 +163,6 @@ export default function App() {
   const googlePlacesServiceRef = useRef(null);
   const googleGeocoderRef = useRef(null);
   const geocodeCacheRef = useRef({});
-  const viewedRef = useRef({ place: null, housing: null });
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
   const realtimeReloadTimerRef = useRef(null);
@@ -510,72 +510,6 @@ export default function App() {
       primary: `${name}|${address}`,
       byAddress: `addr|${address}`,
     };
-  };
-  const setCardViewsLocally = (itemType, itemId, views) => {
-    const nextViews = Number(views || 0);
-    const updater = (item) => item.id === itemId ? { ...item, views: nextViews } : item;
-    if (itemType === "place") {
-      setPlaces((prev) => prev.map(updater));
-      setSelPlace((prev) => prev?.id === itemId ? { ...prev, views: nextViews } : prev);
-    } else if (itemType === "tip") {
-      setTips((prev) => prev.map(updater));
-    } else if (itemType === "event") {
-      setEvents((prev) => prev.map(updater));
-    } else if (itemType === "housing") {
-      setHousing((prev) => prev.map(updater));
-      setSelHousing((prev) => prev?.id === itemId ? { ...prev, views: nextViews } : prev);
-    }
-  };
-  const getViewerKey = () => {
-    if (user?.id) return `user:${user.id}`;
-    try {
-      const storageKey = "la_viewer_key";
-      let guestKey = localStorage.getItem(storageKey);
-      if (!guestKey) {
-        guestKey = (window?.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-        localStorage.setItem(storageKey, guestKey);
-      }
-      return `guest:${guestKey}`;
-    } catch {
-      return "guest:anonymous";
-    }
-  };
-  const trackCardView = async (itemType, item) => {
-    const itemId = item?.id;
-    if (!itemId || !item?.fromDB) return false;
-    if (!authReady) return false;
-    const viewerKey = getViewerKey();
-    if (!viewerKey) return false;
-    const viewedStorageKey = `viewed_once_${viewerKey}`;
-    const viewedItemKey = `${itemType}:${itemId}`;
-    try {
-      const viewedRaw = localStorage.getItem(viewedStorageKey);
-      const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-      if (viewedMap?.[viewedItemKey]) return true;
-    } catch {}
-    try {
-      const response = await fetch("/api/views", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemType, itemId, viewerKey }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (response.ok && payload?.ok && Number.isFinite(Number(payload.views))) {
-        setCardViewsLocally(itemType, itemId, Number(payload.views));
-        try {
-          const viewedRaw = localStorage.getItem(viewedStorageKey);
-          const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-          viewedMap[viewedItemKey] = true;
-          localStorage.setItem(viewedStorageKey, JSON.stringify(viewedMap));
-        } catch {}
-        return true;
-      }
-      console.error("View track failed:", itemType, itemId, payload?.error || response.status);
-      return false;
-    } catch (err) {
-      console.error("View track request error:", itemType, itemId, err);
-      return false;
-    }
   };
   const saveGeocodeCache = (place, coords) => {
     if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return;
@@ -1910,32 +1844,19 @@ export default function App() {
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const canManageActiveHousing = canManageHousing(activeHousing);
-  useEffect(() => {
-    if (scr !== "place-item" || !activePlace?.id) return;
-    if (viewedRef.current.place === activePlace.id) return;
-    let canceled = false;
-    (async () => {
-      const ok = await trackCardView("place", activePlace);
-      if (!canceled && ok) viewedRef.current.place = activePlace.id;
-    })();
-    return () => { canceled = true; };
-  }, [scr, activePlace?.id, authReady]);
-  useEffect(() => {
-    if (scr !== "place-item") viewedRef.current.place = null;
-  }, [scr]);
-  useEffect(() => {
-    if (scr !== "housing-item" || !activeHousing?.id) return;
-    if (viewedRef.current.housing === activeHousing.id) return;
-    let canceled = false;
-    (async () => {
-      const ok = await trackCardView("housing", activeHousing);
-      if (!canceled && ok) viewedRef.current.housing = activeHousing.id;
-    })();
-    return () => { canceled = true; };
-  }, [scr, activeHousing?.id, authReady]);
-  useEffect(() => {
-    if (scr !== "housing-item") viewedRef.current.housing = null;
-  }, [scr]);
+  const { trackCardView } = useViewTracker({
+    user,
+    authReady,
+    scr,
+    activePlace,
+    activeHousing,
+    setPlaces,
+    setTips,
+    setEvents,
+    setHousing,
+    setSelPlace,
+    setSelHousing,
+  });
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const catEvents = selEC ? events.filter(e=>{
