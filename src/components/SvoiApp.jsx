@@ -11,6 +11,7 @@ import HomeScreen from "./svoi/screens/HomeScreen";
 import ChatScreen from "./svoi/screens/ChatScreen";
 import ProfileScreen from "./svoi/screens/ProfileScreen";
 import MyPlacesScreen from "./svoi/screens/MyPlacesScreen";
+import SupportScreen from "./svoi/screens/SupportScreen";
 import PlacesDistrictsScreen from "./svoi/screens/PlacesDistrictsScreen";
 import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
@@ -463,6 +464,25 @@ export default function App() {
     if (!value) return;
     const q = encodeURIComponent(value);
     openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${q}`);
+  };
+  const sendSupportRequest = async (message) => {
+    const text = String(message || "").trim();
+    if (!text) return false;
+    const subject = "Запрос в поддержку LA guide";
+    const now = new Date().toLocaleString("ru-RU");
+    const lines = [
+      "Новый запрос из приложения:",
+      "",
+      `Имя: ${user?.name || "-"}`,
+      `Email: ${user?.email || "-"}`,
+      `Время: ${now}`,
+      "",
+      "Сообщение:",
+      text,
+    ];
+    const url = `mailto:${encodeURIComponent(ADMIN_EMAIL)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    openExternalUrl(url);
+    return true;
   };
   const openMap = (p, t) => { const q = encodeURIComponent(p.address); openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`); setMapP(null); };
   const openEventMap = (location, t) => {
@@ -2097,6 +2117,9 @@ export default function App() {
     if (scr === "my-places" && !user) setScr("home");
   }, [scr, user]);
   useEffect(() => {
+    if (scr === "support" && !user) setScr("home");
+  }, [scr, user]);
+  useEffect(() => {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
@@ -2222,7 +2245,7 @@ export default function App() {
             onOpenMyPlaces={() => setScr("my-places")}
             onOpenSavedPlaces={() => setScr("places")}
             onOpenMyReviews={() => setScr("tips")}
-            onOpenHelp={() => setScr("chat")}
+            onOpenHelp={() => setScr("support")}
             onLogout={handleLogout}
           />
         )}
@@ -2235,6 +2258,19 @@ export default function App() {
             myPlaces={myPlaces}
             onBack={() => setScr("profile")}
             onOpenPlace={openPlaceItem}
+          />
+        )}
+
+        {scr==="support" && user && (
+          <SupportScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            pl={pl}
+            iS={iS}
+            user={user}
+            onBack={() => setScr("profile")}
+            onSubmit={sendSupportRequest}
           />
         )}
 
