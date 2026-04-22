@@ -13,6 +13,7 @@ import { useGoogleAutocomplete } from "../hooks/useGoogleAutocomplete";
 import { useMapRouting } from "../hooks/useMapRouting";
 import { useGoogleMapsCore } from "../hooks/useGoogleMapsCore";
 import { useMiniMap } from "../hooks/useMiniMap";
+import { usePlacesMap } from "../hooks/usePlacesMap";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -163,6 +164,23 @@ export default function App() {
     ensureGoogleMapsApi,
     geocodePlace,
   });
+  const { mapContainerRef, openAllOnMap, openRouteForPlace } = usePlacesMap({
+    showMapModal,
+    setShowMapModal,
+    mapLoading,
+    setMapLoading,
+    setMapError,
+    mapPlaces,
+    setMapPlaces,
+    selD,
+    selectedMapPlace,
+    setSelectedMapPlace,
+    setRouteInfo,
+    setRouteLoading,
+    ensureGoogleMapsApi,
+    geocodePlace,
+    openExternalUrl,
+  });
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -185,10 +203,6 @@ export default function App() {
   const tipFileRef = useRef(null);
   const eventFileRef = useRef(null);
   const housingFileRef = useRef(null);
-  const mapContainerRef = useRef(null);
-  const googleMapRef = useRef(null);
-  const googleMarkersRef = useRef([]);
-  const googleDirectionsRendererRef = useRef(null);
   const datePickerRef = useRef(null);
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
@@ -244,14 +258,14 @@ export default function App() {
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
   const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
-  const openExternalUrl = (url) => {
+  function openExternalUrl(url) {
     if (!url) return;
     try {
       window.location.href = url;
     } catch {
       window.open(url, "_self");
     }
-  };
+  }
   const openAddressInMaps = (address) => {
     const value = (address || "").trim();
     if (!value) return;
@@ -348,33 +362,6 @@ export default function App() {
     setAddrValidHousing,
     setAddrLoadingHousing,
   });
-  const openAllOnMap = async (placesArr) => {
-    setShowMapModal(true);
-    setMapLoading(true);
-    setMapError("");
-    setRouteInfo(null);
-    setMapPlaces([]);
-    setSelectedMapPlace(null);
-    const limited = placesArr.slice(0, 40);
-    const resolved = await Promise.all(
-      limited.map(async (p) => {
-        const coords = await geocodePlace(p);
-        return coords ? { ...p, ...coords } : null;
-      }),
-    );
-    const withCoords = resolved.filter(Boolean);
-    setMapPlaces(withCoords);
-    setSelectedMapPlace(withCoords[0] || null);
-    setMapLoading(false);
-  };
-  const openRouteForPlace = (place, provider) => {
-    if (!place) return;
-    const destination = encodeURIComponent(place.address || `${place.lat},${place.lng}`);
-    const url = provider === "google"
-      ? `https://www.google.com/maps/dir/?api=1&destination=${destination}`
-      : `https://maps.apple.com/?daddr=${destination}`;
-    openExternalUrl(url);
-  };
   const openPhotoViewer = (photos, startIndex = 0) => {
     const normalized = (Array.isArray(photos) ? photos : [])
       .filter((ph) => typeof ph === "string")
@@ -404,161 +391,6 @@ export default function App() {
     });
     setPhotoZoom(1);
   };
-
-  useEffect(() => {
-    if (!showMapModal) {
-      setRouteInfo(null);
-      setRouteLoading(false);
-      return;
-    }
-    if (!mapContainerRef.current || mapLoading || !mapPlaces.length) return;
-    let disposed = false;
-    const init = async () => {
-      try {
-        const maps = await ensureGoogleMapsApi();
-        if (disposed || !maps) return;
-
-        if (!googleMapRef.current) {
-          googleMapRef.current = new maps.Map(mapContainerRef.current, {
-            zoom: 13,
-            center: selD ? { lat: selD.lat, lng: selD.lng } : { lat: 34.09, lng: -118.33 },
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            cameraControl: false,
-            gestureHandling: "greedy",
-            styles: [
-              { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-              { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-              { elementType: "labels.text.fill", stylers: [{ color: "#6e6e6e" }] },
-              { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
-              { featureType: "poi", stylers: [{ visibility: "off" }] },
-              { featureType: "transit", stylers: [{ visibility: "off" }] },
-              { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-              { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8edf5" }] },
-            ],
-          });
-          googleDirectionsRendererRef.current = new maps.DirectionsRenderer({
-            suppressMarkers: true,
-            preserveViewport: true,
-            polylineOptions: { strokeColor: "#F47B20", strokeOpacity: 0.9, strokeWeight: 5 },
-          });
-          googleDirectionsRendererRef.current.setMap(googleMapRef.current);
-        }
-
-        const map = googleMapRef.current;
-        map.setOptions({
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          cameraControl: false,
-          gestureHandling: "greedy",
-        });
-        maps.event.trigger(map, "resize");
-        googleMarkersRef.current.forEach((m) => m.setMap(null));
-        googleMarkersRef.current = [];
-
-        const bounds = new maps.LatLngBounds();
-        mapPlaces.forEach((p, idx) => {
-          const marker = new maps.Marker({
-            position: { lat: p.lat, lng: p.lng },
-            map,
-            title: p.name,
-            label: {
-              text: String(idx + 1),
-              color: "#fff",
-              fontSize: "13px",
-              fontWeight: "700",
-            },
-          });
-          marker.addListener("click", () => setSelectedMapPlace(p));
-          googleMarkersRef.current.push(marker);
-          bounds.extend(marker.getPosition());
-        });
-
-        const hasBounds = !bounds.isEmpty();
-        if (hasBounds) {
-          map.fitBounds(bounds, 130);
-          if (mapPlaces.length === 1) map.setZoom(12);
-          else if (map.getZoom() > 14) map.setZoom(14);
-        } else if (selD) {
-          map.setCenter({ lat: selD.lat, lng: selD.lng });
-          map.setZoom(12);
-        }
-        setTimeout(() => {
-          maps.event.trigger(map, "resize");
-          if (hasBounds) {
-            map.fitBounds(bounds, 130);
-            if (mapPlaces.length === 1) map.setZoom(12);
-            else if (map.getZoom() > 14) map.setZoom(14);
-          }
-          else if (selD) {
-            map.setCenter({ lat: selD.lat, lng: selD.lng });
-            map.setZoom(12);
-          }
-        }, 0);
-      } catch (e) {
-        setMapError("Не удалось загрузить Google Maps. Проверьте API key и ограничения.");
-      }
-    };
-    init();
-    return () => { disposed = true; };
-  }, [showMapModal, mapLoading, mapPlaces, selectedMapPlace, selD]);
-
-  useEffect(() => {
-    if (showMapModal) return;
-    googleMarkersRef.current.forEach((m) => m.setMap(null));
-    googleMarkersRef.current = [];
-    if (googleDirectionsRendererRef.current) {
-      googleDirectionsRendererRef.current.setMap(null);
-      googleDirectionsRendererRef.current = null;
-    }
-    googleMapRef.current = null;
-    if (mapContainerRef.current) mapContainerRef.current.innerHTML = "";
-  }, [showMapModal]);
-
-  useEffect(() => {
-    if (!selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
-    googleMapRef.current.panTo({ lat: selectedMapPlace.lat, lng: selectedMapPlace.lng });
-  }, [selectedMapPlace]);
-
-  useEffect(() => {
-    if (!showMapModal || !selectedMapPlace || !googleMapRef.current || !window.google?.maps) return;
-    if (!navigator.geolocation) return;
-    let canceled = false;
-    const maps = window.google.maps;
-    const renderer = googleDirectionsRendererRef.current;
-    if (!renderer) return;
-    const getPosition = () => new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 7000, maximumAge: 120000 });
-    });
-
-    const build = async () => {
-      setRouteLoading(true);
-      try {
-        const pos = await getPosition();
-        if (canceled) return;
-        const service = new maps.DirectionsService();
-        const res = await service.route({
-          origin: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          destination: { lat: selectedMapPlace.lat, lng: selectedMapPlace.lng },
-          travelMode: maps.TravelMode.DRIVING,
-        });
-        if (canceled) return;
-        renderer.setDirections(res);
-        const leg = res?.routes?.[0]?.legs?.[0];
-        setRouteInfo(leg ? { distance: leg.distance?.text || "", duration: leg.duration?.text || "" } : null);
-      } catch {
-        renderer.set("directions", null);
-        setRouteInfo(null);
-      } finally {
-        if (!canceled) setRouteLoading(false);
-      }
-    };
-
-    build();
-    return () => { canceled = true; };
-  }, [showMapModal, selectedMapPlace]);
 
   useEffect(() => {
     if (!photoViewer) return;
