@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, uploadPhoto, supabase } from "../lib/supabase";
 import { useAppData } from "../hooks/useAppData";
 import { useAuth } from "../hooks/useAuth";
 import { useViewTracker } from "../hooks/useViewTracker";
@@ -8,6 +8,7 @@ import { useProfileWeather } from "../hooks/useProfileWeather";
 import { useChatTextRenderer } from "../hooks/useChatTextRenderer";
 import { useUscisNavigation } from "../hooks/useUscisNavigation";
 import { useSupportRequests } from "../hooks/useSupportRequests";
+import { useEngagement } from "../hooks/useEngagement";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -64,8 +65,6 @@ export default function App() {
   const [miniRouteInfo, setMiniRouteInfo] = useState(null);
   const [miniRouteLoading, setMiniRouteLoading] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
-  const [liked, setLiked] = useState({});
-  const [favorites, setFavorites] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn: signInAuth, signOut: signOutAuth, isAdmin } = useAuth([ADMIN_EMAIL]);
@@ -124,6 +123,20 @@ export default function App() {
     clearSupportStatus,
     sendSupportRequest,
   } = useSupportRequests({ user });
+  const {
+    liked,
+    favorites,
+    handleToggleLike,
+    toggleFavorite,
+    resetEngagement,
+  } = useEngagement({
+    user,
+    onRequireAuth: handleLogin,
+    setPlaces,
+    setTips,
+    setEvents,
+    setHousing,
+  });
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -140,22 +153,6 @@ export default function App() {
     if (scr === "housing-item") setHousingTextCollapsed(false);
   }, [scr, selHousing?.id]);
 
-  useEffect(() => {
-    try {
-      const key = `favorites_${user?.id || "guest"}`;
-      const raw = localStorage.getItem(key);
-      setFavorites(raw ? JSON.parse(raw) : {});
-    } catch {
-      setFavorites({});
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    try {
-      const key = `favorites_${user?.id || "guest"}`;
-      localStorage.setItem(key, JSON.stringify(favorites || {}));
-    } catch {}
-  }, [favorites, user?.id]);
   const chatEnd = useRef(null);
   const inpRef = useRef(null);
   const fileRef = useRef(null);
@@ -205,20 +202,6 @@ export default function App() {
       }
     } catch {}
   }, []);
-  useEffect(() => {
-    let canceled = false;
-    async function loadLikes() {
-      if (!user?.id) {
-        setLiked({});
-        return;
-      }
-      const userLikes = await getUserLikes(user.id);
-      if (!canceled) setLiked(userLikes || {});
-    }
-    loadLikes();
-    return () => { canceled = true; };
-  }, [user?.id]);
-
   useEffect(() => {
     const scheduleReload = () => {
       if (realtimeReloadTimerRef.current) clearTimeout(realtimeReloadTimerRef.current);
@@ -1143,11 +1126,11 @@ export default function App() {
     } catch(e) { setChat(p => [...p, { role:"assistant", text:"Ошибка. Попробуйте ещё раз." }]); }
     finally { setTyping(false); }
   };
-  const handleLogin = async () => {
+  async function handleLogin() {
     const { error } = await signInAuth();
     if (error) console.error("Login error:", error);
-  };
-  const handleLogout = async () => { await signOutAuth(); setLiked({}); setFavorites({}); };
+  }
+  const handleLogout = async () => { await signOutAuth(); resetEngagement(); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
     const selectedDistrictId = np.district || selD?.id;
@@ -1573,25 +1556,6 @@ export default function App() {
     setEditingHousing(null);
     setShowAddHousing(false);
   };
-  const handleToggleLike = async (itemId, itemType) => {
-    if (!user) { handleLogin(); return; }
-    const key = `${itemType}-${itemId}`;
-    const wasLiked = liked[key];
-    setLiked(prev => ({ ...prev, [key]: !wasLiked }));
-    // Update local count
-    const countUpdater = (items) => items.map(item => item.id === itemId ? { ...item, likes: (item.likes||0) + (wasLiked ? -1 : 1) } : item);
-    if (itemType === "place") setPlaces(countUpdater);
-    else if (itemType === "tip") setTips(countUpdater);
-    else if (itemType === "event") setEvents(countUpdater);
-    else if (itemType === "housing") setHousing(countUpdater);
-    // Persist to DB
-    await dbToggleLike(itemId, itemType, user.id);
-  };
-  const toggleFavorite = (itemId, itemType) => {
-    const key = `${itemType}-${itemId}`;
-    setFavorites(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
   const myPlacesRaw = user
     ? places.filter((p) => (p.userId && p.userId === user.id) || (!p.userId && p.addedBy && p.addedBy === user.name))
