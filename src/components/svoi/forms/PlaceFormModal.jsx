@@ -14,8 +14,9 @@ export default function PlaceFormModal({
   setAddrOptionsPlace,
   nameLoadingPlace,
   nameOptionsPlace,
-  saveGeocodeCache,
   setNameOptionsPlace,
+  onSelectPlaceNameSuggestion,
+  onSelectPlaceAddressSuggestion,
   PLACE_CATS,
   DISTRICTS,
   iS,
@@ -69,19 +70,7 @@ export default function PlaceFormModal({
               {nameOptionsPlace.map((opt, i) => (
                 <button
                   key={`${opt.value}-${i}`}
-                  onClick={() => {
-                    setNp(prev => ({ ...prev, name: opt.placeName || prev.name, address: opt.value }));
-                    if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) {
-                      saveGeocodeCache({ name: opt.placeName || np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
-                      setPlaceCoords({ lat: opt.lat, lng: opt.lng });
-                      setAddrValidPlace(true);
-                    } else {
-                      setPlaceCoords({ lat: null, lng: null });
-                      setAddrValidPlace(false);
-                    }
-                    setNameOptionsPlace([]);
-                    setAddrOptionsPlace([]);
-                  }}
+                  onClick={() => onSelectPlaceNameSuggestion(opt)}
                   style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < nameOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}
                 >
                   {opt.label}
@@ -108,7 +97,7 @@ export default function PlaceFormModal({
           {!addrLoadingPlace && addrOptionsPlace.length > 0 && !addrValidPlace && (
             <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
               {addrOptionsPlace.map((opt, i) => (
-                <button key={`${opt.value}-${i}`} onClick={() => { setNp(prev => ({ ...prev, address: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) { saveGeocodeCache({ name: np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng }); setPlaceCoords({ lat: opt.lat, lng: opt.lng }); setAddrValidPlace(true); } else { setPlaceCoords({ lat: null, lng: null }); setAddrValidPlace(false); } setAddrOptionsPlace([]); setNameOptionsPlace([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                <button key={`${opt.value}-${i}`} onClick={() => onSelectPlaceAddressSuggestion(opt)} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsPlace.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                   {opt.label}
                 </button>
               ))}
@@ -133,4 +122,3 @@ export default function PlaceFormModal({
     </div>
   );
 }
-

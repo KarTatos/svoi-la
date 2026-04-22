@@ -14,7 +14,7 @@ export default function HousingFormModal({
   iS,
   addrLoadingHousing,
   addrOptionsHousing,
-  saveGeocodeCache,
+  onSelectHousingAddressSuggestion,
   housingFileRef,
   setNewHousingPhotos,
   newHousingPhotos,
@@ -42,7 +42,7 @@ export default function HousingFormModal({
         {!addrLoadingHousing && addrOptionsHousing.length > 0 && !addrValidHousing && (
           <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
             {addrOptionsHousing.map((opt, i) => (
-              <button key={`${opt.value}-${i}`} onClick={() => { setNewHousing((s) => ({ ...s, address: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: "", address: opt.value }, { lat: opt.lat, lng: opt.lng }); setAddrValidHousing(true); setAddrOptionsHousing([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsHousing.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+              <button key={`${opt.value}-${i}`} onClick={() => onSelectHousingAddressSuggestion(opt)} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsHousing.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                 {opt.label}
               </button>
             ))}

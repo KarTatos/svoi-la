@@ -9,6 +9,7 @@ import { useChatTextRenderer } from "../hooks/useChatTextRenderer";
 import { useUscisNavigation } from "../hooks/useUscisNavigation";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useEngagement } from "../hooks/useEngagement";
+import { useGoogleAutocomplete } from "../hooks/useGoogleAutocomplete";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -170,8 +171,6 @@ export default function App() {
   const miniGoogleDirectionsRendererRef = useRef(null);
   const googleMapsLoaderRef = useRef(null);
   const datePickerRef = useRef(null);
-  const googleAutocompleteRef = useRef(null);
-  const googlePlacesServiceRef = useRef(null);
   const googleGeocoderRef = useRef(null);
   const geocodeCacheRef = useRef({});
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
@@ -345,6 +344,39 @@ export default function App() {
     if (primary) geocodeCacheRef.current[primary] = coords;
     if (byAddress) geocodeCacheRef.current[byAddress] = coords;
   };
+  const {
+    selectPlaceNameSuggestion,
+    selectPlaceAddressSuggestion,
+    selectEventAddressSuggestion,
+    selectHousingAddressSuggestion,
+  } = useGoogleAutocomplete({
+    ensureGoogleMapsApi,
+    saveGeocodeCache,
+    np,
+    setNp,
+    setPlaceCoords,
+    setAddrValidPlace,
+    showAdd,
+    selD,
+    addrValidPlace,
+    setAddrOptionsPlace,
+    setNameOptionsPlace,
+    setAddrLoadingPlace,
+    setNameLoadingPlace,
+    newEvent,
+    setNewEvent,
+    addrValidEvent,
+    setAddrOptionsEvent,
+    setAddrValidEvent,
+    setAddrLoadingEvent,
+    newHousing,
+    setNewHousing,
+    showAddHousing,
+    addrValidHousing,
+    setAddrOptionsHousing,
+    setAddrValidHousing,
+    setAddrLoadingHousing,
+  });
   const geocodePlace = async (place) => {
     if (Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng))) {
       return { lat: Number(place.lat), lng: Number(place.lng) };
@@ -445,178 +477,6 @@ export default function App() {
     });
     setPhotoZoom(1);
   };
-
-  const getGoogleComponent = (components, type, mode = "long") => {
-    const found = (components || []).find((c) => (c.types || []).includes(type));
-    if (!found) return "";
-    return mode === "short" ? (found.short_name || "") : (found.long_name || "");
-  };
-  const normalizeAddressText = (value = "") => {
-    const noHtml = String(value || "")
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    const firstVariant = noHtml.split(" / ")[0].split("/")[0].trim();
-    const normalized = (firstVariant || noHtml)
-      .replace(/\s*,\s*/g, ", ")
-      .replace(/(,\s*){2,}/g, ", ")
-      .replace(/,\s*$/, "")
-      .trim();
-    const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 4) return parts.slice(0, 4).join(", ");
-    return normalized;
-  };
-  const shortAddressFromGoogle = (components, fallback = "") => {
-    const streetNumber = getGoogleComponent(components, "street_number");
-    const route = getGoogleComponent(components, "route");
-    const city =
-      getGoogleComponent(components, "locality") ||
-      getGoogleComponent(components, "sublocality_level_1") ||
-      getGoogleComponent(components, "postal_town") ||
-      "Los Angeles";
-    const state = getGoogleComponent(components, "administrative_area_level_1", "short") || "CA";
-    const line = [streetNumber, route].filter(Boolean).join(" ").trim();
-    if (line) return `${line}, ${city}, ${state}`;
-    if (fallback) {
-      const parts = String(fallback).split(",").map((p) => p.trim()).filter(Boolean);
-      return parts.slice(0, 3).join(", ");
-    }
-    return `${city}, ${state}`;
-  };
-  const ensureGooglePlacesServices = async () => {
-    const maps = await ensureGoogleMapsApi();
-    if (!maps?.places) throw new Error("Google Places library is not available");
-    if (!googleAutocompleteRef.current) {
-      googleAutocompleteRef.current = new maps.places.AutocompleteService();
-    }
-    if (!googlePlacesServiceRef.current) {
-      const el = document.createElement("div");
-      googlePlacesServiceRef.current = new maps.places.PlacesService(el);
-    }
-    return { maps, autocomplete: googleAutocompleteRef.current, placesService: googlePlacesServiceRef.current };
-  };
-  const getGooglePredictions = (autocomplete, input) => new Promise((resolve) => {
-    const center = { lat: 34.0522, lng: -118.2437 };
-    const req = {
-      input,
-      componentRestrictions: { country: "us" },
-      locationBias: new window.google.maps.Circle({ center, radius: 90000 }).getBounds(),
-    };
-    autocomplete.getPlacePredictions(req, (predictions, status) => {
-      const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
-      if (!ok && status !== window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-        console.error("Autocomplete status:", status);
-      }
-      resolve(ok ? predictions || [] : []);
-    });
-  });
-  const getGooglePlaceDetails = (placesService, placeId) => new Promise((resolve) => {
-    placesService.getDetails(
-      { placeId, fields: ["name", "formatted_address", "address_components", "geometry"] },
-      (result, status) => {
-        const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
-        resolve(ok ? result : null);
-      },
-    );
-  });
-  const fetchAddressSuggestions = async (query) => {
-    const q = (query || "").trim();
-    if (q.length < 3) return [];
-    try {
-      const { autocomplete, placesService } = await ensureGooglePlacesServices();
-      const predictions = await getGooglePredictions(autocomplete, q);
-      const top = predictions.slice(0, 6);
-      const detailed = await Promise.all(
-        top.map(async (pred) => {
-          const details = pred?.place_id ? await getGooglePlaceDetails(placesService, pred.place_id) : null;
-          const short = shortAddressFromGoogle(details?.address_components, details?.formatted_address || pred?.description || "");
-          const placeName = details?.name || pred?.structured_formatting?.main_text || "";
-          const label = placeName && !short.toLowerCase().includes(String(placeName).toLowerCase())
-            ? `${placeName} — ${short}`
-            : short;
-          const lat = details?.geometry?.location?.lat?.();
-          const lng = details?.geometry?.location?.lng?.();
-          return {
-            label,
-            value: short,
-            placeName,
-            lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-            lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
-          };
-        }),
-      );
-      const uniq = [];
-      const seen = new Set();
-      for (const item of detailed) {
-        if (!item?.value) continue;
-        if (!Number.isFinite(item.lat) || !Number.isFinite(item.lng)) continue;
-        const key = `${item.value}|${item.label}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        uniq.push(item);
-      }
-      return uniq;
-    } catch (err) {
-      console.error("Address suggestions failed:", err);
-      return [];
-    }
-  };
-
-  useEffect(() => {
-    const q = (np.address || "").trim();
-    if (addrValidPlace) { setAddrOptionsPlace([]); return; }
-    if (q.length < 3) { setAddrOptionsPlace([]); return; }
-    const t = setTimeout(async () => {
-      setAddrLoadingPlace(true);
-      const opts = await fetchAddressSuggestions(q);
-      setAddrOptionsPlace(opts);
-      setAddrLoadingPlace(false);
-    }, 280);
-    return () => clearTimeout(t);
-  }, [np.address, addrValidPlace]);
-
-  useEffect(() => {
-    const q = (np.name || "").trim();
-    if (!showAdd || !selD || addrValidPlace) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
-    if (q.length < 3) { setNameOptionsPlace([]); setNameLoadingPlace(false); return; }
-    let canceled = false;
-    const t = setTimeout(async () => {
-      setNameLoadingPlace(true);
-      const opts = await fetchAddressSuggestions(q);
-      if (canceled) return;
-      setNameOptionsPlace(opts);
-      setNameLoadingPlace(false);
-    }, 320);
-    return () => { canceled = true; clearTimeout(t); };
-  }, [np.name, showAdd, selD, addrValidPlace]);
-
-  useEffect(() => {
-    const q = (newEvent.location || "").trim();
-    if (addrValidEvent) { setAddrOptionsEvent([]); return; }
-    if (q.length < 3) { setAddrOptionsEvent([]); return; }
-    const t = setTimeout(async () => {
-      setAddrLoadingEvent(true);
-      const opts = await fetchAddressSuggestions(q);
-      setAddrOptionsEvent(opts);
-      setAddrLoadingEvent(false);
-    }, 280);
-    return () => clearTimeout(t);
-  }, [newEvent.location, addrValidEvent]);
-
-  useEffect(() => {
-    const q = (newHousing.address || "").trim();
-    if (!showAddHousing) { setAddrOptionsHousing([]); setAddrLoadingHousing(false); return; }
-    if (addrValidHousing) { setAddrOptionsHousing([]); return; }
-    if (q.length < 3) { setAddrOptionsHousing([]); return; }
-    const t = setTimeout(async () => {
-      setAddrLoadingHousing(true);
-      const opts = await fetchAddressSuggestions(q);
-      setAddrOptionsHousing(opts);
-      setAddrLoadingHousing(false);
-    }, 280);
-    return () => clearTimeout(t);
-  }, [newHousing.address, addrValidHousing, showAddHousing]);
 
   useEffect(() => {
     if (!showMapModal) {
@@ -1908,8 +1768,9 @@ export default function App() {
           setAddrOptionsPlace={setAddrOptionsPlace}
           nameLoadingPlace={nameLoadingPlace}
           nameOptionsPlace={nameOptionsPlace}
-          saveGeocodeCache={saveGeocodeCache}
           setNameOptionsPlace={setNameOptionsPlace}
+          onSelectPlaceNameSuggestion={selectPlaceNameSuggestion}
+          onSelectPlaceAddressSuggestion={selectPlaceAddressSuggestion}
           PLACE_CATS={PLACE_CATS}
           DISTRICTS={DISTRICTS}
           iS={iS}
@@ -2489,7 +2350,7 @@ export default function App() {
           EVENT_CATS={EVENT_CATS}
           addrLoadingEvent={addrLoadingEvent}
           addrOptionsEvent={addrOptionsEvent}
-          saveGeocodeCache={saveGeocodeCache}
+          onSelectEventAddressSuggestion={selectEventAddressSuggestion}
           CARD_TEXT_MAX={CARD_TEXT_MAX}
           eventFileRef={eventFileRef}
           handleEventPhotos={handleEventPhotos}
@@ -2667,7 +2528,7 @@ export default function App() {
           iS={iS}
           addrLoadingHousing={addrLoadingHousing}
           addrOptionsHousing={addrOptionsHousing}
-          saveGeocodeCache={saveGeocodeCache}
+          onSelectHousingAddressSuggestion={selectHousingAddressSuggestion}
           housingFileRef={housingFileRef}
           setNewHousingPhotos={setNewHousingPhotos}
           newHousingPhotos={newHousingPhotos}

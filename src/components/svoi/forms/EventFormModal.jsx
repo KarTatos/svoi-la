@@ -17,7 +17,7 @@ export default function EventFormModal({
   EVENT_CATS,
   addrLoadingEvent,
   addrOptionsEvent,
-  saveGeocodeCache,
+  onSelectEventAddressSuggestion,
   CARD_TEXT_MAX,
   eventFileRef,
   handleEventPhotos,
@@ -59,7 +59,7 @@ export default function EventFormModal({
           {!addrLoadingEvent && addrOptionsEvent.length > 0 && !addrValidEvent && (
             <div style={{ marginBottom:10, border:`1px solid ${T.border}`, borderRadius:10, overflow:"hidden", maxHeight:160, overflowY:"auto", background:T.card }}>
               {addrOptionsEvent.map((opt, i) => (
-                <button key={`${opt.value}-${i}`} onClick={() => { setNewEvent(prev => ({ ...prev, location: opt.value })); if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) saveGeocodeCache({ name: newEvent.title, address: opt.value }, { lat: opt.lat, lng: opt.lng }); setAddrValidEvent(true); setAddrOptionsEvent([]); }} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsEvent.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
+                <button key={`${opt.value}-${i}`} onClick={() => onSelectEventAddressSuggestion(opt)} style={{ width:"100%", textAlign:"left", padding:"10px 12px", border:"none", borderBottom:i < addrOptionsEvent.length-1 ? `1px solid ${T.borderL}` : "none", background:T.card, cursor:"pointer", fontFamily:"inherit", fontSize:12, color:T.mid }}>
                   {opt.label}
                 </button>
               ))}
@@ -91,4 +91,3 @@ export default function EventFormModal({
     </div>
   );
 }
-
