@@ -323,21 +323,6 @@ export default function App() {
       }
     } catch {}
   };
-  const { renderChatText } = useChatTextRenderer({
-    events,
-    tips,
-    eventCategories: EVENT_CATS,
-    tipCategories: TIPS_CATS,
-    setSelHousing,
-    setScr,
-    openPlaceItem,
-    setSelEC,
-    setExp,
-    setSelTC,
-    setExpTip,
-    trackCardView,
-    openExternalUrl,
-  });
   const {
     selectPlaceNameSuggestion,
     selectPlaceAddressSuggestion,
@@ -956,6 +941,21 @@ export default function App() {
     setHousing,
     setSelPlace,
     setSelHousing,
+  });
+  const { renderChatText } = useChatTextRenderer({
+    events,
+    tips,
+    eventCategories: EVENT_CATS,
+    tipCategories: TIPS_CATS,
+    setSelHousing,
+    setScr,
+    openPlaceItem,
+    setSelEC,
+    setExp,
+    setSelTC,
+    setExpTip,
+    trackCardView,
+    openExternalUrl,
   });
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
