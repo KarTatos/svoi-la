@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useViewTracker } from "../hooks/useViewTracker";
 import { useProfileWeather } from "../hooks/useProfileWeather";
 import { useChatTextRenderer } from "../hooks/useChatTextRenderer";
+import { useUscisNavigation } from "../hooks/useUscisNavigation";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -32,7 +33,6 @@ import CommentsBlock from "./svoi/components/CommentsBlock";
 export default function App() {
   const ADMIN_EMAIL = "kushnir4work@gmail.com";
   const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
-  const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useState(() => { try { const d = sessionStorage.getItem('selD'); return d ? JSON.parse(d) : null; } catch { return null; } });
   const [selPC, setSelPC] = useState(() => { try { const d = sessionStorage.getItem('selPC'); return d ? JSON.parse(d) : null; } catch { return null; } });
   const [selPlace, setSelPlace] = useState(null);
@@ -45,7 +45,6 @@ export default function App() {
   useEffect(() => { try { sessionStorage.setItem('selD', selD ? JSON.stringify(selD) : ''); } catch {} }, [selD]);
   useEffect(() => { try { sessionStorage.setItem('selPC', selPC ? JSON.stringify(selPC) : ''); } catch {} }, [selPC]);
   const [exp, setExp] = useState(null);
-  const [expF, setExpF] = useState(null);
   const [expTip, setExpTip] = useState(null);
   const [mapP, setMapP] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -116,6 +115,7 @@ export default function App() {
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
+  const { selU, setSelU, expF, setExpF, openUscisCategory, startTest } = useUscisNavigation({ setScr, civicsTest });
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -1598,11 +1598,6 @@ export default function App() {
     setFavorites(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const startTest = () => {
-    civicsTest.start();
-    setScr("test");
-  };
-
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
   const myPlacesRaw = user
     ? places.filter((p) => (p.userId && p.userId === user.id) || (!p.userId && p.addedBy && p.addedBy === user.name))
@@ -1866,7 +1861,7 @@ export default function App() {
             setSrch={setSrch}
             searchResults={sRes}
             uscisCategories={USCIS_CATS}
-            onOpenCategory={(category) => { setSelU(category); setScr("uscis-cat"); setExpF(null); }}
+            onOpenCategory={openUscisCategory}
             onGoHome={goHome}
           />
         )}
