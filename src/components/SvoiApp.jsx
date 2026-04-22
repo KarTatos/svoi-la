@@ -1,7 +1,8 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, addSupportRequest as dbAddSupportRequest, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { addSupportRequest as dbAddSupportRequest, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 import { useAppData } from "../hooks/useAppData";
+import { useAuth } from "../hooks/useAuth";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -59,8 +60,7 @@ export default function App() {
   const [favorites, setFavorites] = useState({});
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
+  const { user, authReady, signIn: signInAuth, signOut: signOutAuth, isAdmin } = useAuth([ADMIN_EMAIL]);
   const { places, tips, events, housing, setPlaces, setTips, setEvents, setHousing, reload: loadAllData } = useAppData(user);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
@@ -109,7 +109,6 @@ export default function App() {
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
-  const isAdmin = (user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -270,23 +269,6 @@ export default function App() {
       }
     } catch {}
   }, []);
-  useEffect(() => {
-    let canceled = false;
-    async function init() {
-      setAuthReady(false);
-      const u = await getUser();
-      if (canceled) return;
-      if (u) {
-        setUser({ id:u.id, name:u.user_metadata?.full_name||u.email||"Пользователь", email:u.email, avatar:"👤", avatarUrl:u.user_metadata?.avatar_url });
-      } else {
-        setUser(null);
-      }
-      if (!canceled) setAuthReady(true);
-    }
-    init();
-    return () => { canceled = true; };
-  }, []);
-
   useEffect(() => {
     let canceled = false;
     async function loadLikes() {
@@ -1383,10 +1365,10 @@ export default function App() {
     finally { setTyping(false); }
   };
   const handleLogin = async () => {
-    const { error } = await signInWithGoogle();
+    const { error } = await signInAuth();
     if (error) console.error("Login error:", error);
   };
-  const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); setFavorites({}); };
+  const handleLogout = async () => { await signOutAuth(); setLiked({}); setFavorites({}); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
     const selectedDistrictId = np.district || selD?.id;
