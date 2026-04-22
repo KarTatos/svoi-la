@@ -31,6 +31,19 @@
     if (unit === "C") return `${Math.round(value)}°C`;
     return `${Math.round(value)}°`;
   };
+  const formatWeatherTextRu = () => {
+    const text = String(profileWeather?.text || "").toLowerCase();
+    if (!text) return "погода";
+    if (text.includes("thunder") || text.includes("storm")) return "гроза";
+    if (text.includes("snow") || text.includes("sleet") || text.includes("blizzard")) return "снег";
+    if (text.includes("rain") || text.includes("shower") || text.includes("drizzle")) return "дождь";
+    if (text.includes("fog") || text.includes("mist") || text.includes("haze") || text.includes("smoke")) return "туман";
+    if (text.includes("cloudy") || text.includes("overcast")) return "облачно";
+    if (text.includes("partly")) return "переменная облачность";
+    if (text.includes("clear") || text.includes("sunny")) return "ясно";
+    if (text.includes("wind")) return "ветрено";
+    return "погода";
+  };
   const getWeatherIcon = () => {
     const text = String(profileWeather?.text || "").toLowerCase();
     if (!text) return "🌤️";
@@ -56,7 +69,7 @@
             {weatherPlace}
           </div>
           <div style={{ fontSize:19, lineHeight:1.1, fontWeight:700, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-            {formatWeatherTemp()} <span style={{ fontSize:13, fontWeight:700, color:"#1F2937" }}>• {profileWeather?.text || "Погода..."}</span>
+            {formatWeatherTemp()} <span style={{ fontSize:13, fontWeight:700, color:"#1F2937" }}>• {formatWeatherTextRu()}</span>
           </div>
         </div>
       </div>
