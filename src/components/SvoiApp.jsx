@@ -10,6 +10,7 @@ import { useUscisNavigation } from "../hooks/useUscisNavigation";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useEngagement } from "../hooks/useEngagement";
 import { useGoogleAutocomplete } from "../hooks/useGoogleAutocomplete";
+import { useMapRouting } from "../hooks/useMapRouting";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -52,19 +53,13 @@ export default function App() {
   const [mapP, setMapP] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapPlaces, setMapPlaces] = useState([]);
-  const [selectedMapPlace, setSelectedMapPlace] = useState(null);
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState("");
-  const [routeInfo, setRouteInfo] = useState(null);
-  const [routeLoading, setRouteLoading] = useState(false);
   const [placeSortField, setPlaceSortField] = useState("likes");
   const [placeSortDir, setPlaceSortDir] = useState("desc");
   const [miniMapLoading, setMiniMapLoading] = useState(false);
   const [miniMapError, setMiniMapError] = useState("");
   const [miniMapPlaces, setMiniMapPlaces] = useState([]);
-  const [miniSelectedPlaceId, setMiniSelectedPlaceId] = useState(null);
-  const [miniRouteInfo, setMiniRouteInfo] = useState(null);
-  const [miniRouteLoading, setMiniRouteLoading] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
@@ -138,6 +133,21 @@ export default function App() {
     setEvents,
     setHousing,
   });
+  const {
+    selectedMapPlace,
+    setSelectedMapPlace,
+    routeInfo,
+    setRouteInfo,
+    routeLoading,
+    setRouteLoading,
+    miniSelectedPlaceId,
+    setMiniSelectedPlaceId,
+    miniRouteInfo,
+    setMiniRouteInfo,
+    miniRouteLoading,
+    setMiniRouteLoading,
+    resetMapRouting,
+  } = useMapRouting();
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -226,7 +236,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
