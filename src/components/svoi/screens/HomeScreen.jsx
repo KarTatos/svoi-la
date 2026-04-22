@@ -53,10 +53,10 @@
         </div>
         <div style={{ minWidth:0, flex:1 }}>
           <div style={{ fontSize:11, letterSpacing:"0.06em", fontWeight:800, color:"#4B5563", marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-            СЕГОДНЯ • {weatherPlace}
+            {weatherPlace}
           </div>
-          <div style={{ fontSize:19, lineHeight:1.1, fontWeight:800, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-            {formatWeatherTemp()} <span style={{ fontSize:16, fontWeight:700, color:"#1F2937" }}>•</span>
+          <div style={{ fontSize:19, lineHeight:1.1, fontWeight:700, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+            {formatWeatherTemp()} <span style={{ fontSize:13, fontWeight:700, color:"#1F2937" }}>• {profileWeather?.text || "Погода..."}</span>
           </div>
         </div>
       </div>
