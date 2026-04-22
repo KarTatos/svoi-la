@@ -1,4 +1,4 @@
-export default function HomeScreen({
+﻿export default function HomeScreen({
   T,
   cd,
   mt,
@@ -13,30 +13,35 @@ export default function HomeScreen({
 }) {
   const chatSection = sections.find((s) => s.id === "chat-sec");
   const mainSections = sections.filter((s) => s.id !== "chat-sec");
+  const weatherPlace = (profileLocation || "Los Angeles").split(",")[0].trim().toUpperCase();
 
   return (
     <div>
-      <div style={{ ...cd, marginBottom:12, padding:"12px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>👤</div>
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{user?.name || "Гость"}</div>
-            <div style={{ fontSize:11, color:T.mid, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{profileLocation || "Определяем локацию..."}</div>
-          </div>
+      <div style={{ ...cd, marginBottom:14, padding:"14px", background:"#FDF0E0", borderColor:"#F4E1CC", display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:86, height:78, borderRadius:22, background:"#FFFFFF", border:"1px solid #F3E6D7", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 18px rgba(0,0,0,0.08)", flexShrink:0 }}>
+          <span style={{ fontSize:35, lineHeight:1 }}>☀️</span>
         </div>
-        <div style={{ textAlign:"right", flexShrink:0 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:T.text }}>{profileWeather?.temp || "--°"}</div>
-          <div style={{ fontSize:11, color:T.mid, maxWidth:130, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{profileWeather?.text || "Погода..."}</div>
+        <div style={{ minWidth:0, flex:1 }}>
+          <div style={{ fontSize:11, letterSpacing:"0.06em", fontWeight:800, color:"#4B5563", marginBottom:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+            СЕГОДНЯ • {weatherPlace}
+          </div>
+          <div style={{ fontSize:40, lineHeight:1.04, fontWeight:800, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+            {profileWeather?.temp || "--°"} <span style={{ fontSize:20, fontWeight:700, color:"#1F2937" }}>• {profileWeather?.text || "Погода..."}</span>
+          </div>
         </div>
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-        {mainSections.map((s,i) => (
+        {mainSections.map((s, i) => (
           <button
             key={s.id}
-            onClick={() => { if (s.soon) return; onOpenSection(s.id); }}
-            style={{ ...cd, padding:"20px 10px", cursor:s.soon?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", fontFamily:"inherit", color:T.text, position:"relative", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:`all 0.4s ease ${i*0.05}s` }}
-            onMouseEnter={e=>{if(!s.soon)e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}
+            onClick={() => {
+              if (s.soon) return;
+              onOpenSection(s.id);
+            }}
+            style={{ ...cd, padding:"20px 10px", cursor:s.soon?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", fontFamily:"inherit", color:T.text, position:"relative", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:`all 0.4s ease ${i * 0.05}s` }}
+            onMouseEnter={(e) => { if (!s.soon) e.currentTarget.style.boxShadow = T.shH; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = T.sh; }}
           >
             {s.soon && <div style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, color:T.light, background:T.bg, padding:"2px 6px", borderRadius:4, textTransform:"uppercase" }}>скоро</div>}
             <div style={{ fontSize:28, marginBottom:8, filter:s.soon?"grayscale(0.6) opacity(0.4)":"none", display:"inline-flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>
@@ -47,11 +52,13 @@ export default function HomeScreen({
           </button>
         ))}
       </div>
+
       {chatSection && (
         <button
           onClick={onOpenChat}
           style={{ ...cd, marginTop:12, width:"100%", padding:"16px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:"all 0.4s ease 0.35s" }}
-          onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}
+          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = T.shH; }}
+          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = T.sh; }}
         >
           <div style={{ width:36, height:36, borderRadius:12, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{chatSection.icon}</div>
           <div style={{ flex:1 }}>

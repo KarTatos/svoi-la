@@ -9,6 +9,7 @@ import UscisScreen from "./svoi/screens/UscisScreen";
 import UscisCategoryScreen from "./svoi/screens/UscisCategoryScreen";
 import HomeScreen from "./svoi/screens/HomeScreen";
 import ChatScreen from "./svoi/screens/ChatScreen";
+import ProfileScreen from "./svoi/screens/ProfileScreen";
 import PlacesDistrictsScreen from "./svoi/screens/PlacesDistrictsScreen";
 import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
@@ -1904,6 +1905,15 @@ export default function App() {
   };
 
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
+  const myPlaces = user
+    ? places.filter((p) => (p.userId && p.userId === user.id) || (!p.userId && p.addedBy && p.addedBy === user.name))
+    : [];
+  const savedPlacesCount = Object.entries(favorites || {}).filter(([k, v]) => v && String(k).startsWith("place-")).length;
+  const myReviewsCount = user
+    ? [...places, ...tips, ...events]
+        .flatMap((item) => item.comments || [])
+        .filter((c) => (c.userId && c.userId === user.id) || (!c.userId && c.author === user.name)).length
+    : 0;
   const dPlaces = selD ? places.filter(p=>p.district===selD.id && PLACE_CAT_IDS.has(p.cat)) : [];
   const cPlaces = selPC ? dPlaces.filter(p=>p.cat===selPC.id) : [];
   const calcDistanceKm = (a, b) => {
@@ -2036,6 +2046,9 @@ export default function App() {
     if (scr === "place-item" && !activePlace) setScr("places-cat");
   }, [scr, activePlace]);
   useEffect(() => {
+    if (scr === "profile" && !user) setScr("home");
+  }, [scr, user]);
+  useEffect(() => {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
@@ -2117,7 +2130,16 @@ export default function App() {
     <div style={{ fontFamily:"'Roboto', sans-serif", minHeight:"100vh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
 
-      <AppHeader T={T} mt={mt} user={user} pl={pl} onGoHome={goHome} onLogin={handleLogin} onLogout={handleLogout} />
+      <AppHeader
+        T={T}
+        mt={mt}
+        user={user}
+        pl={pl}
+        onGoHome={goHome}
+        onOpenProfile={() => { if (!user) { handleLogin(); return; } setScr("profile"); }}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+      />
 
       <main style={{ padding:"16px 16px 40px" }}>
 
@@ -2134,6 +2156,23 @@ export default function App() {
             CalendarIcon={CalendarIcon}
             onOpenSection={setScr}
             onOpenChat={() => { if (!user) { handleLogin(); return; } setScr("chat"); }}
+          />
+        )}
+
+        {scr==="profile" && user && (
+          <ProfileScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            user={user}
+            profileLocation={profileLocation}
+            placesCount={places.length}
+            savedPlacesCount={savedPlacesCount}
+            myPlacesCount={myPlaces.length}
+            myReviewsCount={myReviewsCount}
+            onBack={goHome}
+            onOpenMyPlaces={() => setScr("places")}
+            onLogout={handleLogout}
           />
         )}
 
