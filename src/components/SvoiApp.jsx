@@ -102,6 +102,8 @@ export default function App() {
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
+  const [profileLocation, setProfileLocation] = useState("Определяем локацию...");
+  const [profileWeather, setProfileWeather] = useState({ temp: "--°", text: "Погода загружается..." });
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
@@ -166,6 +168,49 @@ export default function App() {
   const realtimeReloadTimerRef = useRef(null);
 
   useEffect(() => setMt(true), []);
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setProfileLocation("Локация недоступна");
+      setProfileWeather({ temp: "--°", text: "Геолокация не поддерживается" });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const lat = Number(coords.latitude).toFixed(4);
+        const lng = Number(coords.longitude).toFixed(4);
+        try {
+          const pointsRes = await fetch(`https://api.weather.gov/points/${lat},${lng}`);
+          if (!pointsRes.ok) throw new Error("points_failed");
+          const points = await pointsRes.json();
+          const rel = points?.properties?.relativeLocation?.properties;
+          const city = rel?.city || "";
+          const state = rel?.state || "";
+          setProfileLocation(city && state ? `${city}, ${state}` : `${lat}, ${lng}`);
+
+          const forecastUrl = points?.properties?.forecast;
+          if (!forecastUrl) throw new Error("forecast_url_missing");
+          const forecastRes = await fetch(forecastUrl);
+          if (!forecastRes.ok) throw new Error("forecast_failed");
+          const forecast = await forecastRes.json();
+          const period = forecast?.properties?.periods?.[0];
+          if (!period) throw new Error("forecast_empty");
+          setProfileWeather({
+            temp: `${period.temperature}°${period.temperatureUnit || ""}`,
+            text: period.shortForecast || "Без описания",
+          });
+        } catch {
+          setProfileLocation(`${lat}, ${lng}`);
+          setProfileWeather({ temp: "--°", text: "Погода недоступна" });
+        }
+      },
+      () => {
+        setProfileLocation("Локация отключена");
+        setProfileWeather({ temp: "--°", text: "Разрешите геолокацию" });
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  }, []);
   // Save navigation state to localStorage
   useEffect(() => {
     if (mt) {
@@ -2081,6 +2126,9 @@ export default function App() {
             T={T}
             cd={cd}
             mt={mt}
+            user={user}
+            profileLocation={profileLocation}
+            profileWeather={profileWeather}
             sections={SECTIONS}
             HomeIcon={HomeIcon}
             CalendarIcon={CalendarIcon}

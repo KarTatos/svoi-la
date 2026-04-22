@@ -10,8 +10,8 @@ export default function AppHeader({
   return (
     <header style={{ padding:"16px 20px", background:T.card, borderBottom:`1px solid ${T.borderL}`, display:"flex", alignItems:"center", justifyContent:"space-between", opacity:mt?1:0, transition:"opacity 0.4s" }}>
       <div onClick={onGoHome} style={{ cursor:"pointer" }}>
-        <h1 style={{ fontSize:22, fontWeight:900, margin:0 }}><span style={{ color:T.primary }}>МЫ</span> в LA</h1>
-        <p style={{ margin:"1px 0 0", fontSize:11, color:T.light }}>путеводитель</p>
+        <h1 style={{ fontSize:22, fontWeight:900, margin:0 }}><span style={{ color:T.primary }}>LA</span></h1>
+        <p style={{ margin:"1px 0 0", fontSize:11, color:T.light }}>guide</p>
       </div>
       {user ? (
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -28,4 +28,5 @@ export default function AppHeader({
     </header>
   );
 }
+
 

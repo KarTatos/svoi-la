@@ -2,6 +2,9 @@ export default function HomeScreen({
   T,
   cd,
   mt,
+  user,
+  profileLocation,
+  profileWeather,
   sections,
   HomeIcon,
   CalendarIcon,
@@ -13,6 +16,20 @@ export default function HomeScreen({
 
   return (
     <div>
+      <div style={{ ...cd, marginBottom:12, padding:"12px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>👤</div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{user?.name || "Гость"}</div>
+            <div style={{ fontSize:11, color:T.mid, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{profileLocation || "Определяем локацию..."}</div>
+          </div>
+        </div>
+        <div style={{ textAlign:"right", flexShrink:0 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:T.text }}>{profileWeather?.temp || "--°"}</div>
+          <div style={{ fontSize:11, color:T.mid, maxWidth:130, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{profileWeather?.text || "Погода..."}</div>
+        </div>
+      </div>
+
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
         {mainSections.map((s,i) => (
           <button
@@ -46,4 +63,3 @@ export default function HomeScreen({
     </div>
   );
 }
-
