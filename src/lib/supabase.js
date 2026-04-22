@@ -9,7 +9,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin },
+    options: {
+      redirectTo: window.location.origin,
+      scopes: 'openid email profile',
+      queryParams: {
+        prompt: 'consent',
+        include_granted_scopes: 'false',
+      },
+    },
   });
 }
 
