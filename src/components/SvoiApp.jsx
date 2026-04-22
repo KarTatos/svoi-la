@@ -14,6 +14,7 @@ import { useMapRouting } from "../hooks/useMapRouting";
 import { useGoogleMapsCore } from "../hooks/useGoogleMapsCore";
 import { useMiniMap } from "../hooks/useMiniMap";
 import { usePlacesMap } from "../hooks/usePlacesMap";
+import { usePhotoViewer } from "../hooks/usePhotoViewer";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -99,8 +100,6 @@ export default function App() {
   const [addrValidPlace, setAddrValidPlace] = useState(false);
   const [addrValidEvent, setAddrValidEvent] = useState(false);
   const [addrValidHousing, setAddrValidHousing] = useState(false);
-  const [photoViewer, setPhotoViewer] = useState(null);
-  const [photoZoom, setPhotoZoom] = useState(1);
   const [chat, setChat] = useState([{ role:"assistant", text:"Здравствуйте. Задайте вопрос по USCIS, местам, событиям, советам или жилью." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
@@ -181,6 +180,18 @@ export default function App() {
     geocodePlace,
     openExternalUrl,
   });
+  const {
+    photoViewer,
+    photoZoom,
+    photoOffset,
+    openPhotoViewer,
+    closePhotoViewer,
+    goPrevPhoto,
+    goNextPhoto,
+    onPhotoTouchStart,
+    onPhotoTouchMove,
+    onPhotoTouchEnd,
+  } = usePhotoViewer();
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -204,8 +215,6 @@ export default function App() {
   const eventFileRef = useRef(null);
   const housingFileRef = useRef(null);
   const datePickerRef = useRef(null);
-  const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
-  const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
   const realtimeReloadTimerRef = useRef(null);
 
   useEffect(() => setMt(true), []);
@@ -362,102 +371,6 @@ export default function App() {
     setAddrValidHousing,
     setAddrLoadingHousing,
   });
-  const openPhotoViewer = (photos, startIndex = 0) => {
-    const normalized = (Array.isArray(photos) ? photos : [])
-      .filter((ph) => typeof ph === "string")
-      .filter((ph) => /^(https?:\/\/|blob:|data:image\/)/i.test(ph));
-    if (!normalized.length) return;
-    const safeIndex = Math.max(0, Math.min(startIndex, normalized.length - 1));
-    setPhotoViewer({ photos: normalized, index: safeIndex });
-    setPhotoZoom(1);
-  };
-  const closePhotoViewer = () => {
-    setPhotoViewer(null);
-    setPhotoZoom(1);
-  };
-  const goPrevPhoto = () => {
-    setPhotoViewer((prev) => {
-      if (!prev || prev.photos.length < 2) return prev;
-      const nextIndex = (prev.index - 1 + prev.photos.length) % prev.photos.length;
-      return { ...prev, index: nextIndex };
-    });
-    setPhotoZoom(1);
-  };
-  const goNextPhoto = () => {
-    setPhotoViewer((prev) => {
-      if (!prev || prev.photos.length < 2) return prev;
-      const nextIndex = (prev.index + 1) % prev.photos.length;
-      return { ...prev, index: nextIndex };
-    });
-    setPhotoZoom(1);
-  };
-
-  useEffect(() => {
-    if (!photoViewer) return;
-    const prevOverflow = document.body.style.overflow;
-    const prevTouchAction = document.body.style.touchAction;
-    document.body.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.touchAction = prevTouchAction;
-    };
-  }, [photoViewer]);
-
-  const getTouchDistance = (touches) => {
-    if (!touches || touches.length < 2) return 0;
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.hypot(dx, dy);
-  };
-  const onPhotoTouchStart = (e) => {
-    if (!photoViewer) return;
-    if (e.touches.length >= 2) {
-      photoPinchRef.current.baseDistance = getTouchDistance(e.touches);
-      photoPinchRef.current.baseZoom = photoZoom;
-      photoSwipeRef.current.active = false;
-      return;
-    }
-    if (e.touches.length === 1) {
-      photoSwipeRef.current = {
-        startX: e.touches[0].clientX,
-        startY: e.touches[0].clientY,
-        active: true,
-      };
-    }
-  };
-  const onPhotoTouchMove = (e) => {
-    if (!photoViewer) return;
-    if (e.touches.length >= 2) {
-      e.preventDefault();
-      const baseDistance = photoPinchRef.current.baseDistance || getTouchDistance(e.touches);
-      const distance = getTouchDistance(e.touches);
-      if (!baseDistance || !distance) return;
-      const nextZoom = Math.max(1, Math.min(4, (photoPinchRef.current.baseZoom || 1) * (distance / baseDistance)));
-      setPhotoZoom(nextZoom);
-    }
-  };
-  const onPhotoTouchEnd = (e) => {
-    if (!photoViewer) return;
-    if (e.touches.length >= 2) return;
-    if (!photoSwipeRef.current.active) return;
-    if (photoZoom > 1.02) {
-      photoSwipeRef.current.active = false;
-      return;
-    }
-    const changed = e.changedTouches?.[0];
-    if (!changed) {
-      photoSwipeRef.current.active = false;
-      return;
-    }
-    const dx = changed.clientX - photoSwipeRef.current.startX;
-    const dy = changed.clientY - photoSwipeRef.current.startY;
-    photoSwipeRef.current.active = false;
-    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) goNextPhoto();
-    else goPrevPhoto();
-  };
-
   const handleSend = async (t) => {
     const msg = t || inp.trim(); if (!msg) return;
     setChat(p => [...p, { role:"user", text:msg }]); setInp(""); setTyping(true);
@@ -2107,6 +2020,7 @@ export default function App() {
       <PhotoViewerModal
         photoViewer={photoViewer}
         photoZoom={photoZoom}
+        photoOffset={photoOffset}
         onClose={closePhotoViewer}
         onPrev={goPrevPhoto}
         onNext={goNextPhoto}
