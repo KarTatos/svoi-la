@@ -10,6 +10,7 @@ import UscisCategoryScreen from "./svoi/screens/UscisCategoryScreen";
 import HomeScreen from "./svoi/screens/HomeScreen";
 import ChatScreen from "./svoi/screens/ChatScreen";
 import ProfileScreen from "./svoi/screens/ProfileScreen";
+import MyPlacesScreen from "./svoi/screens/MyPlacesScreen";
 import PlacesDistrictsScreen from "./svoi/screens/PlacesDistrictsScreen";
 import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
@@ -439,6 +440,18 @@ export default function App() {
     setUscisPdfViewer({ url: pdfUrl, title: title || "USCIS PDF" });
   };
   const closeUscisPdf = () => setUscisPdfViewer(null);
+  const openPlaceItem = (placeInput) => {
+    const place = typeof placeInput === "object"
+      ? placeInput
+      : places.find((p) => String(p.id) === String(placeInput));
+    if (!place) return;
+    const district = DISTRICTS.find((d) => d.id === place.district) || null;
+    const placeCat = PLACE_CATS.find((c) => c.id === place.cat) || null;
+    if (district) setSelD(district);
+    if (placeCat) setSelPC(placeCat);
+    setSelPlace(place);
+    setScr("place-item");
+  };
   const openChatAppLink = (url) => {
     const raw = String(url || "").trim();
     if (!raw) return;
@@ -457,14 +470,7 @@ export default function App() {
       return;
     }
     if (type === "place") {
-      const place = places.find((p) => String(p.id) === id);
-      if (!place) return;
-      const district = DISTRICTS.find((d) => d.id === place.district) || null;
-      const placeCat = PLACE_CATS.find((c) => c.id === place.cat) || null;
-      if (district) setSelD(district);
-      if (placeCat) setSelPC(placeCat);
-      setSelPlace(place);
-      setScr("place-item");
+      openPlaceItem(id);
       return;
     }
     if (type === "event") {
@@ -1905,9 +1911,13 @@ export default function App() {
   };
 
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
-  const myPlaces = user
+  const myPlacesRaw = user
     ? places.filter((p) => (p.userId && p.userId === user.id) || (!p.userId && p.addedBy && p.addedBy === user.name))
     : [];
+  const myPlaces = myPlacesRaw.map((p) => ({
+    ...p,
+    districtLabel: DISTRICTS.find((d) => d.id === p.district)?.name || p.district || "LA",
+  }));
   const savedPlacesCount = Object.entries(favorites || {}).filter(([k, v]) => v && String(k).startsWith("place-")).length;
   const myReviewsCount = user
     ? [...places, ...tips, ...events]
@@ -2049,6 +2059,9 @@ export default function App() {
     if (scr === "profile" && !user) setScr("home");
   }, [scr, user]);
   useEffect(() => {
+    if (scr === "my-places" && !user) setScr("home");
+  }, [scr, user]);
+  useEffect(() => {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
@@ -2171,8 +2184,22 @@ export default function App() {
             myPlacesCount={myPlaces.length}
             myReviewsCount={myReviewsCount}
             onBack={goHome}
-            onOpenMyPlaces={() => setScr("places")}
+            onOpenMyPlaces={() => setScr("my-places")}
+            onOpenSavedPlaces={() => setScr("places")}
+            onOpenMyReviews={() => setScr("tips")}
+            onOpenHelp={() => setScr("chat")}
             onLogout={handleLogout}
+          />
+        )}
+
+        {scr==="my-places" && user && (
+          <MyPlacesScreen
+            T={T}
+            cd={cd}
+            bk={bk}
+            myPlaces={myPlaces}
+            onBack={() => setScr("profile")}
+            onOpenPlace={openPlaceItem}
           />
         )}
 

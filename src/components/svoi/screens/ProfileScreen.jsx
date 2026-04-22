@@ -10,6 +10,9 @@
   myReviewsCount,
   onBack,
   onOpenMyPlaces,
+  onOpenSavedPlaces,
+  onOpenMyReviews,
+  onOpenHelp,
   onLogout,
 }) {
   const initials = (() => {
@@ -19,88 +22,95 @@
     return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
   })();
 
-  const rowStyle = {
-    width: "100%",
-    border: "none",
-    background: "transparent",
-    padding: "14px 0",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    color: T.text,
-  };
+  const row = (icon, label, value, onClick) => (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%",
+        border: "none",
+        background: "transparent",
+        padding: "14px 2px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        cursor: "pointer",
+        fontFamily: "inherit",
+        color: T.text,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 9, background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: 15, fontWeight: 600 }}>{label}</span>
+      </div>
+      <span style={{ color: T.mid, fontWeight: 600, fontSize: 14 }}>
+        {value !== "" ? value : ""}
+        <span style={{ marginLeft: 4 }}>›</span>
+      </span>
+    </button>
+  );
 
   return (
     <div>
       <button onClick={onBack} style={bk}>← Профиль</button>
 
-      <div style={{ ...cd, padding: 0, overflow: "hidden", marginBottom: 14 }}>
-        <div style={{ padding: "18px 16px", position: "relative" }}>
-          <div style={{ position: "absolute", right: -26, top: -28, width: 130, height: 130, borderRadius: "50%", background: T.primaryLight, opacity: 0.6 }} />
-          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 74, height: 74, borderRadius: "50%", background: T.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, fontWeight: 800, boxShadow: T.sh }}>
+      <div style={{ ...cd, padding: 0, overflow: "hidden", marginBottom: 12 }}>
+        <div style={{ padding: "16px 14px 12px", position: "relative" }}>
+          <div style={{ position: "absolute", right: -28, top: -30, width: 118, height: 118, borderRadius: "50%", background: T.primaryLight, opacity: 0.6 }} />
+          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 74, height: 74, borderRadius: "50%", background: T.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 800, boxShadow: T.sh }}>
               {initials}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 35, fontWeight: 800, lineHeight: 1.2, marginBottom: 2 }}>{user?.name || "Пользователь"}</div>
-              <div style={{ fontSize: 13, color: T.mid, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email || ""}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {user?.name || "Пользователь"}
+              </div>
+              <div style={{ fontSize: 12, color: T.mid, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {user?.email || ""}
+              </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, padding: "4px 10px", borderRadius: 999, background: "#fff4ea", color: T.primary }}>{profileLocation || "Локация"}</span>
-                <span style={{ fontSize: 12, padding: "4px 10px", borderRadius: 999, background: "#e8f8ef", color: "#2f855a" }}>LA: {placesCount} мест</span>
+                <span style={{ fontSize: 12, padding: "4px 9px", borderRadius: 999, background: "#fff4ea", color: T.primary }}>📍 {profileLocation || "Локация"}</span>
+                <span style={{ fontSize: 12, padding: "4px 9px", borderRadius: 999, background: "#e8f8ef", color: "#2f855a" }}>В LA: {placesCount} мест</span>
               </div>
             </div>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", borderTop: `1px solid ${T.borderL}` }}>
-          <div style={{ padding: "14px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 34, fontWeight: 800 }}>{myPlacesCount}</div>
+          <div style={{ padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontSize: 37, fontWeight: 800, lineHeight: 1.1 }}>{myPlacesCount}</div>
             <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Мест</div>
           </div>
-          <div style={{ padding: "14px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 34, fontWeight: 800 }}>{savedPlacesCount}</div>
+          <div style={{ padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontSize: 37, fontWeight: 800, lineHeight: 1.1 }}>{savedPlacesCount}</div>
             <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Сохранено</div>
           </div>
-          <div style={{ padding: "14px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 34, fontWeight: 800 }}>{myReviewsCount}</div>
-            <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Отзывов</div>
+          <div style={{ padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontSize: 37, fontWeight: 800, lineHeight: 1.1 }}>{myReviewsCount}</div>
+            <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Отзывы</div>
           </div>
         </div>
       </div>
 
-      <div style={{ fontSize: 12, letterSpacing: "0.06em", fontWeight: 800, color: T.light, margin: "12px 4px 8px" }}>МОЯ АКТИВНОСТЬ</div>
-      <div style={{ ...cd, padding: "0 14px", marginBottom: 12 }}>
-        <div style={{ ...rowStyle, cursor: "default" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 9, background: "#fff8e8", display: "flex", alignItems: "center", justifyContent: "center" }}>★</div>
-            <span style={{ fontSize: 22, fontWeight: 600 }}>Сохранённые места</span>
-          </div>
-          <span style={{ color: T.mid, fontWeight: 600 }}>{savedPlacesCount}</span>
-        </div>
+      <div style={{ fontSize: 12, letterSpacing: "0.06em", fontWeight: 800, color: T.light, margin: "10px 4px 8px" }}>МОЯ АКТИВНОСТЬ</div>
+      <div style={{ ...cd, padding: "0 12px", marginBottom: 12 }}>
+        {row("⭐", "Сохранённые места", savedPlacesCount, onOpenSavedPlaces)}
         <div style={{ borderTop: `1px solid ${T.borderL}` }} />
-        <button onClick={onOpenMyPlaces} style={rowStyle}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 9, background: "#edf4ff", display: "flex", alignItems: "center", justifyContent: "center" }}>📍</div>
-            <span style={{ fontSize: 22, fontWeight: 600 }}>Мои места</span>
-          </div>
-          <span style={{ color: T.mid, fontWeight: 700 }}>{myPlacesCount}  ›</span>
-        </button>
+        {row("📝", "Мои отзывы", myReviewsCount, onOpenMyReviews)}
         <div style={{ borderTop: `1px solid ${T.borderL}` }} />
-        <div style={{ ...rowStyle, cursor: "default" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 9, background: "#f3efff", display: "flex", alignItems: "center", justifyContent: "center" }}>📝</div>
-            <span style={{ fontSize: 22, fontWeight: 600 }}>Мои отзывы</span>
-          </div>
-          <span style={{ color: T.mid, fontWeight: 600 }}>{myReviewsCount}</span>
-        </div>
+        {row("📍", "Мои места", myPlacesCount, onOpenMyPlaces)}
       </div>
 
-      <div style={{ ...cd, padding: "14px 16px", textAlign: "center" }}>
-        <button onClick={onLogout} style={{ border: "none", background: "transparent", color: "#ef4444", fontSize: 24, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Выйти</button>
+      <div style={{ fontSize: 12, letterSpacing: "0.06em", fontWeight: 800, color: T.light, margin: "10px 4px 8px" }}>ПОДДЕРЖКА</div>
+      <div style={{ ...cd, padding: "0 12px", marginBottom: 14 }}>
+        {row("💬", "Помощь", "", onOpenHelp)}
+      </div>
+
+      <div style={{ textAlign: "center", fontSize: 12, color: T.light, marginBottom: 10 }}>LA guide · v1.4.2</div>
+      <div style={{ textAlign: "center" }}>
+        <button onClick={onLogout} style={{ border: "none", background: "transparent", color: "#ef4444", fontSize: 18, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Выйти</button>
       </div>
     </div>
   );
 }
-
