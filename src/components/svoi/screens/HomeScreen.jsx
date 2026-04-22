@@ -15,18 +15,48 @@
   const mainSections = sections.filter((s) => s.id !== "chat-sec");
   const weatherPlace = (profileLocation || "Los Angeles").split(",")[0].trim().toUpperCase();
 
+  const formatWeatherTemp = () => {
+    const raw = String(profileWeather?.temp || "").trim();
+    const match = raw.match(/(-?\d+(?:\.\d+)?)\s*°?\s*([CF])?/i);
+    if (!match) return raw || "--°";
+
+    const value = Number(match[1]);
+    const unit = String(match[2] || "").toUpperCase();
+    if (!Number.isFinite(value)) return raw || "--°";
+
+    if (unit === "F") {
+      const c = Math.round((value - 32) * 5 / 9);
+      return `${Math.round(value)}°F (${c}°C)`;
+    }
+    if (unit === "C") return `${Math.round(value)}°C`;
+    return `${Math.round(value)}°`;
+  };
+  const getWeatherIcon = () => {
+    const text = String(profileWeather?.text || "").toLowerCase();
+    if (!text) return "🌤️";
+    if (text.includes("thunder") || text.includes("storm")) return "⛈️";
+    if (text.includes("snow") || text.includes("sleet") || text.includes("blizzard")) return "❄️";
+    if (text.includes("rain") || text.includes("shower") || text.includes("drizzle")) return "🌧️";
+    if (text.includes("fog") || text.includes("mist") || text.includes("haze") || text.includes("smoke")) return "🌫️";
+    if (text.includes("cloudy") || text.includes("overcast")) return "☁️";
+    if (text.includes("partly") || text.includes("mostly sunny") || text.includes("mostly clear")) return "🌤️";
+    if (text.includes("clear") || text.includes("sunny")) return "☀️";
+    if (text.includes("wind")) return "💨";
+    return "🌤️";
+  };
+
   return (
     <div>
       <div style={{ ...cd, marginBottom:14, padding:"12px 14px", background:"#FDF0E0", borderColor:"#F4E1CC", display:"flex", alignItems:"center", gap:12 }}>
         <div style={{ width:58, height:58, borderRadius:18, background:"#FFFFFF", border:"1px solid #F3E6D7", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 14px rgba(0,0,0,0.08)", flexShrink:0 }}>
-          <span style={{ fontSize:31, lineHeight:1 }}>☀️</span>
+          <span style={{ fontSize:31, lineHeight:1 }}>{getWeatherIcon()}</span>
         </div>
         <div style={{ minWidth:0, flex:1 }}>
           <div style={{ fontSize:11, letterSpacing:"0.06em", fontWeight:800, color:"#4B5563", marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
             СЕГОДНЯ • {weatherPlace}
           </div>
           <div style={{ fontSize:31, lineHeight:1.05, fontWeight:800, color:"#111827", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-            {profileWeather?.temp || "--°"} <span style={{ fontSize:13, fontWeight:700, color:"#1F2937" }}>• {profileWeather?.text || "Погода..."}</span>
+            {formatWeatherTemp()} <span style={{ fontSize:13, fontWeight:700, color:"#1F2937" }}>• {profileWeather?.text || "Погода..."}</span>
           </div>
         </div>
       </div>
