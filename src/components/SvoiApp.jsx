@@ -1,12 +1,13 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { addSupportRequest as dbAddSupportRequest, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 import { useAppData } from "../hooks/useAppData";
 import { useAuth } from "../hooks/useAuth";
 import { useViewTracker } from "../hooks/useViewTracker";
 import { useProfileWeather } from "../hooks/useProfileWeather";
 import { useChatTextRenderer } from "../hooks/useChatTextRenderer";
 import { useUscisNavigation } from "../hooks/useUscisNavigation";
+import { useSupportRequests } from "../hooks/useSupportRequests";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -116,6 +117,13 @@ export default function App() {
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
   const { selU, setSelU, expF, setExpF, openUscisCategory, startTest } = useUscisNavigation({ setScr, civicsTest });
+  const {
+    sendingSupport,
+    supportDone,
+    supportError,
+    clearSupportStatus,
+    sendSupportRequest,
+  } = useSupportRequests({ user });
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -250,20 +258,6 @@ export default function App() {
     if (!value) return;
     const q = encodeURIComponent(value);
     openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${q}`);
-  };
-  const sendSupportRequest = async (message) => {
-    const text = String(message || "").trim();
-    if (!text) return false;
-    if (!user?.id) return false;
-    const payload = {
-      user_id: user.id,
-      user_name: user.name || null,
-      user_email: user.email || null,
-      message: text,
-      status: "new",
-    };
-    const { error } = await dbAddSupportRequest(payload);
-    return !error;
   };
   const openMap = (p, t) => { const q = encodeURIComponent(p.address); openExternalUrl(t==="google"?`https://www.google.com/maps/search/?api=1&query=${q}`:`https://maps.apple.com/?q=${q}`); setMapP(null); };
   const openEventMap = (location, t) => {
@@ -1847,6 +1841,10 @@ export default function App() {
             user={user}
             onBack={() => setScr("profile")}
             onSubmit={sendSupportRequest}
+            sending={sendingSupport}
+            done={supportDone}
+            error={supportError}
+            onClearStatus={clearSupportStatus}
           />
         )}
 
