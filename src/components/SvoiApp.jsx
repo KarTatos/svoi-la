@@ -25,6 +25,7 @@ import PlaceFormModal from "./svoi/forms/PlaceFormModal";
 import EventFormModal from "./svoi/forms/EventFormModal";
 import HousingFormModal from "./svoi/forms/HousingFormModal";
 import TipFormModal from "./svoi/forms/TipFormModal";
+import CommentsBlock from "./svoi/components/CommentsBlock";
 
 export default function App() {
   const ADMIN_EMAIL = "kushnir4work@gmail.com";
@@ -1912,50 +1913,6 @@ export default function App() {
     };
   }, [showAddHousing, showAddEvent]);
 
-  // ─── Reusable Comments Block ───
-  const renderComments = (item, type, addFn) => {
-    const comments = item.comments || [];
-    const isOpen = showComments === `${type}-${item.id}`;
-    return (
-      <div style={{ padding:"0 16px 16px" }}>
-        <button onClick={e=>{e.stopPropagation(); setShowComments(isOpen ? null : `${type}-${item.id}`); setNewComment(""); setEditingComment(null);}}
-          style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:T.mid, padding:"4px 0", display:"flex", alignItems:"center", gap:6 }}>
-          💬 Комментарии ({comments.length}) <span style={{ fontSize:10, color:T.light, transition:"0.3s", transform:isOpen?"rotate(180deg)":"" }}>▼</span>
-        </button>
-        {isOpen && (<div style={{ marginTop:8 }}>
-          {comments.map((c) => (
-            <div key={c.id||Math.random()} style={{ padding:"10px 12px", background:T.bg, borderRadius:10, marginBottom:6, fontSize:13 }}>
-              {editingComment === c.id ? (
-                <div style={{ display:"flex", gap:6 }}>
-                  <input value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{ ...iS, flex:1, padding:"8px 12px", fontSize:13 }} />
-                  <button onClick={()=>saveEditComment(item.id, c.id, type)} style={{ ...pl(true), padding:"8px 14px", fontSize:12 }}>✓</button>
-                  <button onClick={()=>{setEditingComment(null);setEditCommentText("")}} style={{ ...pl(false), padding:"8px 14px", fontSize:12 }}>✕</button>
-                </div>
-              ) : (<div>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span style={{ fontWeight:600, color:T.text }}>{c.author}</span>
-                  {user && (user.id === c.userId || user.name === c.author) && (
-                    <div style={{ display:"flex", gap:4 }}>
-                      <button onClick={()=>{setEditingComment(c.id);setEditCommentText(c.text)}} style={{ background:"none", border:"none", color:T.light, cursor:"pointer", fontSize:11, padding:2 }}>✏️</button>
-                      <button onClick={()=>deleteCommentFn(item.id, c.id, type)} style={{ background:"none", border:"none", color:"#E74C3C", cursor:"pointer", fontSize:11, padding:2 }}>🗑</button>
-                    </div>
-                  )}
-                </div>
-                <div style={{ color:T.mid, marginTop:4 }}>{c.text}</div>
-              </div>)}
-            </div>
-          ))}
-          {user ? (
-            <div style={{ display:"flex", gap:8, marginTop:6 }}>
-              <input value={newComment} onChange={e=>setNewComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFn(item.id)} placeholder="Написать комментарий..." style={{ ...iS, flex:1, padding:"10px 14px" }} />
-              <button onClick={()=>addFn(item.id)} disabled={!newComment.trim()} style={{ ...pl(!!newComment.trim()), padding:"10px 16px", opacity:newComment.trim()?1:0.5 }}>→</button>
-            </div>
-          ) : (<button onClick={handleLogin} style={{ ...pl(false), width:"100%", fontSize:12, marginTop:4 }}>Войдите чтобы комментировать</button>)}
-        </div>)}
-      </div>
-    );
-  };
-
   // Prevent iOS pinch zoom
   useEffect(() => {
     const prevent = (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); };
@@ -2317,7 +2274,26 @@ export default function App() {
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
               </div>
 
-              {renderComments(activePlace, "place", addPlaceComment)}
+              <CommentsBlock
+                item={activePlace}
+                type="place"
+                addFn={addPlaceComment}
+                showComments={showComments}
+                setShowComments={setShowComments}
+                newComment={newComment}
+                setNewComment={setNewComment}
+                editingComment={editingComment}
+                setEditingComment={setEditingComment}
+                editCommentText={editCommentText}
+                setEditCommentText={setEditCommentText}
+                saveEditComment={saveEditComment}
+                deleteCommentFn={deleteCommentFn}
+                user={user}
+                handleLogin={handleLogin}
+                T={T}
+                pl={pl}
+                iS={iS}
+              />
 
               {canManagePlace(activePlace) && (
                 <div style={{ paddingTop:4, display:"flex", gap:8 }}>
@@ -2383,7 +2359,26 @@ export default function App() {
                         <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
                       </div>
-                      {renderComments(tip, "tip", handleAddComment)}
+                      <CommentsBlock
+                        item={tip}
+                        type="tip"
+                        addFn={handleAddComment}
+                        showComments={showComments}
+                        setShowComments={setShowComments}
+                        newComment={newComment}
+                        setNewComment={setNewComment}
+                        editingComment={editingComment}
+                        setEditingComment={setEditingComment}
+                        editCommentText={editCommentText}
+                        setEditCommentText={setEditCommentText}
+                        saveEditComment={saveEditComment}
+                        deleteCommentFn={deleteCommentFn}
+                        user={user}
+                        handleLogin={handleLogin}
+                        T={T}
+                        pl={pl}
+                        iS={iS}
+                      />
                     </div>)}
                   </div>
                 );
@@ -2461,7 +2456,26 @@ export default function App() {
                   <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                   <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
                 </div>
-                {renderComments(tip, "tip", handleAddComment)}
+                <CommentsBlock
+                  item={tip}
+                  type="tip"
+                  addFn={handleAddComment}
+                  showComments={showComments}
+                  setShowComments={setShowComments}
+                  newComment={newComment}
+                  setNewComment={setNewComment}
+                  editingComment={editingComment}
+                  setEditingComment={setEditingComment}
+                  editCommentText={editCommentText}
+                  setEditCommentText={setEditCommentText}
+                  saveEditComment={saveEditComment}
+                  deleteCommentFn={deleteCommentFn}
+                  user={user}
+                  handleLogin={handleLogin}
+                  T={T}
+                  pl={pl}
+                  iS={iS}
+                />
                 {canManageTip(tip) && (
                   <div style={{ padding:"0 16px 16px", display:"flex", gap:8 }}>
                     <button onClick={(e)=>{e.stopPropagation(); startEditTip(tip);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12 }}>✏️ Редактировать</button>
@@ -2621,7 +2635,26 @@ export default function App() {
               <div style={{ padding:"14px 16px 10px", display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
               </div>
-              {renderComments(ev, "event", addEventComment)}
+              <CommentsBlock
+                item={ev}
+                type="event"
+                addFn={addEventComment}
+                showComments={showComments}
+                setShowComments={setShowComments}
+                newComment={newComment}
+                setNewComment={setNewComment}
+                editingComment={editingComment}
+                setEditingComment={setEditingComment}
+                editCommentText={editCommentText}
+                setEditCommentText={setEditCommentText}
+                saveEditComment={saveEditComment}
+                deleteCommentFn={deleteCommentFn}
+                user={user}
+                handleLogin={handleLogin}
+                T={T}
+                pl={pl}
+                iS={iS}
+              />
               {canManageEvent(ev) && (
                 <div style={{ padding:"0 16px 16px" }}>
                   <button onClick={(e)=>{e.stopPropagation(); startEditEvent(ev);}} style={{ width:"100%", padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.primary}55`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, background:T.primaryLight, color:T.primary }}>Редактировать событие</button>
