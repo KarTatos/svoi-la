@@ -17,6 +17,7 @@ import { usePlacesMap } from "../hooks/usePlacesMap";
 import { usePhotoViewer } from "../hooks/usePhotoViewer";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
+import { useEventForm } from "../hooks/useEventForm";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -72,14 +73,10 @@ export default function App() {
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [selEC, setSelEC] = useState(null);
-  const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddHousing, setShowAddHousing] = useState(false);
   const [editingHousing, setEditingHousing] = useState(null);
-  const [newEvent, setNewEvent] = useState({ title:"", date:"", location:"", desc:"", website:"", cat:"" });
   const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
   const [newHousingPhotos, setNewHousingPhotos] = useState([]);
-  const [newEventPhotos, setNewEventPhotos] = useState([]);
-  const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
@@ -277,6 +274,42 @@ export default function App() {
       if (error) console.error("Login error:", error);
     },
   });
+  const {
+    showAddEvent,
+    setShowAddEvent,
+    newEvent,
+    setNewEvent,
+    newEventPhotos,
+    setNewEventPhotos,
+    editingEvent,
+    setEditingEvent,
+    resetEventForm,
+    openAddEventForm,
+    handleEventPhotos,
+    startEditEvent,
+    handleDeleteEvent,
+    handleAddEvent,
+  } = useEventForm({
+    user,
+    events,
+    canManageEvent,
+    setEvents,
+    setExp,
+    addrValidEvent,
+    setAddrValidEvent,
+    setAddrOptionsEvent,
+    dbAddEvent,
+    dbUpdateEvent,
+    dbDeleteEvent,
+    uploadPhoto,
+    limitCardText,
+    encodeRichText,
+    normalizeExternalUrl,
+    onRequireAuth: async () => {
+      const { error } = await signInAuth();
+      if (error) console.error("Login error:", error);
+    },
+  });
 
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
@@ -340,7 +373,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); resetTipForm(); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); resetTipForm(); resetEventForm(); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setFilterDate(null); };
   function openExternalUrl(url) {
     if (!url) return;
     try {
@@ -378,12 +411,12 @@ export default function App() {
     setSelPlace(place);
     setScr("place-item");
   };
-  const normalizeExternalUrl = (url) => {
+  function normalizeExternalUrl(url) {
     const v = (url || "").trim();
     if (!v) return "";
     if (/^https?:\/\//i.test(v)) return v;
     return `https://${v}`;
-  };
+  }
   const handleNativeShare = async ({ title, text, url }) => {
     const safeUrl = normalizeExternalUrl(url || window.location.href);
     try {
@@ -486,47 +519,6 @@ export default function App() {
     if (error) console.error("Login error:", error);
   }
   const handleLogout = async () => { await signOutAuth(); resetEngagement(); };
-  const handleEventPhotos = (e) => {
-    const files = Array.from(e.target.files).slice(0, 3);
-    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
-    setNewEventPhotos(prev => [...prev, ...newFiles].slice(0, 3));
-  };
-  const startEditEvent = (ev) => {
-    if (!canManageEvent(ev)) {
-      alert("Редактировать событие может только автор или админ.");
-      return;
-    }
-    setEditingEvent(ev);
-    setNewEvent({
-      title: ev.title || "",
-      date: ev.date ? new Date(ev.date).toISOString().slice(0,16) : "",
-      location: ev.location || "",
-      desc: ev.desc || "",
-      website: ev.website || "",
-      cat: ev.cat || "",
-    });
-    setNewEventPhotos((ev.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setAddrValidEvent(!!(ev.location || "").trim());
-    setAddrOptionsEvent([]);
-    setShowAddEvent(true);
-  };
-  const handleDeleteEvent = async (eventId) => {
-    const item = events.find((e) => e.id === eventId);
-    if (!canManageEvent(item)) {
-      alert("Удалять событие может только автор или админ.");
-      return;
-    }
-    if (!window.confirm("Удалить событие?")) return;
-    const { error } = await dbDeleteEvent(eventId);
-    if (error) {
-      alert(error.message || "Не удалось удалить событие");
-      return;
-    }
-    setEvents(prev => prev.filter(e => e.id !== eventId));
-    setShowAddEvent(false);
-    setEditingEvent(null);
-    setExp(null);
-  };
   const handleAddComment = async (tipId) => {
     if (!newComment.trim() || !user) return;
     const { data } = await dbAddComment({ item_id:tipId, item_type:"tip", author:user.name, user_id:user.id, text:newComment.trim() });
@@ -563,34 +555,6 @@ export default function App() {
     else if (type === "tip") setTips(updater);
     else if (type === "event") setEvents(updater);
     setEditingComment(null); setEditCommentText("");
-  };
-  const handleAddEvent = async () => {
-    if (!newEvent.title || !newEvent.date || !newEvent.desc || !newEvent.cat || !user) return;
-    if (!newEvent.location.trim() || !addrValidEvent) {
-      alert("Выберите место из подсказок адреса.");
-      return;
-    }
-    const uploaded = [];
-    for (const p of newEventPhotos) {
-      if (p.file) {
-        const url = await uploadPhoto(p.file);
-        if (url) uploaded.push(url);
-      } else if (p.preview && p.preview.startsWith("http")) {
-        uploaded.push(p.preview);
-      }
-    }
-    const safeEventDesc = limitCardText(newEvent.desc).trim();
-    const website = normalizeExternalUrl(newEvent.website || "");
-    const dbData = { category:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location||'', description:encodeRichText(safeEventDesc, uploaded, { website }), author:user.name, user_id:user.id };
-    if (editingEvent) {
-      await dbUpdateEvent(editingEvent.id, dbData);
-      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:safeEventDesc, website, photos:uploaded } : ev));
-    } else {
-      const { data } = await dbAddEvent(dbData);
-      const newId = data?.[0]?.id || Date.now();
-      setEvents(prev => [{ id:newId, cat:newEvent.cat, title:newEvent.title, date:newEvent.date, location:newEvent.location, desc:safeEventDesc, website, photos:uploaded, author:user.name, userId:user.id, likes:0, views:0, comments:[], fromDB:true }, ...prev]);
-    }
-    setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:"" }); setNewEventPhotos([]); setEditingEvent(null); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(false);
   };
   const handleAddHousing = async () => {
     if (!user) { handleLogin(); return; }
@@ -1545,7 +1509,7 @@ export default function App() {
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
             </div>
             <button
-              onClick={() => { if (!user) {handleLogin();return;} setEditingEvent(null); setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:selEC?.id||"" }); setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(true); }}
+              onClick={() => { openAddEventForm(); setNewEvent((prev) => ({ ...prev, cat: selEC?.id || "" })); }}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
               title="Добавить"
             >
@@ -1671,7 +1635,7 @@ export default function App() {
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
-          <button onClick={() => { if (!user) {handleLogin();return;} setEditingEvent(null); setNewEvent({ title:"", date:"", location:"", desc:"", website:"", cat:selEC?.id||"" }); setNewEventPhotos([]); setAddrValidEvent(false); setAddrOptionsEvent([]); setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
+          <button onClick={() => { openAddEventForm(); setNewEvent((prev) => ({ ...prev, cat: selEC?.id || "" })); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
 
         {/* ADD EVENT MODAL */}
