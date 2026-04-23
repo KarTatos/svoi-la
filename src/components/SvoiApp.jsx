@@ -15,6 +15,7 @@ import { useGoogleMapsCore } from "../hooks/useGoogleMapsCore";
 import { useMiniMap } from "../hooks/useMiniMap";
 import { usePlacesMap } from "../hooks/usePlacesMap";
 import { usePhotoViewer } from "../hooks/usePhotoViewer";
+import { usePlaceForm } from "../hooks/usePlaceForm";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -65,13 +66,7 @@ export default function App() {
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn: signInAuth, signOut: signOutAuth, isAdmin } = useAuth([ADMIN_EMAIL]);
   const { places, tips, events, housing, setPlaces, setTips, setEvents, setHousing, reload: loadAllData } = useAppData(user);
-  const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
-  const [np, setNp] = useState({ name:"", cat:"", district:"", address:"", tip:"" });
-  const [placeCoords, setPlaceCoords] = useState({ lat: null, lng: null });
-  const [nPhotos, setNPhotos] = useState([]);
-  const [editingPlace, setEditingPlace] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [newTip, setNewTip] = useState({ title:"", text:"" });
   const [newTipPhotos, setNewTipPhotos] = useState([]);
   const [editingTip, setEditingTip] = useState(null);
@@ -203,6 +198,52 @@ export default function App() {
   const canManageTip = (item) => canManageByOwnership(item?.userId, item?.author);
   const canManageEvent = (item) => canManageByOwnership(item?.userId, item?.author);
   const canManageHousing = (item) => canManageByOwnership(item?.userId, null);
+  const {
+    showAdd,
+    setShowAdd,
+    np,
+    setNp,
+    placeCoords,
+    setPlaceCoords,
+    nPhotos,
+    setNPhotos,
+    editingPlace,
+    setEditingPlace,
+    uploading,
+    handleAddPlace,
+    handleDeletePlace,
+    startEditPlace,
+    openAddForm,
+    handlePhotos,
+    resetPlaceForm,
+  } = usePlaceForm({
+    user,
+    selD,
+    selPC,
+    places,
+    selPlace,
+    canManagePlace,
+    setPlaces,
+    setSelPlace,
+    setSelD,
+    setScr,
+    setExp,
+    addrValidPlace,
+    setAddrValidPlace,
+    setNameOptionsPlace,
+    setAddrOptionsPlace,
+    dbAddPlace,
+    dbUpdatePlace,
+    dbDeletePlace,
+    uploadPhoto,
+    limitCardText,
+    PLACE_CATS,
+    DISTRICTS,
+    onRequireAuth: async () => {
+      const { error } = await signInAuth();
+      if (error) console.error("Login error:", error);
+    },
+  });
 
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
@@ -266,7 +307,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingTip(null); setFilterDate(null); };
   function openExternalUrl(url) {
     if (!url) return;
     try {
@@ -412,116 +453,6 @@ export default function App() {
     if (error) console.error("Login error:", error);
   }
   const handleLogout = async () => { await signOutAuth(); resetEngagement(); };
-  const handleAddPlace = async () => {
-    if (!np.name || !np.cat || !np.tip || !user) return;
-    const selectedDistrictId = np.district || selD?.id;
-    if (!selectedDistrictId) {
-      alert("Выберите район.");
-      return;
-    }
-    if (!np.address.trim() || !addrValidPlace) {
-      alert("Выберите реальный адрес из подсказок.");
-      return;
-    }
-    if (!Number.isFinite(placeCoords.lat) || !Number.isFinite(placeCoords.lng)) {
-      alert("Выберите адрес из подсказок, чтобы сохранить точку на карте.");
-      return;
-    }
-    setUploading(true);
-    try {
-      const safeTip = limitCardText(np.tip).trim();
-      // Upload photos to Supabase Storage
-      const uploadedUrls = [];
-      for (const p of nPhotos) {
-        if (p.file) {
-          const url = await uploadPhoto(p.file);
-          if (url) uploadedUrls.push(url);
-          else console.warn('Photo upload failed for:', p.name);
-        } else if (p.preview && p.preview.startsWith('http')) {
-          uploadedUrls.push(p.preview);
-        }
-      }
-      if (editingPlace) {
-        const allPhotos = uploadedUrls;
-        const updates = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||editingPlace.img, photos:allPhotos, lat: placeCoords.lat, lng: placeCoords.lng };
-        if (editingPlace.fromDB) await dbUpdatePlace(editingPlace.id, updates);
-        setPlaces(prev => prev.map(p => p.id === editingPlace.id ? { ...p, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos, lat: placeCoords.lat, lng: placeCoords.lng } : p));
-        setSelPlace((prev) => prev?.id === editingPlace.id ? { ...prev, name:np.name, cat:np.cat, district:selectedDistrictId, address:np.address, tip:safeTip, img:updates.img, photos:allPhotos, lat: placeCoords.lat, lng: placeCoords.lng } : prev);
-        const nextDistrict = DISTRICTS.find((d) => d.id === selectedDistrictId) || null;
-        if (nextDistrict) setSelD(nextDistrict);
-        setEditingPlace(null);
-      } else {
-        const dbData = { name:np.name, category:np.cat, district:selectedDistrictId, address:np.address||'', tip:safeTip, rating:0, added_by:user.name, user_id:user.id, img:PLACE_CATS.find(c=>c.id===np.cat)?.icon||"📍", photos:uploadedUrls, lat: placeCoords.lat, lng: placeCoords.lng };
-        const { data } = await dbAddPlace(dbData);
-        const newId = data?.[0]?.id || Date.now();
-        setPlaces(prev => [{ id:newId, cat:np.cat, district:selectedDistrictId, name:np.name, address:np.address, tip:safeTip, addedBy:user.name, userId:user.id, img:dbData.img, photos:uploadedUrls, likes:0, views:0, comments:[], lat: placeCoords.lat, lng: placeCoords.lng, fromDB:true }, ...prev]);
-      }
-      setNp({ name:"", cat:"", district:selD?.id || "", address:"", tip:"" }); setPlaceCoords({ lat: null, lng: null }); setNPhotos([]); setShowAdd(false);
-    } catch(err) {
-      console.error('Add place error:', err);
-      alert('Ошибка при сохранении. Попробуйте ещё раз.');
-    } finally { setUploading(false); }
-  };
-  const handleDeletePlace = async (placeId) => {
-    const item = places.find((p) => p.id === placeId);
-    if (!canManagePlace(item)) {
-      alert("Редактировать и удалять это место может только автор или админ.");
-      return false;
-    }
-    if (window.confirm("Удалить это место?")) {
-      const { error } = await dbDeletePlace(placeId);
-      if (error) {
-        alert(error.message || "Не удалось удалить место");
-        return false;
-      }
-      setPlaces(prev => prev.filter(p => p.id !== placeId));
-      if (selPlace?.id === placeId) {
-        setSelPlace(null);
-        setScr("places-cat");
-      }
-      setExp(null);
-      if (editingPlace?.id === placeId) {
-        setShowAdd(false);
-        setEditingPlace(null);
-        setNPhotos([]);
-      }
-      return true;
-    }
-    return false;
-  };
-  const startEditPlace = (p) => {
-    if (!canManagePlace(p)) {
-      alert("Редактировать это место может только автор или админ.");
-      return;
-    }
-    setEditingPlace(p);
-    setNp({ name:p.name, cat:p.cat, district:p.district || selD?.id || "", address:p.address||"", tip:p.tip });
-    setPlaceCoords({
-      lat: Number.isFinite(Number(p.lat)) ? Number(p.lat) : null,
-      lng: Number.isFinite(Number(p.lng)) ? Number(p.lng) : null,
-    });
-    setNPhotos((p.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setAddrValidPlace(Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)));
-    setNameOptionsPlace([]);
-    setAddrOptionsPlace([]);
-    setShowAdd(true);
-  };
-  const openAddForm = () => {
-    if (!user) { handleLogin(); return; }
-    setEditingPlace(null);
-    setNp({ name:"", cat:selPC?.id||"", district:selD?.id || "", address:"", tip:"" });
-    setPlaceCoords({ lat: null, lng: null });
-    setNPhotos([]);
-    setAddrValidPlace(false);
-    setNameOptionsPlace([]);
-    setAddrOptionsPlace([]);
-    setShowAdd(true);
-  };
-  const handlePhotos = (e) => {
-    const files = Array.from(e.target.files).slice(0, 5);
-    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
-    setNPhotos(prev => [...prev, ...newFiles].slice(0, 5));
-  };
   const handleTipPhotos = (e) => {
     const files = Array.from(e.target.files).slice(0, 3);
     const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
