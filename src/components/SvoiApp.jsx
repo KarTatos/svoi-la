@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { signInWithGoogle, signOut, getUser, addSupportRequest as dbAddSupportRequest, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
-import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -88,6 +88,20 @@ export default function App() {
   const [newEventPhotos, setNewEventPhotos] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterDate, setFilterDate] = useState(null);
+  const [jobsItems, setJobsItems] = useState(INIT_JOBS);
+  const [jobsTab, setJobsTab] = useState("vacancy");
+  const [showAddJob, setShowAddJob] = useState(false);
+  const [newJob, setNewJob] = useState({
+    type: "vacancy",
+    title: "",
+    district: "",
+    price: "",
+    schedule: "full-time",
+    category: "",
+    desc: "",
+    telegram: "",
+    phone: "",
+  });
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
   const [addrOptionsEvent, setAddrOptionsEvent] = useState([]);
@@ -144,6 +158,21 @@ export default function App() {
       localStorage.setItem(key, JSON.stringify(favorites || {}));
     } catch {}
   }, [favorites, user?.id]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jobs_board_v1");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setJobsItems(parsed);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("jobs_board_v1", JSON.stringify(jobsItems || []));
+    } catch {}
+  }, [jobsItems]);
   const chatEnd = useRef(null);
   const inpRef = useRef(null);
   const fileRef = useRef(null);
@@ -450,7 +479,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -2052,6 +2081,59 @@ export default function App() {
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const canManageActiveHousing = canManageHousing(activeHousing);
+  const jobsFiltered = jobsItems
+    .filter((item) => item.type === jobsTab)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const formatJobDate = (value) => {
+    try {
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return "";
+      return dt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+    } catch {
+      return "";
+    }
+  };
+  const resetJobForm = (type = jobsTab) => {
+    setNewJob({
+      type,
+      title: "",
+      district: "",
+      price: "",
+      schedule: "full-time",
+      category: "",
+      desc: "",
+      telegram: "",
+      phone: "",
+    });
+  };
+  const handleAddJob = () => {
+    const title = String(newJob.title || "").trim();
+    const district = String(newJob.district || "").trim();
+    const price = String(newJob.price || "").trim();
+    const desc = String(newJob.desc || "").trim();
+    if (!title || !district || !price || !desc) return;
+    if (!user) return;
+
+    const next = {
+      id: `job-${Date.now()}`,
+      type: newJob.type === "service" ? "service" : "vacancy",
+      title,
+      district,
+      price,
+      schedule: String(newJob.schedule || "").trim(),
+      category: String(newJob.category || "").trim(),
+      desc,
+      telegram: String(newJob.telegram || "").trim(),
+      phone: String(newJob.phone || "").trim(),
+      author: user.name || "Пользователь",
+      userId: user.id || null,
+      likes: 0,
+      createdAt: new Date().toISOString(),
+    };
+    setJobsItems((prev) => [next, ...prev]);
+    setShowAddJob(false);
+    resetJobForm(next.type);
+  };
   useEffect(() => {
     if (scr !== "place-item" || !activePlace?.id) return;
     if (viewedRef.current.place === activePlace.id) return;
@@ -3030,6 +3112,112 @@ export default function App() {
             </>)}
           </div>
         </div>)}
+
+        {/* JOBS */}
+        {scr==="jobs" && (<div>
+          <button onClick={goHome} style={bk}>← Главная</button>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>💼 Работа в LA</h2>
+            <button
+              onClick={() => { if (!user) { handleLogin(); return; } resetJobForm(jobsTab); setShowAddJob(true); }}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить"
+            >
+              +
+            </button>
+          </div>
+
+          <div style={{ ...cd, padding:10, marginBottom:12, boxShadow:"none", border:`1px solid ${T.border}` }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              <button onClick={()=>setJobsTab("vacancy")} style={{ ...pl(jobsTab==="vacancy"), padding:"10px 10px", fontSize:13 }}>Вакансии</button>
+              <button onClick={()=>setJobsTab("service")} style={{ ...pl(jobsTab==="service"), padding:"10px 10px", fontSize:13 }}>Услуги</button>
+            </div>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:10, paddingBottom:70 }}>
+            {jobsFiltered.map((item) => {
+              const canManageJob = canManageByOwnership(item.userId, item.author);
+              return (
+                <div key={item.id} style={{ ...cd, padding:"14px 14px 12px", border:`1px solid ${T.borderL}` }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ fontSize:16, fontWeight:700, lineHeight:1.3, marginBottom:6 }}>{item.title}</div>
+                      <div style={{ fontSize:13, color:T.mid, display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
+                        <span>📍 {item.district}</span>
+                        <span>•</span>
+                        <span style={{ color:T.primary, fontWeight:700 }}>{item.price}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11, color:T.light, whiteSpace:"nowrap" }}>{formatJobDate(item.createdAt)}</div>
+                  </div>
+                  <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginBottom:8 }}>
+                    {!!item.category && <span style={{ fontSize:11, background:"#F7F7FB", color:T.mid, padding:"4px 8px", borderRadius:999 }}>{item.category}</span>}
+                    {item.type === "vacancy" && !!item.schedule && <span style={{ fontSize:11, background:"#F7F7FB", color:T.mid, padding:"4px 8px", borderRadius:999 }}>{item.schedule === "full-time" ? "Full-time" : "Part-time"}</span>}
+                    <span style={{ fontSize:11, background:T.primaryLight, color:T.primary, padding:"4px 8px", borderRadius:999 }}>{item.type === "vacancy" ? "Вакансия" : "Услуга"}</span>
+                  </div>
+                  <div style={{ fontSize:13, lineHeight:1.5, color:T.mid, marginBottom:10 }}>{item.desc}</div>
+                  <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                    {!!item.telegram && <button onClick={() => openTelegramContact(item.telegram)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Telegram</button>}
+                    {!!item.phone && <button onClick={() => openMessageContact(item.phone)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Сообщение</button>}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                    <span style={{ fontSize:11, color:T.light }}>от {item.author || "Пользователь"}</span>
+                    {canManageJob && (
+                      <button onClick={() => setJobsItems((prev) => prev.filter((x) => x.id !== item.id))} style={{ ...pl(false), padding:"6px 12px", fontSize:11, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>
+                        Удалить
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {jobsFiltered.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет объявлений в этой вкладке</p>}
+            <button onClick={() => { if (!user) { handleLogin(); return; } resetJobForm(jobsTab); setShowAddJob(true); }} style={{ ...cd, width:"100%", marginTop:2, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить {jobsTab === "vacancy" ? "вакансию" : "услугу"}</button>
+          </div>
+        </div>)}
+
+        {/* ADD JOB MODAL */}
+        {showAddJob && (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }} onClick={() => { setShowAddJob(false); resetJobForm(jobsTab); }}>
+            <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={(e)=>e.stopPropagation()}>
+              <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
+              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 18px" }}>{newJob.type === "vacancy" ? "💼 Новая вакансия" : "🛠️ Новая услуга"}</h3>
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Тип *</label>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+                <button onClick={() => setNewJob((s) => ({ ...s, type:"vacancy" }))} style={{ ...pl(newJob.type === "vacancy"), padding:"10px 10px", fontSize:12 }}>Вакансия</button>
+                <button onClick={() => setNewJob((s) => ({ ...s, type:"service" }))} style={{ ...pl(newJob.type === "service"), padding:"10px 10px", fontSize:12 }}>Услуга</button>
+              </div>
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Заголовок *</label>
+              <input value={newJob.title} onChange={(e)=>setNewJob((s)=>({ ...s, title:e.target.value }))} placeholder={newJob.type === "vacancy" ? "Например: Нужен мастер маникюра" : "Например: Ремонт и сборка мебели"} style={{ ...iS, marginBottom:14 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Район *</label>
+              <input value={newJob.district} onChange={(e)=>setNewJob((s)=>({ ...s, district:e.target.value }))} placeholder="Downtown LA" style={{ ...iS, marginBottom:14 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>{newJob.type === "vacancy" ? "Оплата *" : "Цена от *"}</label>
+              <input value={newJob.price} onChange={(e)=>setNewJob((s)=>({ ...s, price:e.target.value }))} placeholder={newJob.type === "vacancy" ? "$20/час или $4000/мес" : "от $100"} style={{ ...iS, marginBottom:14 }} />
+              {newJob.type === "vacancy" && (
+                <>
+                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>График</label>
+                  <select value={newJob.schedule} onChange={(e)=>setNewJob((s)=>({ ...s, schedule:e.target.value }))} style={{ ...iS, marginBottom:14 }}>
+                    <option value="full-time">Full-time</option>
+                    <option value="part-time">Part-time</option>
+                  </select>
+                </>
+              )}
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>{newJob.type === "vacancy" ? "Сфера" : "Категория"}</label>
+              <input value={newJob.category} onChange={(e)=>setNewJob((s)=>({ ...s, category:e.target.value }))} placeholder={newJob.type === "vacancy" ? "Общепит, склад, салон..." : "Клининг, ремонт, доставка..."} style={{ ...iS, marginBottom:14 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Описание *</label>
+              <textarea value={newJob.desc} maxLength={CARD_TEXT_MAX} onChange={(e)=>setNewJob((s)=>({ ...s, desc:e.target.value.slice(0, CARD_TEXT_MAX) }))} placeholder="Коротко опишите условия..." style={{ ...iS, minHeight:84, resize:"vertical", marginBottom:6 }} />
+              <div style={{ fontSize:11, color:T.light, marginBottom:12, textAlign:"right" }}>{newJob.desc.length}/{CARD_TEXT_MAX}</div>
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Telegram</label>
+              <input value={newJob.telegram} onChange={(e)=>setNewJob((s)=>({ ...s, telegram:e.target.value }))} placeholder="@username" style={{ ...iS, marginBottom:12 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Номер телефона</label>
+              <input value={newJob.phone} onChange={(e)=>setNewJob((s)=>({ ...s, phone:e.target.value }))} placeholder="+1..." style={{ ...iS, marginBottom:18 }} />
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => { setShowAddJob(false); resetJobForm(jobsTab); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
+                <button onClick={handleAddJob} disabled={!newJob.title.trim() || !newJob.district.trim() || !newJob.price.trim() || !newJob.desc.trim()} style={{ ...pl(true), flex:2, padding:14, opacity:(!newJob.title.trim() || !newJob.district.trim() || !newJob.price.trim() || !newJob.desc.trim()) ? 0.5 : 1 }}>Опубликовать</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* HOUSING */}
         {scr==="housing" && (<div>

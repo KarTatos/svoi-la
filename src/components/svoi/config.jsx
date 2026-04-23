@@ -316,12 +316,47 @@ export const INIT_HOUSING = [
   },
 ];
 
+export const INIT_JOBS = [
+  {
+    id: 1,
+    type: "vacancy",
+    title: "Нужен бариста в кофейню",
+    district: "Downtown LA",
+    price: "$22/час",
+    schedule: "full-time",
+    category: "Общепит",
+    desc: "Ищем бариста с опытом от 6 месяцев. Английский базовый, дружная команда.",
+    telegram: "@la_coffee_hr",
+    phone: "+13235550111",
+    author: "Admin",
+    userId: null,
+    likes: 0,
+    createdAt: "2026-04-01T10:00:00.000Z",
+  },
+  {
+    id: 2,
+    type: "service",
+    title: "Уборка квартир и домов",
+    district: "West Hollywood",
+    price: "от $120",
+    schedule: "",
+    category: "Клининг",
+    desc: "Генеральная и поддерживающая уборка. Своё оборудование. Работаем по LA.",
+    telegram: "@clean_la_team",
+    phone: "+13235550222",
+    author: "Admin",
+    userId: null,
+    likes: 0,
+    createdAt: "2026-04-03T12:30:00.000Z",
+  },
+];
+
 export const SECTIONS = [
   { id:"uscis", icon:"📋", title:"USCIS", desc:"Документы" },
   { id:"places", icon:"📍", title:"Места", desc:"От своих" },
   { id:"tips", icon:"💡", title:"Советы", desc:"Лайфхаки" },
   { id:"events", icon:"🎉", title:"События", desc:"Мероприятия" },
-  { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии", soon:true },
+  { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии" },
   { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
   { id:"chat-sec", icon:"💬", title:"AI", desc:"Помощник", accent:true },
   { id:"sell", icon:"🏷️", title:"Продам", desc:"Объявления", soon:true },
