@@ -18,6 +18,7 @@ import { usePhotoViewer } from "../hooks/usePhotoViewer";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
 import { useEventForm } from "../hooks/useEventForm";
+import { useHousingForm } from "../hooks/useHousingForm";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -73,10 +74,6 @@ export default function App() {
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [selEC, setSelEC] = useState(null);
-  const [showAddHousing, setShowAddHousing] = useState(false);
-  const [editingHousing, setEditingHousing] = useState(null);
-  const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
-  const [newHousingPhotos, setNewHousingPhotos] = useState([]);
   const [filterDate, setFilterDate] = useState(null);
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
@@ -310,6 +307,42 @@ export default function App() {
       if (error) console.error("Login error:", error);
     },
   });
+  const {
+    showAddHousing,
+    setShowAddHousing,
+    editingHousing,
+    setEditingHousing,
+    newHousing,
+    setNewHousing,
+    newHousingPhotos,
+    setNewHousingPhotos,
+    resetHousingForm,
+    openAddHousingForm,
+    handleAddHousing,
+    startEditHousing,
+    handleDeleteHousing,
+  } = useHousingForm({
+    user,
+    isAdmin,
+    housing,
+    selHousing,
+    canManageHousing,
+    setHousing,
+    setSelHousing,
+    setScr,
+    setAddrValidHousing,
+    setAddrOptionsHousing,
+    dbAddHousing,
+    dbUpdateHousing,
+    dbDeleteHousing,
+    uploadPhoto,
+    encodeHousingPhotos,
+    decodeHousingPhotos,
+    onRequireAuth: async () => {
+      const { error } = await signInAuth();
+      if (error) console.error("Login error:", error);
+    },
+  });
 
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
@@ -373,7 +406,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); resetTipForm(); resetEventForm(); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); resetTipForm(); resetEventForm(); resetHousingForm(); setTDone(false); setFilterDate(null); };
   function openExternalUrl(url) {
     if (!url) return;
     try {
@@ -555,159 +588,6 @@ export default function App() {
     else if (type === "tip") setTips(updater);
     else if (type === "event") setEvents(updater);
     setEditingComment(null); setEditCommentText("");
-  };
-  const handleAddHousing = async () => {
-    if (!user) { handleLogin(); return; }
-    if (!newHousing.address.trim() || !newHousing.minPrice) return;
-    if (editingHousing && !canManageHousing(editingHousing)) {
-      alert("Редактировать жильё может только автор или админ.");
-      return;
-    }
-    const uploaded = [];
-    for (const p of newHousingPhotos) {
-      if (p.file) {
-        const url = await uploadPhoto(p.file);
-        if (url) uploaded.push(url);
-      } else if (p.preview && p.preview.startsWith("http")) {
-        uploaded.push(p.preview);
-      }
-    }
-    const typeMap = { room: "Комната", studio: "Студия", "1bd": "1 bd", "2bd": "2 bd" };
-    const title = `${typeMap[newHousing.type] || "Жильё"} · ${newHousing.district.trim() || "LA"}`;
-    const contactTags = [];
-    const tg = (newHousing.telegram || "").trim();
-    const msg = (newHousing.messageContact || "").trim();
-    const comment = String(newHousing.comment || "").slice(0, 1000).trim();
-    if (tg) contactTags.push(`contact_tg:${tg}`);
-    if (msg) contactTags.push(`contact_msg:${msg}`);
-    if (comment) contactTags.push(`comment:${encodeURIComponent(comment)}`);
-    const payload = {
-      title,
-      address: normalizeAddressText(newHousing.address.trim()),
-      district: newHousing.district.trim(),
-      type: (newHousing.type || "studio").trim(),
-      min_price: Number(newHousing.minPrice || 0),
-      price_options: [],
-      beds: 0,
-      baths: 0,
-      updated_label: "",
-      tags: contactTags,
-      photo: encodeHousingPhotos(uploaded),
-      user_id: user.id,
-    };
-    const saveFn = editingHousing ? dbUpdateHousing : dbAddHousing;
-    const saveRes = editingHousing
-      ? await saveFn(editingHousing.id, payload, isAdmin ? null : user.id)
-      : await saveFn(payload);
-    const { data, error } = saveRes || {};
-    if (error) {
-      alert(error.message || "Не удалось сохранить жильё");
-      return;
-    }
-    const row = data?.[0];
-    if (row && editingHousing) {
-      setHousing((prev) => prev.map((h) => h.id === editingHousing.id ? {
-        id: row.id,
-        title: row.title || "",
-        address: normalizeAddressText(row.address || ""),
-        district: row.district || "",
-        type: row.type || "studio",
-        minPrice: Number(row.min_price || 0),
-        options: Array.isArray(row.price_options) ? row.price_options : [],
-        beds: Number(row.beds || 0),
-        baths: Number(row.baths || 0),
-        updatedLabel: row.updated_label || "",
-        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:") && !String(t).startsWith("comment:")),
-        comment: (() => {
-          const c = (Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("comment:")) || "";
-          const raw = String(c).replace("comment:", "");
-          try { return decodeURIComponent(raw); } catch { return raw; }
-        })(),
-        telegram: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_tg:")) || "").replace("contact_tg:", ""),
-        messageContact: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_msg:")) || "").replace("contact_msg:", ""),
-        photos: decodeHousingPhotos(row.photo),
-        photo: decodeHousingPhotos(row.photo)[0] || "",
-        userId: row.user_id,
-        likes: row.likes_count || 0,
-        views: Number(row.views || 0),
-        fromDB: true,
-      } : h));
-    } else if (row) {
-      setHousing((prev) => [{
-        id: row.id,
-        title: row.title || "",
-        address: normalizeAddressText(row.address || ""),
-        district: row.district || "",
-        type: row.type || "studio",
-        minPrice: Number(row.min_price || 0),
-        options: Array.isArray(row.price_options) ? row.price_options : [],
-        beds: Number(row.beds || 0),
-        baths: Number(row.baths || 0),
-        updatedLabel: row.updated_label || "",
-        tags: (Array.isArray(row.tags) ? row.tags : []).filter((t) => !String(t).startsWith("contact_tg:") && !String(t).startsWith("contact_msg:") && !String(t).startsWith("comment:")),
-        comment: (() => {
-          const c = (Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("comment:")) || "";
-          const raw = String(c).replace("comment:", "");
-          try { return decodeURIComponent(raw); } catch { return raw; }
-        })(),
-        telegram: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_tg:")) || "").replace("contact_tg:", ""),
-        messageContact: ((Array.isArray(row.tags) ? row.tags : []).find((t) => String(t).startsWith("contact_msg:")) || "").replace("contact_msg:", ""),
-        photos: decodeHousingPhotos(row.photo),
-        photo: decodeHousingPhotos(row.photo)[0] || "",
-        userId: row.user_id,
-        likes: row.likes_count || 0,
-        views: Number(row.views || 0),
-        fromDB: true,
-      }, ...prev]);
-    }
-    setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
-    setNewHousingPhotos([]);
-    setAddrValidHousing(false);
-    setAddrOptionsHousing([]);
-    setEditingHousing(null);
-    setShowAddHousing(false);
-  };
-  const startEditHousing = (item) => {
-    if (!item) return;
-    if (!canManageHousing(item)) {
-      alert("Редактировать жильё может только автор или админ.");
-      return;
-    }
-    setEditingHousing(item);
-    setNewHousing({
-      address: item.address || "",
-      district: item.district || "",
-      type: item.type || "studio",
-      minPrice: String(item.minPrice || ""),
-      comment: item.comment || "",
-      telegram: item.telegram || "",
-      messageContact: item.messageContact || "",
-    });
-    setNewHousingPhotos((item.photos || []).filter((ph) => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setAddrValidHousing(!!(item.address || "").trim());
-    setAddrOptionsHousing([]);
-    setShowAddHousing(true);
-  };
-  const handleDeleteHousing = async (housingId) => {
-    if (!housingId) return;
-    const item = housing.find((h) => h.id === housingId);
-    if (!canManageHousing(item)) {
-      alert("Удалять жильё может только автор или админ.");
-      return;
-    }
-    if (!confirm("Удалить это жильё?")) return;
-    const { error } = await dbDeleteHousing(housingId, isAdmin ? null : user.id);
-    if (error) {
-      alert(error.message || "Не удалось удалить жильё");
-      return;
-    }
-    setHousing((prev) => prev.filter((h) => h.id !== housingId));
-    if (selHousing?.id === housingId) {
-      setSelHousing(null);
-      setScr("housing");
-    }
-    setEditingHousing(null);
-    setShowAddHousing(false);
   };
   const sRes = srch.trim().length>=2 ? USCIS_CATS.flatMap(c=>c.docs.filter(d=>{const q=srch.toLowerCase();return d.form.toLowerCase().includes(q)||d.name.toLowerCase().includes(q);}).map(d=>({...d,cT:c.title,cI:c.icon}))) : [];
   const myPlacesRaw = user
@@ -1674,7 +1554,7 @@ export default function App() {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
             <h2 style={{ fontSize:20, fontWeight:700, margin:0, display:"inline-flex", alignItems:"center", gap:8 }}><HomeIcon size={18} /> Жильё в LA</h2>
             <button
-              onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }}
+              onClick={() => { openAddHousingForm(); }}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
               title="Добавить жильё"
             >
@@ -1744,7 +1624,7 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+          <button onClick={() => { openAddHousingForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
 
         </div>)}
 
