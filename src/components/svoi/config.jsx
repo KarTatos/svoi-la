@@ -323,7 +323,9 @@ export const SECTIONS = [
   { id:"events", icon:"🎉", title:"События", desc:"Мероприятия" },
   { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии", soon:true },
   { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
-  { id:"chat-sec", icon:"💬", title:"AI Чат", desc:"Помощник" },
+  { id:"chat-sec", icon:"💬", title:"AI", desc:"Помощник", accent:true },
+  { id:"sell", icon:"🏷️", title:"Продам", desc:"Объявления", soon:true },
+  { id:"community-chat", icon:"🗨️", title:"Чат", desc:"Общение", soon:true },
 ];
 
 export const RICH_PREFIX = "__LA_RICH_V1__";

@@ -11,8 +11,6 @@
   onOpenSection,
   onOpenChat,
 }) {
-  const chatSection = sections.find((s) => s.id === "chat-sec");
-  const mainSections = sections.filter((s) => s.id !== "chat-sec");
   const weatherPlace = (profileLocation || "Los Angeles").split(",")[0].trim().toUpperCase();
   const weatherTextRaw = String(profileWeather?.text || "").toLowerCase();
 
@@ -100,14 +98,34 @@
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-        {mainSections.map((s, i) => (
+        {sections.map((s, i) => (
           <button
             key={s.id}
             onClick={() => {
+              if (s.id === "chat-sec") {
+                onOpenChat();
+                return;
+              }
               if (s.soon) return;
               onOpenSection(s.id);
             }}
-            style={{ ...cd, padding:"20px 10px", cursor:s.soon?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", fontFamily:"inherit", color:T.text, position:"relative", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:`all 0.4s ease ${i * 0.05}s` }}
+            style={{
+              ...cd,
+              padding:"20px 10px",
+              cursor:s.soon?"default":"pointer",
+              display:"flex",
+              flexDirection:"column",
+              alignItems:"center",
+              textAlign:"center",
+              fontFamily:"inherit",
+              color:T.text,
+              position:"relative",
+              opacity:mt?1:0,
+              transform:mt?"translateY(0)":"translateY(12px)",
+              transition:`all 0.4s ease ${i * 0.05}s`,
+              background:s.accent ? "linear-gradient(160deg, #FFF8F2 0%, #FFECDC 100%)" : cd.background,
+              borderColor:s.accent ? "#F7D8B7" : cd.borderColor,
+            }}
             onMouseEnter={(e) => { if (!s.soon) e.currentTarget.style.boxShadow = T.shH; }}
             onMouseLeave={(e) => { e.currentTarget.style.boxShadow = T.sh; }}
           >
@@ -120,21 +138,6 @@
           </button>
         ))}
       </div>
-
-      {chatSection && (
-        <button
-          onClick={onOpenChat}
-          style={{ ...cd, marginTop:12, width:"100%", padding:"16px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left", opacity:mt?1:0, transform:mt?"translateY(0)":"translateY(12px)", transition:"all 0.4s ease 0.35s" }}
-          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = T.shH; }}
-          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = T.sh; }}
-        >
-          <div style={{ width:36, height:36, borderRadius:12, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{chatSection.icon}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontWeight:700, fontSize:13, lineHeight:1.2 }}>AI Чат</div>
-            <div style={{ fontSize:11, color:T.mid, marginTop:3, opacity:0.7 }}>{chatSection.desc}</div>
-          </div>
-        </button>
-      )}
 
       <style>{`
         .weather-card {
