@@ -34,6 +34,7 @@ export default function PlacesCategoryScreen({
   handleToggleLike,
   twoLineClampStyle,
   limitCardText,
+  ViewIcon,
 }) {
   if (!(scr === "places-cat" && selPC && selD)) return null;
 
@@ -137,6 +138,9 @@ export default function PlacesCategoryScreen({
             )}
             <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
               <span style={{ fontSize:11, color:T.light }}>от {p.addedBy}</span>
+              <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
+                <ViewIcon size={13} /> {p.views || 0}
+              </span>
             </div>
           </div>
         </button>

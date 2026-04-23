@@ -13,6 +13,23 @@ const normalizeAddressText = (value = "") => {
     .trim();
 };
 
+const fetchViewCounts = async (itemType, ids = []) => {
+  const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
+  if (!cleanIds.length) return {};
+  try {
+    const query = new URLSearchParams({
+      itemType,
+      itemIds: cleanIds.join(","),
+    });
+    const res = await fetch(`/api/views?${query.toString()}`);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
+    return payload.counts || {};
+  } catch {
+    return {};
+  }
+};
+
 export function useAppData(user) {
   const [places, setPlaces] = useState([]);
   const [tips, setTips] = useState([]);
@@ -147,10 +164,19 @@ export function useAppData(user) {
         };
       });
 
-      if (!placesError) setPlaces(mappedPlaces);
-      if (!tipsError) setTips(mappedTips);
-      if (!eventsError) setEvents(mappedEvents);
-      if (!housingError) setHousing(mappedHousing);
+      const [placeViews, tipViews, eventViews, housingViews] = await Promise.all([
+        fetchViewCounts("place", mappedPlaces.map((x) => x.id)),
+        fetchViewCounts("tip", mappedTips.map((x) => x.id)),
+        fetchViewCounts("event", mappedEvents.map((x) => x.id)),
+        fetchViewCounts("housing", mappedHousing.map((x) => x.id)),
+      ]);
+
+      const withViews = (rows, viewMap) => rows.map((row) => ({ ...row, views: Number(viewMap?.[row.id] || 0) }));
+
+      if (!placesError) setPlaces(withViews(mappedPlaces, placeViews));
+      if (!tipsError) setTips(withViews(mappedTips, tipViews));
+      if (!eventsError) setEvents(withViews(mappedEvents, eventViews));
+      if (!housingError) setHousing(withViews(mappedHousing, housingViews));
       else setHousing(INIT_HOUSING);
     } finally {
       setLoading(false);

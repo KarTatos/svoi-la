@@ -21,6 +21,7 @@ export default function EventsScreen({
   catEvents,
   exp,
   setExp,
+  trackCardView,
   favorites,
   normalizeExternalUrl,
   pl,
@@ -31,6 +32,7 @@ export default function EventsScreen({
   liked,
   toggleFavorite,
   StarIcon,
+  ViewIcon,
   HeartIcon,
   handleNativeShare,
   ShareIcon,
@@ -149,7 +151,7 @@ export default function EventsScreen({
           )}
         </div>
         {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const isF = favorites[`event-${ev.id}`]; const eventWebsite = normalizeExternalUrl(ev.website); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL }}>
-          <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); }} style={{ padding:18, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+          <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackCardView("event", ev); }} style={{ padding:18, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
             <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>{ev.title}</div>
             <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:10 }}>
               <div style={{ fontSize:13, color:T.mid, display:"inline-flex", alignItems:"center", gap:5 }}><CalendarIcon size={13} /> {fmtDate(ev.date)}</div>
@@ -185,6 +187,9 @@ export default function EventsScreen({
                 >
                   <StarIcon active={!!isF} size={14} />
                 </button>
+                <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                  <ViewIcon size={13} /> {ev.views || 0}
+                </span>
                 <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid }}><HeartIcon active={!!liked[`event-${ev.id}`]} size={14} /> {ev.likes}</span>
                 <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>Ў</span>
               </div>

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, uploadPhoto, supabase } from "../lib/supabase";
 import { useAppData } from "../hooks/useAppData";
 import { useAuth } from "../hooks/useAuth";
+import { useViewTracker } from "../hooks/useViewTracker";
 import { useProfileWeather } from "../hooks/useProfileWeather";
 import { useChatTextRenderer } from "../hooks/useChatTextRenderer";
 import { useUscisNavigation } from "../hooks/useUscisNavigation";
@@ -19,7 +20,7 @@ import { useTipForm } from "../hooks/useTipForm";
 import { useEventForm } from "../hooks/useEventForm";
 import { useHousingForm } from "../hooks/useHousingForm";
 
-import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -67,7 +68,7 @@ export default function App() {
   const [placeSortDir, setPlaceSortDir] = useState("desc");
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
-  const { user, signIn: signInAuth, signOut: signOutAuth, isAdmin } = useAuth([ADMIN_EMAIL]);
+  const { user, authReady, signIn: signInAuth, signOut: signOutAuth, isAdmin } = useAuth([ADMIN_EMAIL]);
   const { places, tips, events, housing, setPlaces, setTips, setEvents, setHousing, reload: loadAllData } = useAppData(user);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
@@ -668,7 +669,19 @@ export default function App() {
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const canManageActiveHousing = canManageHousing(activeHousing);
-  const trackCardView = () => false;
+  const { trackCardView } = useViewTracker({
+    user,
+    authReady,
+    scr,
+    activePlace,
+    activeHousing,
+    setPlaces,
+    setTips,
+    setEvents,
+    setHousing,
+    setSelPlace,
+    setSelHousing,
+  });
   const { renderChatText } = useChatTextRenderer({
     events,
     tips,
@@ -1003,6 +1016,7 @@ export default function App() {
           handleToggleLike={handleToggleLike}
           twoLineClampStyle={twoLineClampStyle}
           limitCardText={limitCardText}
+          ViewIcon={ViewIcon}
         />
 
         <PlaceDetailScreen
@@ -1020,6 +1034,7 @@ export default function App() {
           favorites={favorites}
           toggleFavorite={toggleFavorite}
           StarIcon={StarIcon}
+          ViewIcon={ViewIcon}
           liked={liked}
           handleToggleLike={handleToggleLike}
           HeartIcon={HeartIcon}
@@ -1049,10 +1064,12 @@ export default function App() {
             openAddTipForm={openAddTipForm}
             expTip={expTip}
             setExpTip={setExpTip}
+            trackCardView={trackCardView}
             liked={liked}
             favorites={favorites}
             toggleFavorite={toggleFavorite}
             StarIcon={StarIcon}
+            ViewIcon={ViewIcon}
             HeartIcon={HeartIcon}
             ShareIcon={ShareIcon}
             pl={pl}
@@ -1102,6 +1119,7 @@ export default function App() {
           catEvents={catEvents}
           exp={exp}
           setExp={setExp}
+          trackCardView={trackCardView}
           favorites={favorites}
           normalizeExternalUrl={normalizeExternalUrl}
           pl={pl}
@@ -1112,6 +1130,7 @@ export default function App() {
           liked={liked}
           toggleFavorite={toggleFavorite}
           StarIcon={StarIcon}
+          ViewIcon={ViewIcon}
           HeartIcon={HeartIcon}
           handleNativeShare={handleNativeShare}
           ShareIcon={ShareIcon}
@@ -1182,6 +1201,7 @@ export default function App() {
           handleToggleLike={handleToggleLike}
           liked={liked}
           HeartIcon={HeartIcon}
+          ViewIcon={ViewIcon}
           handleNativeShare={handleNativeShare}
           ShareIcon={ShareIcon}
         />

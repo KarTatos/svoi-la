@@ -20,6 +20,7 @@ export default function HousingDetailScreen({
   handleToggleLike,
   liked,
   HeartIcon,
+  ViewIcon,
   handleNativeShare,
   ShareIcon,
 }) {
@@ -88,6 +89,7 @@ export default function HousingDetailScreen({
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <button onClick={() => toggleFavorite(activeHousing.id, "housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:favorites[`housing-${activeHousing.id}`] ? "#D68910" : T.mid, padding:0 }} title="Избранное"><StarIcon active={!!favorites[`housing-${activeHousing.id}`]} size={18} /></button>
             <button onClick={() => handleToggleLike(activeHousing.id,"housing")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:liked[`housing-${activeHousing.id}`]?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!liked[`housing-${activeHousing.id}`]} /> <span style={{ fontSize:14 }}>{activeHousing.likes||0}</span></button>
+            <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}><ViewIcon size={15} /> {activeHousing.views || 0}</span>
             <button onClick={() => handleNativeShare({ title:activeHousing.title, text:`${activeHousing.address} · $${formatHousingPrice(activeHousing.minPrice)}`, url:window.location.href })} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
           </div>
         </div>
