@@ -24,23 +24,27 @@ export default function PlaceDetailScreen({
   handleNativeShare,
   ShareIcon,
   addPlaceComment,
-  showComments,
-  setShowComments,
-  newComment,
-  setNewComment,
-  editingComment,
-  setEditingComment,
-  editCommentText,
-  setEditCommentText,
-  saveEditComment,
-  deleteCommentFn,
-  user,
-  handleLogin,
-  pl,
-  iS,
+  comments,
   canManagePlace,
   startEditPlace,
 }) {
+  const {
+    showComments,
+    setShowComments,
+    newComment,
+    setNewComment,
+    editingComment,
+    setEditingComment,
+    editCommentText,
+    setEditCommentText,
+    saveEditComment,
+    deleteCommentFn,
+    user,
+    handleLogin,
+    pl,
+    iS,
+  } = comments;
+
   if (!(scr==="place-item" && activePlace && selPC && selD)) return null;
 
   return (

@@ -766,6 +766,22 @@ export default function App() {
   const bk = { background:"none", border:"none", color:T.primary, fontSize:14, fontWeight:500, cursor:"pointer", padding:"12px 0 8px", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 };
   const pl = (a) => ({ padding:"10px 20px", borderRadius:24, border:"none", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", background:a?T.primary:T.primaryLight, color:a?"#fff":T.primary });
   const iS = { width:"100%", padding:"14px 16px", background:T.card, border:`1px solid ${T.border}`, borderRadius:T.rs, color:T.text, fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
+  const commentsProps = {
+    showComments,
+    setShowComments,
+    newComment,
+    setNewComment,
+    editingComment,
+    setEditingComment,
+    editCommentText,
+    setEditCommentText,
+    saveEditComment,
+    deleteCommentFn,
+    user,
+    handleLogin,
+    pl,
+    iS,
+  };
 
   return (
     <div style={{ fontFamily:"'Roboto', sans-serif", minHeight:"100vh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
@@ -1027,20 +1043,7 @@ export default function App() {
           handleNativeShare={handleNativeShare}
           ShareIcon={ShareIcon}
           addPlaceComment={addPlaceComment}
-          showComments={showComments}
-          setShowComments={setShowComments}
-          newComment={newComment}
-          setNewComment={setNewComment}
-          editingComment={editingComment}
-          setEditingComment={setEditingComment}
-          editCommentText={editCommentText}
-          setEditCommentText={setEditCommentText}
-          saveEditComment={saveEditComment}
-          deleteCommentFn={deleteCommentFn}
-          user={user}
-          handleLogin={handleLogin}
-          pl={pl}
-          iS={iS}
+          comments={commentsProps}
           canManagePlace={canManagePlace}
           startEditPlace={startEditPlace}
         />
@@ -1075,18 +1078,8 @@ export default function App() {
             openPhotoViewer={openPhotoViewer}
             handleToggleLike={handleToggleLike}
             handleNativeShare={handleNativeShare}
-            showComments={showComments}
-            setShowComments={setShowComments}
-            newComment={newComment}
-            setNewComment={setNewComment}
-            editingComment={editingComment}
-            setEditingComment={setEditingComment}
-            editCommentText={editCommentText}
-            setEditCommentText={setEditCommentText}
-            saveEditComment={saveEditComment}
-            deleteCommentFn={deleteCommentFn}
+            comments={commentsProps}
             handleAddComment={handleAddComment}
-            iS={iS}
             canManageTip={canManageTip}
             startEditTip={startEditTip}
             handleDeleteTip={handleDeleteTip}
@@ -1141,19 +1134,7 @@ export default function App() {
           HeartIcon={HeartIcon}
           handleNativeShare={handleNativeShare}
           ShareIcon={ShareIcon}
-          showComments={showComments}
-          setShowComments={setShowComments}
-          newComment={newComment}
-          setNewComment={setNewComment}
-          editingComment={editingComment}
-          setEditingComment={setEditingComment}
-          editCommentText={editCommentText}
-          setEditCommentText={setEditCommentText}
-          saveEditComment={saveEditComment}
-          deleteCommentFn={deleteCommentFn}
-          user={user}
-          handleLogin={handleLogin}
-          iS={iS}
+          comments={commentsProps}
           addEventComment={addEventComment}
           canManageEvent={canManageEvent}
           startEditEvent={startEditEvent}

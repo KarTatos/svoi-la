@@ -36,19 +36,7 @@ export default function EventsScreen({
   HeartIcon,
   handleNativeShare,
   ShareIcon,
-  showComments,
-  setShowComments,
-  newComment,
-  setNewComment,
-  editingComment,
-  setEditingComment,
-  editCommentText,
-  setEditCommentText,
-  saveEditComment,
-  deleteCommentFn,
-  user,
-  handleLogin,
-  iS,
+  comments,
   addEventComment,
   canManageEvent,
   startEditEvent,
@@ -70,6 +58,22 @@ export default function EventsScreen({
   handleDeleteEvent,
   handleAddEvent,
 }) {
+  const {
+    showComments,
+    setShowComments,
+    newComment,
+    setNewComment,
+    editingComment,
+    setEditingComment,
+    editCommentText,
+    setEditCommentText,
+    saveEditComment,
+    deleteCommentFn,
+    user,
+    handleLogin,
+    iS,
+  } = comments;
+
   return (
     <>
       {scr==="events" && !selEC && (<div>

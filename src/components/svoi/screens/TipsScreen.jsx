@@ -29,18 +29,8 @@ export default function TipsScreen({
   openPhotoViewer,
   handleToggleLike,
   handleNativeShare,
-  showComments,
-  setShowComments,
-  newComment,
-  setNewComment,
-  editingComment,
-  setEditingComment,
-  editCommentText,
-  setEditCommentText,
-  saveEditComment,
-  deleteCommentFn,
+  comments,
   handleAddComment,
-  iS,
   canManageTip,
   startEditTip,
   handleDeleteTip,
@@ -58,6 +48,20 @@ export default function TipsScreen({
   newTipPhotos,
   handleAddTip,
 }) {
+  const {
+    showComments,
+    setShowComments,
+    newComment,
+    setNewComment,
+    editingComment,
+    setEditingComment,
+    editCommentText,
+    setEditCommentText,
+    saveEditComment,
+    deleteCommentFn,
+    iS,
+  } = comments;
+
   return (
     <div>
       {!selTC ? (
