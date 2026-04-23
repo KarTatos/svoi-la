@@ -16,11 +16,11 @@ function getAdminClient() {
   return createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 }
 
-async function incrementViews(admin, itemType, itemId) {
+async function incrementViews(admin, table, itemId) {
   const { count, error } = await admin
     .from("card_views")
     .select("id", { count: "exact", head: true })
-    .eq("item_type", itemType)
+    .eq("item_type", table)
     .eq("item_id", itemId);
 
   if (error) return { error: error.message, status: 500 };
@@ -113,7 +113,7 @@ export async function POST(request) {
       if (insertError.code === "23505") {
         const existing = await incrementViews(admin, itemType, itemId);
         if (existing?.error) return Response.json({ error: existing.error }, { status: existing.status || 500 });
-        return Response.json({ counted: false, views: Number(existing.views || 0) });
+        return Response.json({ ok: true, counted: false, views: Number(existing.views || 0) });
       }
       logError("views.post.insert_error", new Error(insertError.message), { ...meta, itemType, itemId });
       return Response.json({ error: insertError.message }, { status: 500 });
@@ -124,7 +124,7 @@ export async function POST(request) {
       return Response.json({ error: incremented.error }, { status: incremented.status || 500 });
     }
 
-    return Response.json({ counted: true, views: Number(incremented.views || 0) });
+    return Response.json({ ok: true, counted: true, views: Number(incremented.views || 0) });
   } catch (error) {
     logError("views.post.unhandled", error, meta);
     return Response.json({ error: error?.message || "Server error." }, { status: 500 });

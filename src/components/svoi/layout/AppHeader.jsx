@@ -17,7 +17,7 @@
   const shortName = String(user?.name || "").trim().split(/\s+/)[0] || "Profile";
 
   return (
-    <header style={{ position:"sticky", top:0, zIndex:50, padding:"16px 20px", background:T.card, borderBottom:`1px solid ${T.borderL}`, display:"flex", alignItems:"center", justifyContent:"space-between", opacity:mt?1:0, transition:"opacity 0.4s" }}>
+    <header style={{ padding:"16px 20px", background:T.card, borderBottom:`1px solid ${T.borderL}`, display:"flex", alignItems:"center", justifyContent:"space-between", opacity:mt?1:0, transition:"opacity 0.4s" }}>
       <div onClick={onGoHome} style={{ cursor:"pointer" }}>
         <h1 style={{ fontSize:22, fontWeight:900, margin:0 }}><span style={{ color:T.primary }}>LA</span></h1>
         <p style={{ margin:"1px 0 0", fontSize:11, color:T.light }}>путеводитель</p>
