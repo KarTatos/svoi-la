@@ -70,8 +70,10 @@ export function useViewTracker({
         body: JSON.stringify({ itemType, itemId, viewerKey }),
       });
       const payload = await response.json().catch(() => null);
-      if (response.ok && payload?.ok && Number.isFinite(Number(payload.views))) {
-        setCardViewsLocally(itemType, itemId, Number(payload.views));
+      const nextViews = Number(payload?.views);
+      const isCounted = typeof payload?.counted === "boolean";
+      if (response.ok && isCounted && Number.isFinite(nextViews)) {
+        setCardViewsLocally(itemType, itemId, nextViews);
         try {
           const viewedRaw = localStorage.getItem(viewedStorageKey);
           const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
