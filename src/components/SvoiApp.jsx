@@ -2101,6 +2101,36 @@ export default function App() {
       return dt.toLocaleDateString("ru-RU", { weekday:"short", day:"numeric", month:"long", year:"numeric" }) + ", " + dt.toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
     } catch { return d; }
   };
+  const getEventDateBadge = (value) => {
+    try {
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return { dow: "—", day: "--", month: "—" };
+      const dow = dt.toLocaleDateString("ru-RU", { weekday: "short" }).replace(".", "");
+      const month = dt.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "");
+      return {
+        dow: dow.toUpperCase(),
+        day: String(dt.getDate()),
+        month,
+      };
+    } catch {
+      return { dow: "—", day: "--", month: "—" };
+    }
+  };
+  const getEventTimeLabel = (value) => {
+    try {
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return "";
+      return dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  };
+  const eventCardPalettes = [
+    { bg: "#FDF1DB", text: "#17324D" },
+    { bg: "#EAF6EE", text: "#17324D" },
+    { bg: "#EEF2FC", text: "#17324D" },
+    { bg: "#FCEAEA", text: "#17324D" },
+  ];
 
   useEffect(() => {
     if (scr === "place-item" && !activePlace) setScr("places-cat");
@@ -2856,50 +2886,73 @@ export default function App() {
               </div>
             )}
           </div>
-          {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const isF = favorites[`event-${ev.id}`]; const eventWebsite = normalizeExternalUrl(ev.website); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL }}>
-            <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackCardView("event", ev); }} style={{ padding:18, cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
-              <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>{ev.title}</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:10 }}>
-                <div style={{ fontSize:13, color:T.mid, display:"inline-flex", alignItems:"center", gap:5 }}><CalendarIcon size={13} /> {fmtDate(ev.date)}</div>
-                {ev.location && <div style={{ fontSize:13, color:T.mid }}>📍 {ev.location}</div>}
-              </div>
-              {isEvExp && ev.location && (
-                <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-                  <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "google");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Google Maps</button>
-                  <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "apple");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Apple Maps</button>
+          {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const isF = favorites[`event-${ev.id}`]; const eventWebsite = normalizeExternalUrl(ev.website); const dateBadge = getEventDateBadge(ev.date); const eventTime = getEventTimeLabel(ev.date); const cardPalette = eventCardPalettes[i % eventCardPalettes.length]; const goingCount = Math.max(Number(ev.likes) || 0, 0); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL, padding:0 }}>
+            <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackCardView("event", ev); }} style={{ padding:"14px 14px 12px", cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+              <div style={{ display:"flex", alignItems:"stretch", gap:12 }}>
+                <div style={{ width:72, minWidth:72, borderRadius:18, background:cardPalette.bg, color:cardPalette.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 6px", textAlign:"center", boxSizing:"border-box" }}>
+                  <div style={{ fontSize:14, lineHeight:1, fontWeight:700, color:"#8D97AC", marginBottom:4 }}>{dateBadge.dow}</div>
+                  <div style={{ fontSize:24, lineHeight:1, fontWeight:800, letterSpacing:"-0.02em", marginBottom:4 }}>{dateBadge.day}</div>
+                  <div style={{ fontSize:14, lineHeight:1, fontWeight:700, color:"#8D97AC" }}>{dateBadge.month}</div>
                 </div>
-              )}
-              {isEvExp && eventWebsite && (
-                <a href={eventWebsite} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()} style={{ display:"inline-block", fontSize:13, color:T.primary, textDecoration:"none", marginBottom:10 }}>
-                  Сайт мероприятия
-                </a>
-              )}
-              <div style={{ ...(!isEvExp ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10, whiteSpace:isEvExp ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(ev.desc)}</div>
-              {isEvExp && ev.photos?.length > 0 && (
-                <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
-                  {ev.photos.map((ph, pi) => (
-                    <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); openPhotoViewer(ev.photos, pi);}} />
-                  ))}
-                </div>
-              )}
-              {isEvExp && ev.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:-6, marginBottom:8 }}>Листайте фото →</div>}
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:11, color:T.light }}>от {ev.author}</span>
-                <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
-                  <button
-                    onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}}
-                    style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
-                    title="Избранное"
-                  >
-                    <StarIcon active={!!isF} size={14} />
-                  </button>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
-                    <ViewIcon size={13} /> {ev.views || 0}
-                  </span>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid }}><HeartIcon active={!!liked[`event-${ev.id}`]} size={14} /> {ev.likes}</span>
-                  <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
+                <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:15, lineHeight:1.25, color:T.text, marginBottom:6, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.title}</div>
+                      <div style={{ fontSize:13, color:"#8D97AC", display:"flex", alignItems:"center", gap:6, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                        <span style={{ color:"#F26AA0", fontSize:12, lineHeight:1 }}>📍</span>
+                        <span style={{ overflow:"hidden", textOverflow:"ellipsis" }}>{ev.location || "Локация уточняется"}{eventTime ? ` · ${eventTime}` : ""}</span>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0, paddingTop:2 }}>
+                      <button
+                        onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}}
+                        style={{ width:28, height:28, borderRadius:999, border:"none", background:"#F6F7FB", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : "#A7AFBF", padding:0, display:"flex", alignItems:"center", justifyContent:"center" }}
+                        title="Избранное"
+                      >
+                        <StarIcon active={!!isF} size={14} />
+                      </button>
+                      <button
+                        onClick={(e)=>{e.stopPropagation(); toggleLike(ev.id,"event");}}
+                        style={{ minWidth:38, height:28, borderRadius:999, border:"none", background:"#FFF2F0", cursor:"pointer", fontFamily:"inherit", color:liked[`event-${ev.id}`]?"#E74C3C":"#D37A7A", padding:"0 9px", display:"inline-flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:700 }}
+                        title="Лайк"
+                      >
+                        <HeartIcon active={!!liked[`event-${ev.id}`]} size={13} /> {ev.likes}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ marginTop:12, fontSize:13, fontWeight:600, color:T.primary }}>
+                    {goingCount} человек идет
+                  </div>
                 </div>
               </div>
+              {isEvExp && (
+                <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${T.borderL}` }}>
+                  {ev.location && (
+                    <div style={{ display:"flex", gap:8, marginBottom:10, flexWrap:"wrap" }}>
+                      <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "google");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Google Maps</button>
+                      <button onClick={(e)=>{e.stopPropagation(); openEventMap(ev.location, "apple");}} style={{ ...pl(false), padding:"8px 10px", fontSize:12 }}>Apple Maps</button>
+                    </div>
+                  )}
+                  {eventWebsite && (
+                    <a href={eventWebsite} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()} style={{ display:"inline-block", fontSize:13, color:T.primary, textDecoration:"none", marginBottom:10 }}>
+                      Сайт мероприятия
+                    </a>
+                  )}
+                  <div style={{ fontSize:13, lineHeight:1.6, color:T.mid, marginBottom:10, whiteSpace:"pre-wrap", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(ev.desc)}</div>
+                  {ev.photos?.length > 0 && (
+                    <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
+                      {ev.photos.map((ph, pi) => (
+                        <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); openPhotoViewer(ev.photos, pi);}} />
+                      ))}
+                    </div>
+                  )}
+                  {ev.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:-6, marginBottom:8 }}>Листайте фото →</div>}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontSize:11, color:T.light }}>от {ev.author}</span>
+                    <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
+                  </div>
+                </div>
+              )}
             </div>
             {isEvExp && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
               <div style={{ padding:"14px 16px 10px", display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
