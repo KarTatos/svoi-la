@@ -2887,7 +2887,7 @@ export default function App() {
             )}
           </div>
           {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const isF = favorites[`event-${ev.id}`]; const eventWebsite = normalizeExternalUrl(ev.website); const dateBadge = getEventDateBadge(ev.date); const eventTime = getEventTimeLabel(ev.date); const cardPalette = eventCardPalettes[i % eventCardPalettes.length]; const goingCount = Math.max(Number(ev.likes) || 0, 0); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL, padding:0 }}>
-            <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackCardView("event", ev); }} style={{ padding:"14px 14px 12px", cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
+            <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackCardView("event", ev); }} style={{ padding:"14px 14px 12px", cursor:"pointer", background:T.card }}>
               <div style={{ display:"flex", alignItems:"stretch", gap:12 }}>
                 <div style={{ width:72, minWidth:72, borderRadius:18, background:cardPalette.bg, color:cardPalette.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 6px", textAlign:"center", boxSizing:"border-box" }}>
                   <div style={{ fontSize:14, lineHeight:1, fontWeight:700, color:"#8D97AC", marginBottom:4 }}>{dateBadge.dow}</div>
@@ -2897,13 +2897,18 @@ export default function App() {
                 <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
                   <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:15, lineHeight:1.25, color:T.text, marginBottom:6, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.title}</div>
+                      <div style={{ fontWeight:800, fontSize:16, lineHeight:1.22, color:T.text, marginBottom:6, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.title}</div>
                       <div style={{ fontSize:13, color:"#8D97AC", display:"flex", alignItems:"center", gap:6, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         <span style={{ color:"#F26AA0", fontSize:12, lineHeight:1 }}>📍</span>
                         <span style={{ overflow:"hidden", textOverflow:"ellipsis" }}>{ev.location || "Локация уточняется"}{eventTime ? ` · ${eventTime}` : ""}</span>
                       </div>
                     </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0, paddingTop:2 }}>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:10, marginTop:12 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:T.primary }}>
+                      {goingCount} человек идет
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
                       <button
                         onClick={(e)=>{e.stopPropagation(); toggleFavorite(ev.id,"event");}}
                         style={{ width:28, height:28, borderRadius:999, border:"none", background:"#F6F7FB", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : "#A7AFBF", padding:0, display:"flex", alignItems:"center", justifyContent:"center" }}
@@ -2919,9 +2924,6 @@ export default function App() {
                         <HeartIcon active={!!liked[`event-${ev.id}`]} size={13} /> {ev.likes}
                       </button>
                     </div>
-                  </div>
-                  <div style={{ marginTop:12, fontSize:13, fontWeight:600, color:T.primary }}>
-                    {goingCount} человек идет
                   </div>
                 </div>
               </div>
