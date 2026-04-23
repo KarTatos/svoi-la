@@ -1,6 +1,7 @@
 export default function PhotoViewerModal({
   photoViewer,
   photoZoom,
+  photoOffset,
   onClose,
   onPrev,
   onNext,
@@ -35,7 +36,7 @@ export default function PhotoViewerModal({
           src={photoViewer.photos[photoViewer.index]}
           alt=""
           draggable={false}
-          style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)", transform:`scale(${photoZoom})`, transformOrigin:"center center", transition:photoZoom === 1 ? "transform 0.2s ease" : "none", userSelect:"none", WebkitUserSelect:"none" }}
+          style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)", transform:`translate3d(${photoOffset?.x || 0}px, ${photoOffset?.y || 0}px, 0) scale(${photoZoom})`, transformOrigin:"center center", transition:photoZoom === 1 ? "transform 0.2s ease" : "none", userSelect:"none", WebkitUserSelect:"none" }}
         />
       </div>
       {photoViewer.photos.length > 1 && (
@@ -46,4 +47,3 @@ export default function PhotoViewerModal({
     </div>
   );
 }
-

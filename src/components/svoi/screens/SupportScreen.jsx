@@ -9,24 +9,22 @@ export default function SupportScreen({
   user,
   onBack,
   onSubmit,
+  sending,
+  done,
+  error,
+  onClearStatus,
 }) {
   const [text, setText] = useState("");
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
 
   const canSend = text.trim().length >= 5;
 
   const submit = async () => {
-    if (!canSend) return;
-    setError("");
-    setSent(false);
+    if (!canSend || sending) return;
+    onClearStatus?.();
     const ok = await onSubmit(text.trim());
     if (ok) {
-      setSent(true);
       setText("");
-      return;
     }
-    setError("Не удалось отправить запрос. Попробуйте еще раз.");
   };
 
   return (
@@ -47,7 +45,10 @@ export default function SupportScreen({
         <div style={{ fontSize: 12, color: T.light, marginBottom: 6 }}>Текст запроса</div>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 1500))}
+          onChange={(e) => {
+            onClearStatus?.();
+            setText(e.target.value.slice(0, 1500));
+          }}
           placeholder="Например: не могу войти через Google на iPhone..."
           style={{ ...iS, minHeight: 140, resize: "vertical", marginBottom: 6 }}
         />
@@ -57,13 +58,13 @@ export default function SupportScreen({
 
         <button
           onClick={submit}
-          disabled={!canSend}
-          style={{ ...pl(canSend), width: "100%", padding: 12, opacity: canSend ? 1 : 0.5 }}
+          disabled={!canSend || sending}
+          style={{ ...pl(canSend && !sending), width: "100%", padding: 12, opacity: canSend && !sending ? 1 : 0.5 }}
         >
-          Отправить в поддержку
+          {sending ? "Отправка..." : "Отправить в поддержку"}
         </button>
 
-        {sent && (
+        {done && (
           <div style={{ marginTop: 10, fontSize: 12, color: "#2f855a" }}>
             Запрос отправлен в поддержку.
           </div>
