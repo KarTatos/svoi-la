@@ -16,6 +16,7 @@ import { useMiniMap } from "../hooks/useMiniMap";
 import { usePlacesMap } from "../hooks/usePlacesMap";
 import { usePhotoViewer } from "../hooks/usePhotoViewer";
 import { usePlaceForm } from "../hooks/usePlaceForm";
+import { useTipForm } from "../hooks/useTipForm";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useCivicsTest } from "./svoi/useCivicsTest";
@@ -66,10 +67,6 @@ export default function App() {
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn: signInAuth, signOut: signOutAuth, isAdmin } = useAuth([ADMIN_EMAIL]);
   const { places, tips, events, housing, setPlaces, setTips, setEvents, setHousing, reload: loadAllData } = useAppData(user);
-  const [showAddTip, setShowAddTip] = useState(false);
-  const [newTip, setNewTip] = useState({ title:"", text:"" });
-  const [newTipPhotos, setNewTipPhotos] = useState([]);
-  const [editingTip, setEditingTip] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -244,6 +241,42 @@ export default function App() {
       if (error) console.error("Login error:", error);
     },
   });
+  const {
+    showAddTip,
+    setShowAddTip,
+    newTip,
+    setNewTip,
+    newTipPhotos,
+    setNewTipPhotos,
+    editingTip,
+    setEditingTip,
+    resetTipForm,
+    openAddTipForm,
+    handleTipPhotos,
+    startEditTip,
+    handleDeleteTip,
+    handleAddTip,
+  } = useTipForm({
+    user,
+    selTC,
+    tips,
+    canManageTip,
+    setTips,
+    showComments,
+    setShowComments,
+    exp,
+    setExp,
+    dbAddTip,
+    dbUpdateTip,
+    dbDeleteTip,
+    uploadPhoto,
+    limitCardText,
+    encodeRichText,
+    onRequireAuth: async () => {
+      const { error } = await signInAuth();
+      if (error) console.error("Login error:", error);
+    },
+  });
 
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
@@ -307,7 +340,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); resetTipForm(); setShowAddEvent(false); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setFilterDate(null); };
   function openExternalUrl(url) {
     if (!url) return;
     try {
@@ -453,11 +486,6 @@ export default function App() {
     if (error) console.error("Login error:", error);
   }
   const handleLogout = async () => { await signOutAuth(); resetEngagement(); };
-  const handleTipPhotos = (e) => {
-    const files = Array.from(e.target.files).slice(0, 3);
-    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
-    setNewTipPhotos(prev => [...prev, ...newFiles].slice(0, 3));
-  };
   const handleEventPhotos = (e) => {
     const files = Array.from(e.target.files).slice(0, 3);
     const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
@@ -498,57 +526,6 @@ export default function App() {
     setShowAddEvent(false);
     setEditingEvent(null);
     setExp(null);
-  };
-  const startEditTip = (tip) => {
-    if (!canManageTip(tip)) {
-      alert("Редактировать совет может только автор или админ.");
-      return;
-    }
-    setEditingTip(tip);
-    setNewTip({ title: tip.title || "", text: tip.text || "" });
-    setNewTipPhotos((tip.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setShowAddTip(true);
-  };
-  const handleDeleteTip = async (tipId) => {
-    const item = tips.find((t) => t.id === tipId);
-    if (!canManageTip(item)) {
-      alert("Удалять совет может только автор или админ.");
-      return;
-    }
-    if (!window.confirm("Удалить совет?")) return;
-    const { error } = await dbDeleteTip(tipId);
-    if (error) {
-      alert(error.message || "Не удалось удалить совет");
-      return;
-    }
-    setTips(prev => prev.filter(t => t.id !== tipId));
-    setShowAddTip(false);
-    setEditingTip(null);
-    if (showComments === `tip-${tipId}`) setShowComments(null);
-    if (exp === `tip-${tipId}`) setExp(null);
-  };
-  const handleAddTip = async () => {
-    if (!newTip.title || !newTip.text || !user || !selTC) return;
-    const safeTipText = limitCardText(newTip.text).trim();
-    const uploaded = [];
-    for (const p of newTipPhotos) {
-      if (p.file) {
-        const url = await uploadPhoto(p.file);
-        if (url) uploaded.push(url);
-      } else if (p.preview && p.preview.startsWith("http")) {
-        uploaded.push(p.preview);
-      }
-    }
-    const dbData = { category:selTC.id, title:newTip.title, text:encodeRichText(safeTipText, uploaded), author:user.name, user_id:user.id };
-    if (editingTip) {
-      await dbUpdateTip(editingTip.id, dbData);
-      setTips(prev => prev.map(t => t.id === editingTip.id ? { ...t, cat:selTC.id, title:newTip.title, text:safeTipText, photos:uploaded } : t));
-    } else {
-      const { data } = await dbAddTip(dbData);
-      const newId = data?.[0]?.id || Date.now();
-      setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:safeTipText, photos:uploaded, likes:0, views:0, comments:[], fromDB:true }, ...prev]);
-    }
-    setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(false); setEditingTip(null);
   };
   const handleAddComment = async (tipId) => {
     if (!newComment.trim() || !user) return;
@@ -1439,7 +1416,7 @@ export default function App() {
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selTC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selTC.desc}</p></div>
             </div>
             <button
-              onClick={() => { if (!user) {handleLogin();return;} setEditingTip(null); setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(true); }}
+              onClick={() => { openAddTipForm(); }}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
               title="Добавить"
             >
@@ -1516,7 +1493,7 @@ export default function App() {
               </div>)}
             </div>
           ); })}
-          <button onClick={() => { if (!user) {handleLogin();return;} setEditingTip(null); setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
+          <button onClick={() => { openAddTipForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
         </div>)}
 
         {/* ADD TIP MODAL */}
