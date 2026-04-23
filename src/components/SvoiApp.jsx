@@ -91,7 +91,7 @@ export default function App() {
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
-  const { profileLocation, profileWeather } = useProfileWeather(DISTRICTS);
+  const { profileLocation, profileWeather } = useProfileWeather();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);

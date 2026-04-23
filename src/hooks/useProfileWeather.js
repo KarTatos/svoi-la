@@ -1,88 +1,142 @@
 import { useEffect, useState } from "react";
 
-export function useProfileWeather(districts = []) {
-  const [profileLocation, setProfileLocation] = useState("Определяем локацию...");
-  const [profileWeather, setProfileWeather] = useState({ temp: "--°", text: "Погода загружается..." });
+const LOCATION_CACHE_KEY = "la_profile_location";
+const WEATHER_CACHE_KEY = "la_profile_weather";
+const LOCATION_FALLBACK = "Локация";
+const WEATHER_FALLBACK = { temp: "--°", text: "погода" };
+
+function readCachedWeather() {
+  try {
+    const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+    if (!raw) return WEATHER_FALLBACK;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return WEATHER_FALLBACK;
+    return {
+      temp: String(parsed.temp || WEATHER_FALLBACK.temp),
+      text: String(parsed.text || WEATHER_FALLBACK.text),
+    };
+  } catch {
+    return WEATHER_FALLBACK;
+  }
+}
+
+export function useProfileWeather() {
+  const [profileLocation, setProfileLocation] = useState(() => {
+    if (typeof window === "undefined") return "Определяем локацию...";
+    return localStorage.getItem(LOCATION_CACHE_KEY) || "Определяем локацию...";
+  });
+  const [profileWeather, setProfileWeather] = useState(() => {
+    if (typeof window === "undefined") return WEATHER_FALLBACK;
+    return readCachedWeather();
+  });
 
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) {
-      setProfileLocation("Локация недоступна");
-      setProfileWeather({ temp: "--°", text: "Геолокация не поддерживается" });
+      setProfileLocation(LOCATION_FALLBACK);
       return;
     }
 
     let canceled = false;
-    const loadGeoWeather = () => {
+
+    const saveLocation = (value) => {
+      if (canceled) return;
+      const clean = String(value || "").trim() || LOCATION_FALLBACK;
+      setProfileLocation(clean);
+      try {
+        localStorage.setItem(LOCATION_CACHE_KEY, clean);
+      } catch {}
+    };
+
+    const saveWeather = (weather) => {
+      if (canceled) return;
+      const clean = {
+        temp: String(weather?.temp || WEATHER_FALLBACK.temp),
+        text: String(weather?.text || WEATHER_FALLBACK.text),
+      };
+      setProfileWeather(clean);
+      try {
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(clean));
+      } catch {}
+    };
+
+    const reverseGeocode = async (lat, lng) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4500);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
+          { signal: controller.signal, headers: { Accept: "application/json" } }
+        );
+        if (!res.ok) throw new Error("reverse_failed");
+        const json = await res.json();
+        const addr = json?.address || {};
+        const precise =
+          addr.neighbourhood ||
+          addr.suburb ||
+          addr.residential ||
+          addr.city_district ||
+          addr.quarter ||
+          addr.hamlet ||
+          addr.city ||
+          addr.town ||
+          addr.village ||
+          "";
+        if (precise) return precise;
+      } catch {}
+      finally {
+        clearTimeout(timeout);
+      }
+      return `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+    };
+
+    const fetchWeather = async (lat, lng) => {
+      try {
+        const pointsRes = await fetch(`https://api.weather.gov/points/${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`);
+        if (!pointsRes.ok) throw new Error("points_failed");
+        const points = await pointsRes.json();
+        const forecastUrl = points?.properties?.forecast;
+        if (!forecastUrl) throw new Error("forecast_url_missing");
+        const forecastRes = await fetch(forecastUrl);
+        if (!forecastRes.ok) throw new Error("forecast_failed");
+        const forecast = await forecastRes.json();
+        const period = forecast?.properties?.periods?.[0];
+        if (!period) throw new Error("forecast_empty");
+        return {
+          temp: `${period.temperature}°${period.temperatureUnit || ""}`,
+          text: period.shortForecast || WEATHER_FALLBACK.text,
+        };
+      } catch {
+        return null;
+      }
+    };
+
+    const loadGeoData = () => {
       navigator.geolocation.getCurrentPosition(
         async ({ coords }) => {
-          const lat = Number(coords.latitude).toFixed(4);
-          const lng = Number(coords.longitude).toFixed(4);
-          try {
-            const pointsRes = await fetch(`https://api.weather.gov/points/${lat},${lng}`);
-            if (!pointsRes.ok) throw new Error("points_failed");
-            const points = await pointsRes.json();
-            if (canceled) return;
-            const rel = points?.properties?.relativeLocation?.properties;
-            const city = rel?.city || "";
-            const state = rel?.state || "";
-            const latNum = Number(coords.latitude);
-            const lngNum = Number(coords.longitude);
-            const toRad = (v) => (v * Math.PI) / 180;
-            const haversineKm = (aLat, aLng, bLat, bLng) => {
-              const R = 6371;
-              const dLat = toRad(bLat - aLat);
-              const dLng = toRad(bLng - aLng);
-              const s1 = Math.sin(dLat / 2) ** 2;
-              const s2 = Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
-              return 2 * R * Math.asin(Math.sqrt(s1 + s2));
-            };
-            const nearestDistrict = (districts || []).reduce((best, d) => {
-              if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) return best;
-              const dist = haversineKm(latNum, lngNum, Number(d.lat), Number(d.lng));
-              if (!best || dist < best.dist) return { name: d.name, dist };
-              return best;
-            }, null);
-            const districtLabel = nearestDistrict && nearestDistrict.dist <= 50 ? nearestDistrict.name : "";
-            setProfileLocation(districtLabel || (city && state ? `${city}, ${state}` : `${lat}, ${lng}`));
-
-            const forecastUrl = points?.properties?.forecast;
-            if (!forecastUrl) throw new Error("forecast_url_missing");
-            const forecastRes = await fetch(forecastUrl);
-            if (!forecastRes.ok) throw new Error("forecast_failed");
-            const forecast = await forecastRes.json();
-            if (canceled) return;
-            const period = forecast?.properties?.periods?.[0];
-            if (!period) throw new Error("forecast_empty");
-            setProfileWeather({
-              temp: `${period.temperature}°${period.temperatureUnit || ""}`,
-              text: period.shortForecast || "Без описания",
-            });
-          } catch {
-            if (canceled) return;
-            setProfileLocation(`${lat}, ${lng}`);
-            setProfileWeather({ temp: "--°", text: "Погода недоступна" });
-          }
+          const [locationLabel, weather] = await Promise.all([
+            reverseGeocode(coords.latitude, coords.longitude),
+            fetchWeather(coords.latitude, coords.longitude),
+          ]);
+          saveLocation(locationLabel);
+          if (weather) saveWeather(weather);
         },
         () => {
-          if (canceled) return;
-          setProfileLocation("Локация отключена");
-          setProfileWeather({ temp: "--°", text: "Разрешите геолокацию" });
+          saveLocation(localStorage.getItem(LOCATION_CACHE_KEY) || LOCATION_FALLBACK);
         },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 5 * 60 * 1000 }
       );
     };
 
-    loadGeoWeather();
+    loadGeoData();
     const onVisible = () => {
-      if (document.visibilityState === "visible") loadGeoWeather();
+      if (document.visibilityState === "visible") loadGeoData();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       canceled = true;
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [districts]);
+  }, []);
 
   return { profileLocation, profileWeather };
 }
-
