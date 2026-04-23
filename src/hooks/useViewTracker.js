@@ -56,13 +56,6 @@ export function useViewTracker({
     if (!authReady) return false;
     const viewerKey = getViewerKey();
     if (!viewerKey) return false;
-    const viewedStorageKey = `viewed_once_${viewerKey}`;
-    const viewedItemKey = `${itemType}:${itemId}`;
-    try {
-      const viewedRaw = localStorage.getItem(viewedStorageKey);
-      const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-      if (viewedMap?.[viewedItemKey]) return true;
-    } catch {}
     try {
       const response = await fetch("/api/views", {
         method: "POST",
@@ -74,12 +67,6 @@ export function useViewTracker({
       const isCounted = typeof payload?.counted === "boolean";
       if (response.ok && isCounted && Number.isFinite(nextViews)) {
         setCardViewsLocally(itemType, itemId, nextViews);
-        try {
-          const viewedRaw = localStorage.getItem(viewedStorageKey);
-          const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-          viewedMap[viewedItemKey] = true;
-          localStorage.setItem(viewedStorageKey, JSON.stringify(viewedMap));
-        } catch {}
         return true;
       }
       console.error("View track failed:", itemType, itemId, payload?.error || response.status);
