@@ -27,6 +27,7 @@ import UscisScreen from "./svoi/screens/UscisScreen";
 import UscisCategoryScreen from "./svoi/screens/UscisCategoryScreen";
 import HomeScreen from "./svoi/screens/HomeScreen";
 import ChatScreen from "./svoi/screens/ChatScreen";
+import TipsScreen from "./svoi/screens/TipsScreen";
 import ProfileScreen from "./svoi/screens/ProfileScreen";
 import MyPlacesScreen from "./svoi/screens/MyPlacesScreen";
 import SupportScreen from "./svoi/screens/SupportScreen";
@@ -39,7 +40,6 @@ import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
 import PlaceFormModal from "./svoi/forms/PlaceFormModal";
 import EventFormModal from "./svoi/forms/EventFormModal";
 import HousingFormModal from "./svoi/forms/HousingFormModal";
-import TipFormModal from "./svoi/forms/TipFormModal";
 import CommentsBlock from "./svoi/components/CommentsBlock";
 
 export default function App() {
@@ -49,8 +49,6 @@ export default function App() {
   const [selPC, setSelPC] = useState(() => { try { const d = sessionStorage.getItem('selPC'); return d ? JSON.parse(d) : null; } catch { return null; } });
   const [selPlace, setSelPlace] = useState(null);
   const [selTC, setSelTC] = useState(null);
-  const [tipsSearchInput, setTipsSearchInput] = useState("");
-  const [tipsSearchApplied, setTipsSearchApplied] = useState("");
   const [housingBedsFilter, setHousingBedsFilter] = useState("all");
   // Save screen state on change
   useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
@@ -406,7 +404,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); resetPlaceForm(); resetTipForm(); resetEventForm(); resetHousingForm(); setTDone(false); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); resetMapRouting(); setSrch(""); resetPlaceForm(); resetTipForm(); resetEventForm(); resetHousingForm(); setTDone(false); setFilterDate(null); };
   function openExternalUrl(url) {
     if (!url) return;
     try {
@@ -631,19 +629,6 @@ export default function App() {
     : cPlacesSorted;
   const activePlace = selPlace ? (places.find((p) => p.id === selPlace.id) || null) : null;
   const catTips = selTC ? tips.filter(t=>t.cat===selTC.id) : [];
-  const tipsQuery = tipsSearchApplied.trim().toLowerCase();
-  const tipsSearchResults = tipsQuery
-    ? tips.filter((t) => {
-        const catTitle = TIPS_CATS.find((c) => c.id === t.cat)?.title || "";
-        const hay = `${t.title || ""} ${t.text || ""} ${t.author || ""} ${catTitle}`.toLowerCase();
-        return hay.includes(tipsQuery);
-      })
-    : [];
-  const applyTipsSearch = () => {
-    setTipsSearchApplied(tipsSearchInput.trim());
-    setSelTC(null);
-    setExpTip(null);
-  };
   const housingFiltered = housing.filter((item) => {
     const byQuery = true;
     const byBeds = housingBedsFilter === "all"
@@ -995,7 +980,7 @@ export default function App() {
           {cPlaces.length > 0 && (
             <div style={{ ...cd, padding:0, overflow:"hidden", marginBottom:12 }}>
               <div style={{ padding:"8px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
-                <button onClick={() => openAllOnMap(cPlacesDisplay)} style={{ ...pl(false), padding:"6px 10px", fontSize:12 }}>⤢ Открыть карту</button>
+                <button onClick={() => openAllOnMap(cPlacesDisplay)} style={{ ...pl(false), padding:"6px 10px", fontSize:12 }}>? Открыть карту</button>
               </div>
               <div style={{ position:"relative", height:220, background:"#ECEFF3" }}>
                 {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
@@ -1023,7 +1008,7 @@ export default function App() {
               style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}
               title="Сортировать по лайкам"
             >
-              <HeartIcon active={true} size={13} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              <HeartIcon active={true} size={13} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "^" : "v") : "¦"}
             </button>
             <button
               onClick={() => {
@@ -1033,7 +1018,7 @@ export default function App() {
               style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF8E8", color:"#D68910", fontWeight:700, fontSize:12, lineHeight:1 }}
               title="Сортировать по избранному"
             >
-              <StarIcon active={true} size={13} /> {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              <StarIcon active={true} size={13} /> {placeSortField === "favorites" ? (placeSortDir === "asc" ? "^" : "v") : "¦"}
             </button>
           </div>
 
@@ -1083,7 +1068,7 @@ export default function App() {
               </div>
             </button>
           ))}
-          <button onClick={() => { openAddForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить</button>
+          <button onClick={() => { openAddForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>+ Добавить</button>
         </div>)}
 
         {/* PLACE ITEM PAGE */}
@@ -1149,219 +1134,73 @@ export default function App() {
 
               {canManagePlace(activePlace) && (
                 <div style={{ paddingTop:4, display:"flex", gap:8 }}>
-                  <button onClick={()=>startEditPlace(activePlace)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:T.card, color:T.mid }}>✏️ Редактировать</button>
+                  <button onClick={()=>startEditPlace(activePlace)} style={{ flex:1, padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.border}`, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontSize:12, fontWeight:600, background:T.card, color:T.mid }}>?? Редактировать</button>
                 </div>
               )}
             </div>
           </div>
         </div>)}
 
-        {/* TIPS */}
-        {scr==="tips" && !selTC && (<div>
-          <button onClick={goHome} style={bk}>← Главная</button>
-          <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 4px" }}>💡 Советы по жизни в LA</h2>
-          <p style={{ fontSize:13, color:T.mid, margin:"0 0 16px" }}>Опыт от своих — лайфхаки, чаевые, банки, врачи</p>
-          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-            <input
-              value={tipsSearchInput}
-              onChange={(e)=>setTipsSearchInput(e.target.value)}
-              placeholder="Поиск по советам"
-              style={{ ...iS, flex:1, marginBottom:0 }}
-            />
-            <button onClick={applyTipsSearch} style={{ ...pl(false), minWidth:44, padding:"0 12px", fontSize:16 }}>🔍</button>
-          </div>
-          {tipsQuery ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {tipsSearchResults.length === 0 && (
-                <div style={{ ...cd, padding:16, fontSize:13, color:T.mid }}>Ничего не найдено по запросу: “{tipsSearchApplied}”</div>
-              )}
-              {tipsSearchResults.map((tip) => {
-                const isE = expTip === tip.id;
-                const isL = liked[`tip-${tip.id}`];
-                const isF = favorites[`tip-${tip.id}`];
-                const catTitle = TIPS_CATS.find((c) => c.id === tip.cat)?.title || "";
-                return (
-                  <div key={tip.id} style={{ ...cd, marginBottom:0, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-                    <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); if (nextOpen) trackCardView("tip", tip); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
-                      <div style={{ fontSize:11, color:T.light, marginBottom:4 }}>{catTitle}</div>
-                      <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
-                      <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
-                      <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
-                        <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
-                        <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }}
-                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
-                            title="Избранное"
-                          >
-                            <StarIcon active={!!isF} size={14} />
-                          </button>
-                          <span>👁 {tip.views || 0}</span>
-                          <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
-                          <span>💬 {(tip.comments||[]).length}</span>
-                          <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
-                        </div>
-                      </div>
-                    </div>
-                    {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                      <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
-                        <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {tip.views || 0}</span>
-                        <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
-                        <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
-                      </div>
-                      <CommentsBlock
-                        item={tip}
-                        type="tip"
-                        addFn={handleAddComment}
-                        showComments={showComments}
-                        setShowComments={setShowComments}
-                        newComment={newComment}
-                        setNewComment={setNewComment}
-                        editingComment={editingComment}
-                        setEditingComment={setEditingComment}
-                        editCommentText={editCommentText}
-                        setEditCommentText={setEditCommentText}
-                        saveEditComment={saveEditComment}
-                        deleteCommentFn={deleteCommentFn}
-                        user={user}
-                        handleLogin={handleLogin}
-                        T={T}
-                        pl={pl}
-                        iS={iS}
-                      />
-                    </div>)}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {TIPS_CATS.map((c, i) => { const cnt = tips.filter(t=>t.cat===c.id).length; return (
-                <button key={c.id} onClick={() => { setSelTC(c); }}
-                  style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
-                  onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-                  <div style={{ width:48, height:48, borderRadius:T.rs, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{c.icon}</div>
-                  <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div><div style={{ fontSize:12, color:T.mid, marginTop:2 }}>{c.desc}</div></div>
-                  {cnt > 0 && <span style={{ fontSize:13, fontWeight:700, color:T.primary }}>{cnt}</span>}
-                </button>
-              ); })}
-            </div>
-          )}
-        </div>)}
-
-        {/* TIPS CATEGORY */}
-        {scr==="tips" && selTC && (<div>
-          <button onClick={() => setSelTC(null)} style={bk}>← Все советы</button>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, margin:"4px 0 18px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:48, height:48, borderRadius:14, background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selTC.icon}</div>
-              <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selTC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selTC.desc}</p></div>
-            </div>
-            <button
-              onClick={() => { openAddTipForm(); }}
-              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
-              title="Добавить"
-            >
-              +
-            </button>
-          </div>
-          {catTips.map((tip, i) => { const isE = expTip===tip.id; const isL = liked[`tip-${tip.id}`]; const isF = favorites[`tip-${tip.id}`]; return (
-            <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-              <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); if (nextOpen) trackCardView("tip", tip); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
-                <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
-                <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
-                {isE && tip.photos?.length > 0 && (
-                  <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
-                    {tip.photos.map((ph, pi) => (
-                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); openPhotoViewer(tip.photos, pi);}} />
-                    ))}
-                  </div>
-                )}
-                {isE && tip.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:2 }}>Листайте фото →</div>}
-                <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
-                  <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
-                  <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }}
-                      style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
-                      title="Избранное"
-                    >
-                      <StarIcon active={!!isF} size={14} />
-                    </button>
-                    <span>👁 {tip.views || 0}</span>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
-                    <span>💬 {tip.comments.length}</span>
-                    <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
-                  </div>
-                </div>
-              </div>
-              {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                <div style={{ padding:"16px 16px 0", display:"none" }}>
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}>{isL ? <HeartIcon active={true} size={14} /> : <HeartIcon active={false} size={14} />} {isL ? "Понравилось" : "Нравится"}</button>
-                </div>
-                <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {tip.views || 0}</span>
-                  <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
-                  <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
-                </div>
-                <CommentsBlock
-                  item={tip}
-                  type="tip"
-                  addFn={handleAddComment}
-                  showComments={showComments}
-                  setShowComments={setShowComments}
-                  newComment={newComment}
-                  setNewComment={setNewComment}
-                  editingComment={editingComment}
-                  setEditingComment={setEditingComment}
-                  editCommentText={editCommentText}
-                  setEditCommentText={setEditCommentText}
-                  saveEditComment={saveEditComment}
-                  deleteCommentFn={deleteCommentFn}
-                  user={user}
-                  handleLogin={handleLogin}
-                  T={T}
-                  pl={pl}
-                  iS={iS}
-                />
-                {canManageTip(tip) && (
-                  <div style={{ padding:"0 16px 16px", display:"flex", gap:8 }}>
-                    <button onClick={(e)=>{e.stopPropagation(); startEditTip(tip);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12 }}>✏️ Редактировать</button>
-                    <button onClick={(e)=>{e.stopPropagation(); handleDeleteTip(tip.id);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>🗑 Удалить</button>
-                  </div>
-                )}
-              </div>)}
-            </div>
-          ); })}
-          <button onClick={() => { openAddTipForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
-        </div>)}
-
-        {/* ADD TIP MODAL */}
-        <TipFormModal
-          showAddTip={showAddTip}
-          selTC={selTC}
-          setShowAddTip={setShowAddTip}
-          setNewTipPhotos={setNewTipPhotos}
-          setEditingTip={setEditingTip}
-          cd={cd}
-          T={T}
-          editingTip={editingTip}
-          newTip={newTip}
-          setNewTip={setNewTip}
-          iS={iS}
-          CARD_TEXT_MAX={CARD_TEXT_MAX}
-          tipFileRef={tipFileRef}
-          handleTipPhotos={handleTipPhotos}
-          newTipPhotos={newTipPhotos}
-          pl={pl}
-          canManageTip={canManageTip}
-          handleDeleteTip={handleDeleteTip}
-          handleAddTip={handleAddTip}
-        />
+                {/* TIPS */}
+        {scr==="tips" && (
+          <TipsScreen
+            T={T}
+            TIPS_CATS={TIPS_CATS}
+            tips={tips}
+            selTC={selTC}
+            setSelTC={setSelTC}
+            onGoHome={goHome}
+            bk={bk}
+            cd={cd}
+            user={user}
+            handleLogin={handleLogin}
+            openAddTipForm={openAddTipForm}
+            expTip={expTip}
+            setExpTip={setExpTip}
+            trackCardView={trackCardView}
+            liked={liked}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+            StarIcon={StarIcon}
+            ViewIcon={ViewIcon}
+            HeartIcon={HeartIcon}
+            ShareIcon={ShareIcon}
+            pl={pl}
+            twoLineClampStyle={twoLineClampStyle}
+            limitCardText={limitCardText}
+            openPhotoViewer={openPhotoViewer}
+            handleToggleLike={handleToggleLike}
+            handleNativeShare={handleNativeShare}
+            showComments={showComments}
+            setShowComments={setShowComments}
+            newComment={newComment}
+            setNewComment={setNewComment}
+            editingComment={editingComment}
+            setEditingComment={setEditingComment}
+            editCommentText={editCommentText}
+            setEditCommentText={setEditCommentText}
+            saveEditComment={saveEditComment}
+            deleteCommentFn={deleteCommentFn}
+            handleAddComment={handleAddComment}
+            iS={iS}
+            canManageTip={canManageTip}
+            startEditTip={startEditTip}
+            handleDeleteTip={handleDeleteTip}
+            catTips={catTips}
+            showAddTip={showAddTip}
+            setShowAddTip={setShowAddTip}
+            setNewTipPhotos={setNewTipPhotos}
+            setEditingTip={setEditingTip}
+            editingTip={editingTip}
+            newTip={newTip}
+            setNewTip={setNewTip}
+            CARD_TEXT_MAX={CARD_TEXT_MAX}
+            tipFileRef={tipFileRef}
+            handleTipPhotos={handleTipPhotos}
+            newTipPhotos={newTipPhotos}
+            handleAddTip={handleAddTip}
+          />
+        )}
 
         {/* EVENTS */}
         {scr==="events" && !selEC && (<div>
@@ -1434,7 +1273,7 @@ export default function App() {
             {filterDate && (
               <div style={{ fontSize:12, color:T.mid, marginTop:6, display:"flex", alignItems:"center", gap:6 }}>
                 <CalendarIcon size={14} /> {fmtDate(filterDate).split(",").slice(0,2).join(",")}
-                <button onClick={() => setFilterDate(null)} style={{ background:"none", border:"none", color:T.primary, cursor:"pointer", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:0 }}>✕ сбросить</button>
+                <button onClick={() => setFilterDate(null)} style={{ background:"none", border:"none", color:T.primary, cursor:"pointer", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:0 }}>? сбросить</button>
               </div>
             )}
           </div>
@@ -1443,7 +1282,7 @@ export default function App() {
               <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>{ev.title}</div>
               <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:10 }}>
                 <div style={{ fontSize:13, color:T.mid, display:"inline-flex", alignItems:"center", gap:5 }}><CalendarIcon size={13} /> {fmtDate(ev.date)}</div>
-                {ev.location && <div style={{ fontSize:13, color:T.mid }}>📍 {ev.location}</div>}
+                {ev.location && <div style={{ fontSize:13, color:T.mid }}>?? {ev.location}</div>}
               </div>
               {isEvExp && ev.location && (
                 <div style={{ display:"flex", gap:8, marginBottom:10 }}>
@@ -1479,7 +1318,7 @@ export default function App() {
                     <ViewIcon size={13} /> {ev.views || 0}
                   </span>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:liked[`event-${ev.id}`]?"#E74C3C":T.mid }}><HeartIcon active={!!liked[`event-${ev.id}`]} size={14} /> {ev.likes}</span>
-                  <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
+                  <span style={{ fontSize:10, color:isEvExp?T.primary:T.light, transform:isEvExp?"rotate(180deg)":"", transition:"0.3s" }}>Ў</span>
                 </div>
               </div>
             </div>
@@ -1515,7 +1354,7 @@ export default function App() {
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
-          <button onClick={() => { openAddEventForm(); setNewEvent((prev) => ({ ...prev, cat: selEC?.id || "" })); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
+          <button onClick={() => { openAddEventForm(); setNewEvent((prev) => ({ ...prev, cat: selEC?.id || "" })); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>+ Добавить событие</button>
         </div>)}
 
         {/* ADD EVENT MODAL */}
@@ -1624,7 +1463,7 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => { openAddHousingForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить жильё</button>
+          <button onClick={() => { openAddHousingForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>+ Добавить жильё</button>
 
         </div>)}
 
@@ -1636,7 +1475,7 @@ export default function App() {
           return (
             <div>
               <div style={{ position:"relative", height:"calc(100vh - 122px)", overflowY:"auto", borderRadius:18, border:`1px solid ${T.border}`, background:"transparent", boxShadow:T.sh }}>
-                <button onClick={() => setScr("housing")} style={{ position:"sticky", top:10, left:10, zIndex:4, margin:10, width:44, height:44, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.92)", color:"#222", fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }} title="Закрыть">×</button>
+                <button onClick={() => setScr("housing")} style={{ position:"sticky", top:10, left:10, zIndex:4, margin:10, width:44, height:44, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.92)", color:"#222", fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }} title="Закрыть">?</button>
                 {galleryPhotos.length ? (
                   <div style={{ marginTop:-64 }}>
                     {galleryPhotos.map((src, i) => (
@@ -1795,6 +1634,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
