@@ -192,7 +192,7 @@ export function usePlacesMap({
     return () => {
       disposed = true;
     };
-  }, [showMapModal, mapLoading, mapPlaces, selectedMapPlace, selD, ensureGoogleMapsApi, setMapError, setRouteInfo, setRouteLoading, setSelectedMapPlace]);
+  }, [showMapModal, mapLoading, mapPlaces, selD, ensureGoogleMapsApi, setMapError, setRouteInfo, setRouteLoading, setSelectedMapPlace]);
 
   useEffect(() => {
     if (showMapModal) return;

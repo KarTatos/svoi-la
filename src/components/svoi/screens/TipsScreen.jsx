@@ -15,12 +15,10 @@ export default function TipsScreen({
   openAddTipForm,
   expTip,
   setExpTip,
-  trackCardView,
   liked,
   favorites,
   toggleFavorite,
   StarIcon,
-  ViewIcon,
   HeartIcon,
   ShareIcon,
   pl,
@@ -113,7 +111,7 @@ export default function TipsScreen({
             const isF = favorites[`tip-${tip.id}`];
             return (
               <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-                <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); if (nextOpen) trackCardView("tip", tip); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
+                <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
                   <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
                   <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
                   {isE && tip.photos?.length > 0 && (
@@ -134,7 +132,6 @@ export default function TipsScreen({
                       >
                         <StarIcon active={!!isF} size={14} />
                       </button>
-                      <span><ViewIcon size={13} /> {tip.views || 0}</span>
                       <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
                       <span>💬 {tip.comments.length}</span>
                       <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
@@ -146,7 +143,6 @@ export default function TipsScreen({
                     <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
                       <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
                       <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
-                      <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {tip.views || 0}</span>
                       <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
                       <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
                     </div>
