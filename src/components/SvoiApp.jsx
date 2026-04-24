@@ -1,8 +1,9 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signOut, getUser, addSupportRequest as dbAddSupportRequest, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { addSupportRequest as dbAddSupportRequest, getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { useAuth } from "../hooks/useAuth";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -61,8 +62,7 @@ export default function App() {
   const [places, setPlaces] = useState([]);
   const [tips, setTips] = useState([]);
   const [housing, setHousing] = useState([]);
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
+  const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth([ADMIN_EMAIL]);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTip, setShowAddTip] = useState(false);
   const [np, setNp] = useState({ name:"", cat:"", district:"", address:"", tip:"" });
@@ -125,7 +125,6 @@ export default function App() {
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
-  const isAdmin = (user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
   const canManageByOwnership = (itemUserId, itemAuthorName) => {
     if (!user) return false;
     if (isAdmin) return true;
@@ -436,23 +435,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    let canceled = false;
-    async function init() {
-      setAuthReady(false);
-      const u = await getUser();
-      if (canceled) return;
-      if (u) {
-        setUser({ id:u.id, name:u.user_metadata?.full_name||u.email||"Пользователь", email:u.email, avatar:"👤", avatarUrl:u.user_metadata?.avatar_url });
-      } else {
-        setUser(null);
-        setLiked({});
-      }
-      await loadAllData(u || null);
-      if (!canceled) setAuthReady(true);
-    }
-    init();
-    return () => { canceled = true; };
-  }, []);
+    if (!authReady) return;
+    if (!user) setLiked({});
+    loadAllData(user || null);
+  }, [authReady, user?.id]);
 
   useEffect(() => {
     const scheduleReload = () => {
@@ -1536,10 +1522,10 @@ export default function App() {
     finally { setTyping(false); }
   };
   const handleLogin = async () => {
-    const { error } = await signInWithGoogle();
+    const { error } = await signIn();
     if (error) console.error("Login error:", error);
   };
-  const handleLogout = async () => { await signOut(); setUser(null); setLiked({}); setFavorites({}); };
+  const handleLogout = async () => { await authSignOut(); setLiked({}); setFavorites({}); };
   const handleAddPlace = async () => {
     if (!np.name || !np.cat || !np.tip || !user) return;
     const selectedDistrictId = np.district || selD?.id;
