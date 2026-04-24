@@ -6,6 +6,7 @@ import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVIC
 import { useAuth } from "../hooks/useAuth";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { usePlaceForm } from "../hooks/usePlaceForm";
+import { useTipForm } from "../hooks/useTipForm";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -19,6 +20,7 @@ import PlacesDistrictsScreen from "./svoi/screens/PlacesDistrictsScreen";
 import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
 import PlaceFormModal from "./svoi/forms/PlaceFormModal";
+import TipFormModal from "./svoi/forms/TipFormModal";
 import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
 import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
@@ -66,10 +68,6 @@ export default function App() {
   const [tips, setTips] = useState([]);
   const [housing, setHousing] = useState([]);
   const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth([ADMIN_EMAIL]);
-  const [showAddTip, setShowAddTip] = useState(false);
-  const [newTip, setNewTip] = useState({ title:"", text:"" });
-  const [newTipPhotos, setNewTipPhotos] = useState([]);
-  const [editingTip, setEditingTip] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -177,6 +175,40 @@ export default function App() {
     openAddForm,
     handlePhotos,
   } = placeForm;
+  const tipForm = useTipForm({
+    user,
+    selTC,
+    tips,
+    canManageTip,
+    setTips,
+    showComments,
+    setShowComments,
+    exp,
+    setExp,
+    dbAddTip,
+    dbUpdateTip,
+    dbDeleteTip,
+    uploadPhoto,
+    limitCardText,
+    encodeRichText,
+    onRequireAuth: () => handleLogin(),
+  });
+  const {
+    showAddTip,
+    setShowAddTip,
+    newTip,
+    setNewTip,
+    newTipPhotos,
+    setNewTipPhotos,
+    editingTip,
+    setEditingTip,
+    resetTipForm,
+    openAddTipForm,
+    handleTipPhotos,
+    startEditTip,
+    handleDeleteTip,
+    handleAddTip,
+  } = tipForm;
 
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
@@ -506,7 +538,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); setShowAddTip(false); setShowAddEvent(false); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setEditingTip(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1579,103 +1611,6 @@ export default function App() {
     if (error) console.error("Login error:", error);
   };
   const handleLogout = async () => { await authSignOut(); setLiked({}); setFavorites({}); };
-  const handleTipPhotos = (e) => {
-    const files = Array.from(e.target.files).slice(0, 3);
-    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
-    setNewTipPhotos(prev => [...prev, ...newFiles].slice(0, 3));
-  };
-  const handleEventPhotos = (e) => {
-    const files = Array.from(e.target.files).slice(0, 3);
-    const newFiles = files.map(f => ({ file: f, name: f.name, preview: URL.createObjectURL(f) }));
-    setNewEventPhotos(prev => [...prev, ...newFiles].slice(0, 3));
-  };
-  const startEditEvent = (ev) => {
-    if (!canManageEvent(ev)) {
-      alert("Редактировать событие может только автор или админ.");
-      return;
-    }
-    setEditingEvent(ev);
-    setNewEvent({
-      title: ev.title || "",
-      date: ev.date ? new Date(ev.date).toISOString().slice(0,16) : "",
-      location: ev.location || "",
-      desc: ev.desc || "",
-      website: ev.website || "",
-      cat: ev.cat || "",
-    });
-    setNewEventPhotos((ev.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setAddrValidEvent(!!(ev.location || "").trim());
-    setAddrOptionsEvent([]);
-    setShowAddEvent(true);
-  };
-  const handleDeleteEvent = async (eventId) => {
-    const item = events.find((e) => e.id === eventId);
-    if (!canManageEvent(item)) {
-      alert("Удалять событие может только автор или админ.");
-      return;
-    }
-    if (!window.confirm("Удалить событие?")) return;
-    const { error } = await dbDeleteEvent(eventId);
-    if (error) {
-      alert(error.message || "Не удалось удалить событие");
-      return;
-    }
-    setEvents(prev => prev.filter(e => e.id !== eventId));
-    setShowAddEvent(false);
-    setEditingEvent(null);
-    setExp(null);
-  };
-  const startEditTip = (tip) => {
-    if (!canManageTip(tip)) {
-      alert("Редактировать совет может только автор или админ.");
-      return;
-    }
-    setEditingTip(tip);
-    setNewTip({ title: tip.title || "", text: tip.text || "" });
-    setNewTipPhotos((tip.photos || []).filter(ph => typeof ph === "string" && ph.startsWith("http")).map((ph) => ({ name:"existing", preview:ph })));
-    setShowAddTip(true);
-  };
-  const handleDeleteTip = async (tipId) => {
-    const item = tips.find((t) => t.id === tipId);
-    if (!canManageTip(item)) {
-      alert("Удалять совет может только автор или админ.");
-      return;
-    }
-    if (!window.confirm("Удалить совет?")) return;
-    const { error } = await dbDeleteTip(tipId);
-    if (error) {
-      alert(error.message || "Не удалось удалить совет");
-      return;
-    }
-    setTips(prev => prev.filter(t => t.id !== tipId));
-    setShowAddTip(false);
-    setEditingTip(null);
-    if (showComments === `tip-${tipId}`) setShowComments(null);
-    if (exp === `tip-${tipId}`) setExp(null);
-  };
-  const handleAddTip = async () => {
-    if (!newTip.title || !newTip.text || !user || !selTC) return;
-    const safeTipText = limitCardText(newTip.text).trim();
-    const uploaded = [];
-    for (const p of newTipPhotos) {
-      if (p.file) {
-        const url = await uploadPhoto(p.file);
-        if (url) uploaded.push(url);
-      } else if (p.preview && p.preview.startsWith("http")) {
-        uploaded.push(p.preview);
-      }
-    }
-    const dbData = { category:selTC.id, title:newTip.title, text:encodeRichText(safeTipText, uploaded), author:user.name, user_id:user.id };
-    if (editingTip) {
-      await dbUpdateTip(editingTip.id, dbData);
-      setTips(prev => prev.map(t => t.id === editingTip.id ? { ...t, cat:selTC.id, title:newTip.title, text:safeTipText, photos:uploaded } : t));
-    } else {
-      const { data } = await dbAddTip(dbData);
-      const newId = data?.[0]?.id || Date.now();
-      setTips(prev => [{ id:newId, cat:selTC.id, author:user.name, userId:user.id, title:newTip.title, text:safeTipText, photos:uploaded, likes:0, views:0, comments:[], fromDB:true }, ...prev]);
-    }
-    setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(false); setEditingTip(null);
-  };
   const handleAddComment = async (tipId) => {
     if (!newComment.trim() || !user) return;
     const { data } = await dbAddComment({ item_id:tipId, item_type:"tip", author:user.name, user_id:user.id, text:newComment.trim() });
@@ -2671,7 +2606,7 @@ export default function App() {
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selTC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selTC.desc}</p></div>
             </div>
             <button
-              onClick={() => { if (!user) {handleLogin();return;} setEditingTip(null); setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(true); }}
+              onClick={openAddTipForm}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
               title="Добавить"
             >
@@ -2729,37 +2664,31 @@ export default function App() {
               </div>)}
             </div>
           ); })}
-          <button onClick={() => { if (!user) {handleLogin();return;} setEditingTip(null); setNewTip({ title:"", text:"" }); setNewTipPhotos([]); setShowAddTip(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
+          <button onClick={openAddTipForm} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
         </div>)}
 
         {/* ADD TIP MODAL */}
-        {showAddTip && selTC && (<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={()=>{setShowAddTip(false); setNewTipPhotos([]); setEditingTip(null);}}>
-          <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
-            <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{selTC.icon} {editingTip ? "Редактировать совет" : "Новый совет"} · {selTC.title}</h3>
-            <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Заголовок *</label>
-            <input value={newTip.title} onChange={e=>setNewTip({...newTip,title:e.target.value})} placeholder="О чём совет?" style={{ ...iS, marginBottom:14 }} />
-            <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Текст *</label>
-            <textarea value={newTip.text} maxLength={CARD_TEXT_MAX} onChange={e=>setNewTip({...newTip,text:e.target.value.slice(0, CARD_TEXT_MAX)})} placeholder="Поделитесь опытом..." style={{ ...iS, minHeight:120, resize:"vertical", marginBottom:6 }} />
-            <div style={{ fontSize:11, color:T.light, marginBottom:14, textAlign:"right" }}>{newTip.text.length}/{CARD_TEXT_MAX}</div>
-            <input ref={tipFileRef} type="file" accept="image/*" multiple onChange={handleTipPhotos} style={{ display:"none" }} />
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
-              {newTipPhotos.map((p,i) => (
-                <div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
-                  <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-                  <button onClick={()=>setNewTipPhotos(pr=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button>
-                </div>
-              ))}
-              {newTipPhotos.length < 3 && <button onClick={()=>tipFileRef.current?.click()} style={{ padding:"6px 14px", background:T.bg, border:`1.5px dashed ${T.border}`, borderRadius:8, color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>＋ Фото (до 3)</button>}
-            </div>
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={()=>{setShowAddTip(false); setNewTipPhotos([]); setEditingTip(null);}} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-              {editingTip && canManageTip(editingTip) && <button onClick={()=>handleDeleteTip(editingTip.id)} style={{ ...pl(false), flex:1, padding:14, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>Удалить</button>}
-              <button onClick={handleAddTip} disabled={!newTip.title||!newTip.text} style={{ ...pl(true), flex:2, padding:14, opacity:(!newTip.title||!newTip.text)?0.5:1 }}>{editingTip ? "Сохранить" : "Опубликовать"}</button>
-            </div>
-          </div>
-        </div>)}
-
+        <TipFormModal
+          showAddTip={showAddTip}
+          selTC={selTC}
+          setShowAddTip={setShowAddTip}
+          setNewTipPhotos={setNewTipPhotos}
+          setEditingTip={setEditingTip}
+          cd={cd}
+          T={T}
+          editingTip={editingTip}
+          newTip={newTip}
+          setNewTip={setNewTip}
+          iS={iS}
+          CARD_TEXT_MAX={CARD_TEXT_MAX}
+          tipFileRef={tipFileRef}
+          handleTipPhotos={handleTipPhotos}
+          newTipPhotos={newTipPhotos}
+          pl={pl}
+          canManageTip={canManageTip}
+          handleDeleteTip={handleDeleteTip}
+          handleAddTip={handleAddTip}
+        />
         {/* EVENTS */}
         {scr==="events" && !selEC && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
@@ -3402,6 +3331,9 @@ export default function App() {
     </div>
   );
 }
+
+
+
 
 
 
