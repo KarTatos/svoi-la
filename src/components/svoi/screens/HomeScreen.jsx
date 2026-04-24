@@ -29,6 +29,8 @@
   };
 
   const weatherKind = getWeatherKind();
+  const currentHour = new Date().getHours();
+  const isWeatherNight = currentHour >= 19 || currentHour < 6;
 
   const formatWeatherTemp = () => {
     const raw = String(profileWeather?.temp || "").trim();
@@ -75,9 +77,12 @@
 
   return (
     <div>
-      <div className={`weather-card weather-${weatherKind}`} style={{ ...cd, marginBottom:14, padding:"12px 14px", background:"#FDF0E0", borderColor:"#F4E1CC", display:"flex", alignItems:"center", gap:12 }}>
-        <div className={`weather-icon-shell weather-${weatherKind}`} aria-label={getWeatherAriaLabel()} role="img" style={{ width:58, height:58, borderRadius:18, background:"#FFFFFF", border:"1px solid #F3E6D7", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 14px rgba(0,0,0,0.08)", flexShrink:0 }}>
+      <div className={`weather-card weather-${weatherKind} ${isWeatherNight ? "weather-night" : "weather-day"}`} style={{ ...cd, marginBottom:14, padding:"12px 14px", background:"#FDF0E0", borderColor:"#F4E1CC", display:"flex", alignItems:"center", gap:12 }}>
+        <div className={`weather-icon-shell weather-${weatherKind} ${isWeatherNight ? "weather-night" : "weather-day"}`} aria-label={getWeatherAriaLabel()} role="img" style={{ width:58, height:58, borderRadius:18, background:"#FFFFFF", border:"1px solid #F3E6D7", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 14px rgba(0,0,0,0.08)", flexShrink:0 }}>
           <span className="weather-sky" />
+          <span className="weather-star weather-star-1" />
+          <span className="weather-star weather-star-2" />
+          <span className="weather-star weather-star-3" />
           <span className="weather-sun-core" />
           <span className="weather-sun-ring" />
           <span className="weather-cloud weather-cloud-a" />
@@ -189,12 +194,35 @@
         .weather-card.weather-partly {
           background: linear-gradient(135deg, #FDF0E0 0%, #FFF5EA 100%) !important;
         }
+        .weather-card.weather-night {
+          background: linear-gradient(135deg, #182033 0%, #2E3856 100%) !important;
+          border-color: rgba(255,255,255,0.12) !important;
+        }
+        .weather-card.weather-night::before {
+          opacity: 0.6;
+          background:
+            radial-gradient(circle at 18% 20%, rgba(255,255,255,0.18), transparent 24%),
+            radial-gradient(circle at 86% 8%, rgba(158,181,255,0.22), transparent 34%);
+        }
+        .weather-card.weather-night::after {
+          opacity: 0.22;
+        }
+        .weather-card.weather-night > div:last-child > div:first-child {
+          color: #D7DEF3 !important;
+        }
+        .weather-card.weather-night > div:last-child > div:last-child {
+          color: #FFFFFF !important;
+        }
+        .weather-card.weather-night > div:last-child > div:last-child span {
+          color: #EEF3FF !important;
+        }
         .weather-icon-shell {
           position: relative;
           overflow: hidden;
           isolation: isolate;
         }
         .weather-sky,
+        .weather-star,
         .weather-sun-core,
         .weather-sun-ring,
         .weather-cloud,
@@ -212,6 +240,27 @@
           inset: 0;
           background: linear-gradient(160deg, #FFFFFF 0%, #FFF4E6 100%);
           z-index: 0;
+        }
+        .weather-night .weather-sky {
+          background:
+            radial-gradient(circle at 22% 24%, rgba(255,255,255,0.08), transparent 18%),
+            linear-gradient(160deg, #1A2440 0%, #313D64 100%);
+        }
+        .weather-star {
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.92);
+          opacity: 0;
+          z-index: 1;
+          box-shadow: 0 0 8px rgba(255,255,255,0.55);
+          animation: weatherStarTwinkle 2.8s ease-in-out infinite;
+        }
+        .weather-star-1 { left: 12px; top: 12px; animation-delay: 0s; }
+        .weather-star-2 { left: 43px; top: 15px; animation-delay: 0.7s; }
+        .weather-star-3 { left: 34px; top: 42px; animation-delay: 1.4s; }
+        .weather-night .weather-star {
+          opacity: 0.85;
         }
         .weather-rain .weather-sky,
         .weather-storm .weather-sky {
@@ -235,6 +284,20 @@
           opacity: 0;
           transform: scale(0.8);
         }
+        .weather-night .weather-sun-core {
+          background: radial-gradient(circle at 35% 32%, #FFFFFF 0%, #EAF0FF 45%, #AEBFF6 100%);
+          box-shadow: 0 0 18px rgba(185,203,255,0.38);
+        }
+        .weather-night .weather-sun-core::after {
+          content: "";
+          position: absolute;
+          width: 22px;
+          height: 22px;
+          right: -5px;
+          top: -3px;
+          border-radius: 50%;
+          background: #24304F;
+        }
         .weather-sun-ring {
           width: 38px;
           height: 38px;
@@ -245,6 +308,9 @@
           z-index: 1;
           opacity: 0;
         }
+        .weather-night .weather-sun-ring {
+          background: radial-gradient(circle, rgba(189,204,255,0.26), transparent 70%);
+        }
         .weather-cloud {
           width: 30px;
           height: 15px;
@@ -253,6 +319,10 @@
           box-shadow: 0 5px 12px rgba(77,91,124,0.12);
           z-index: 4;
           opacity: 0;
+        }
+        .weather-night .weather-cloud {
+          background: #AEB8D5;
+          box-shadow: 0 5px 14px rgba(7,11,24,0.28);
         }
         .weather-cloud::before,
         .weather-cloud::after {
@@ -293,6 +363,9 @@
           z-index: 5;
           opacity: 0;
         }
+        .weather-night .weather-rain {
+          background: #9FC3FF;
+        }
         .weather-rain-1 { left: 18px; top: 33px; animation-delay: 0s; }
         .weather-rain-2 { left: 25px; top: 36px; animation-delay: 0.18s; }
         .weather-rain-3 { left: 33px; top: 33px; animation-delay: 0.35s; }
@@ -305,6 +378,9 @@
           z-index: 5;
           opacity: 0;
         }
+        .weather-night .weather-snow-dot {
+          background: #DDE7FF;
+        }
         .weather-snow-1 { left: 18px; top: 32px; animation-delay: 0s; }
         .weather-snow-2 { left: 29px; top: 34px; animation-delay: 0.35s; }
         .weather-snow-3 { left: 39px; top: 31px; animation-delay: 0.7s; }
@@ -315,6 +391,10 @@
           background: #B7C0D2;
           z-index: 6;
           opacity: 0;
+        }
+        .weather-night .weather-fog-line,
+        .weather-night .weather-wind-line {
+          background: #CBD5F2;
         }
         .weather-fog-1 { width: 35px; left: 12px; top: 22px; animation-delay: 0s; }
         .weather-fog-2 { width: 27px; left: 18px; top: 31px; animation-delay: 0.24s; }
@@ -417,6 +497,10 @@
         @keyframes weatherSunRing {
           0%, 100% { transform: scale(0.9); opacity: 0.45; }
           50% { transform: scale(1.14); opacity: 0.75; }
+        }
+        @keyframes weatherStarTwinkle {
+          0%, 100% { transform: scale(0.65); opacity: 0.35; }
+          50% { transform: scale(1.1); opacity: 0.95; }
         }
         @keyframes weatherCloudFloat {
           0%, 100% { transform: translateX(0) translateY(0); }
