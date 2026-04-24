@@ -2107,16 +2107,30 @@ export default function App() {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
-    if (!showAdd && !showAddHousing && !showAddEvent) return;
+    if (!showAdd && !showAddTip && !showAddHousing && !showAddEvent && !showAddJob) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
+    const prevPosition = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+    const prevTouchAction = document.body.style.touchAction;
+    const scrollY = window.scrollY || 0;
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "none";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.touchAction = "none";
     return () => {
       document.body.style.overflow = prevOverflow;
       document.body.style.overscrollBehavior = prevOverscroll;
+      document.body.style.position = prevPosition;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevWidth;
+      document.body.style.touchAction = prevTouchAction;
+      window.scrollTo(0, scrollY);
     };
-  }, [showAdd, showAddHousing, showAddEvent]);
+  }, [showAdd, showAddTip, showAddHousing, showAddEvent, showAddJob]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -2957,8 +2971,8 @@ export default function App() {
 
         {/* ADD JOB MODAL */}
         {showAddJob && (
-          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }} onClick={() => { setShowAddJob(false); resetJobForm(jobsTab); }}>
-            <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={(e)=>e.stopPropagation()}>
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:10000, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none", pointerEvents:"auto", isolation:"isolate" }} onClick={() => { setShowAddJob(false); resetJobForm(jobsTab); }}>
+            <div style={{ ...cd, position:"relative", zIndex:1, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={(e)=>e.stopPropagation()}>
               <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
               <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 18px" }}>{newJob.type === "vacancy" ? "💼 Новая вакансия" : "🛠️ Новая услуга"}</h3>
               <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Тип *</label>
@@ -3154,12 +3168,12 @@ export default function App() {
         {/* ADD HOUSING MODAL */}
         {showAddHousing && (
           <div
-            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }}
+            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:10000, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none", pointerEvents:"auto", isolation:"isolate" }}
             onClick={()=>{ setShowAddHousing(false); setEditingHousing(null); setAddrOptionsHousing([]); setAddrValidHousing(false); }}
             onTouchMove={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
             onWheel={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
           >
-            <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ ...cd, position:"relative", zIndex:1, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
               <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
               <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 16px", display:"inline-flex", alignItems:"center", gap:8 }}><HomeIcon size={18} /> {editingHousing ? "Редактировать жильё" : "Новое жильё"}</h3>
 
