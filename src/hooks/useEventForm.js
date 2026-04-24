@@ -1,5 +1,17 @@
 ﻿import { useState } from "react";
 
+const toDatetimeLocalValue = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) return trimmed.slice(0, 16);
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 export function useEventForm({
   user,
   events,
@@ -60,7 +72,7 @@ export function useEventForm({
     setEditingEvent(ev);
     setNewEvent({
       title: ev.title || "",
-      date: ev.date ? new Date(ev.date).toISOString().slice(0, 16) : "",
+      date: toDatetimeLocalValue(ev.date),
       location: ev.location || "",
       desc: ev.desc || "",
       website: ev.website || "",
@@ -189,3 +201,4 @@ export function useEventForm({
     handleAddEvent,
   };
 }
+
