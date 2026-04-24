@@ -39,7 +39,7 @@ export function useEventForm({
       return;
     }
     setEditingEvent(null);
-    setNewEvent({ title: "", date: "", location: "", desc: "", website: "", cat: "" });
+    setNewEvent({ title: "", date: "", location: "", desc: "", website: "", cat: defaultCategoryId });
     setNewEventPhotos([]);
     setAddrValidEvent(false);
     setAddrOptionsEvent([]);
@@ -121,7 +121,11 @@ export function useEventForm({
       user_id: user.id,
     };
     if (editingEvent) {
-      await dbUpdateEvent(editingEvent.id, dbData);
+      const { error } = await dbUpdateEvent(editingEvent.id, dbData);
+      if (error) {
+        alert(error.message || "Не удалось сохранить событие");
+        return;
+      }
       setEvents((prev) =>
         prev.map((ev) =>
           ev.id === editingEvent.id
@@ -139,7 +143,11 @@ export function useEventForm({
         ),
       );
     } else {
-      const { data } = await dbAddEvent(dbData);
+      const { data, error } = await dbAddEvent(dbData);
+      if (error) {
+        alert(error.message || "Не удалось создать событие");
+        return;
+      }
       const newId = data?.[0]?.id || Date.now();
       setEvents((prev) => [
         {

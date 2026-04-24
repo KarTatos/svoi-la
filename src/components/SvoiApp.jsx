@@ -2107,7 +2107,7 @@ export default function App() {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
-    if (!showAddHousing && !showAddEvent) return;
+    if (!showAdd && !showAddHousing && !showAddEvent) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = "hidden";
@@ -2116,7 +2116,7 @@ export default function App() {
       document.body.style.overflow = prevOverflow;
       document.body.style.overscrollBehavior = prevOverscroll;
     };
-  }, [showAddHousing, showAddEvent]);
+  }, [showAdd, showAddHousing, showAddEvent]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {

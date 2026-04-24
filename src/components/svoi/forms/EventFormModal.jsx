@@ -32,6 +32,8 @@
     <div
       style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none" }}
       onClick={()=>{setShowAddEvent(false); setNewEventPhotos([]); setAddrOptionsEvent([]); setAddrValidEvent(false); setEditingEvent(null);}}
+      onTouchMove={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
+      onWheel={(e)=>{ if (e.target === e.currentTarget) e.preventDefault(); }}
     >
       <div style={{ ...cd, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={e=>e.stopPropagation()}>
         <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
@@ -46,7 +48,7 @@
         ) : (<>
           <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 20px" }}>{editingEvent ? "✏️ Редактировать событие" : "🎉 Новое событие"}</h3>
           <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Название *</label>
-          <input value={newEvent.title} onChange={e=>setNewEvent({...newEvent,title:e.target.value})} placeholder="Что за мероприятие?" style={{ ...iS, marginBottom:14 }} />
+          <input autoComplete="off" value={newEvent.title} onChange={e=>setNewEvent({...newEvent,title:e.target.value})} placeholder="Что за мероприятие?" style={{ ...iS, marginBottom:14 }} />
           <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Категория *</label>
           <select value={newEvent.cat} onChange={e=>setNewEvent({...newEvent,cat:e.target.value})} style={{ ...iS, marginBottom:14, appearance:"none", color:newEvent.cat?T.text:T.light }}>
             <option value="">Выберите</option>{EVENT_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
