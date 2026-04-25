@@ -366,22 +366,8 @@ export default function App() {
       try { localStorage.setItem('nav', JSON.stringify(state)); } catch {}
     }
   }, [scr, selD, selPC, selPlace, selU, selTC, selEC, selHousing, mt]);
-  // Restore navigation on mount
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('nav'));
-      if (saved?.scr) {
-        setScr(saved.scr);
-        if (saved.selDId) setSelD(DISTRICTS.find(d => d.id === saved.selDId) || null);
-        if (saved.selPCId) setSelPC(PLACE_CATS.find(c => c.id === saved.selPCId) || null);
-        if (saved.selPlaceId) setSelPlace({ id: saved.selPlaceId });
-        if (saved.selUId) setSelU(USCIS_CATS.find(c => c.id === saved.selUId) || null);
-        if (saved.selTCId) setSelTC(TIPS_CATS.find(c => c.id === saved.selTCId) || null);
-        if (saved.selECId) setSelEC(EVENT_CATS.find(c => c.id === saved.selECId) || null);
-        if (saved.selHousingId) setSelHousing({ id: saved.selHousingId });
-      }
-    } catch {}
-  }, []);
+  // Do not auto-restore old nav screen from localStorage on app start.
+  // It causes a visible jump away from home (weather seems to "disappear").
   useEffect(() => {
     const scheduleReload = () => {
       if (realtimeReloadTimerRef.current) clearTimeout(realtimeReloadTimerRef.current);
