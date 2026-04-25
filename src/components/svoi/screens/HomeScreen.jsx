@@ -1,4 +1,4 @@
-﻿export default function HomeScreen({
+export default function HomeScreen({
   T,
   cd,
   mt,
@@ -12,15 +12,13 @@
 }) {
   const chatSection = sections.find((s) => s.id === "chat-sec");
   const mainSections = sections.filter((s) => s.id !== "chat-sec");
-  const weatherPlace = (profileLocation || "Los Angeles").split(",")[0].trim().toUpperCase();
+
+  const weatherPlace = String(profileLocation || "Локация").split(",")[0].trim().toUpperCase();
   const weatherTextLc = String(profileWeather?.text || "").toLowerCase();
 
   const formatWeatherTemp = () => {
     const raw = String(profileWeather?.temp || "").trim();
-    const normalized = raw
-      .replace(/В°/g, "°")
-      .replace(/\s+/g, " ")
-      .trim();
+    const normalized = raw.replace(/В°/g, "°").replace(/\s+/g, " ").trim();
     const match = normalized.match(/(-?\d+(?:\.\d+)?).*?([CF])?/i);
     if (!match) return normalized || "--°";
 

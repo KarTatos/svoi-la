@@ -5,9 +5,23 @@ const WEATHER_CACHE_KEY = "la_profile_weather";
 const LOCATION_FALLBACK = "Локация";
 const WEATHER_FALLBACK = { temp: "--°", text: "погода" };
 
+function safeGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+}
+
 function readCachedWeather() {
   try {
-    const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+    const raw = safeGet(WEATHER_CACHE_KEY);
     if (!raw) return WEATHER_FALLBACK;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return WEATHER_FALLBACK;
@@ -23,8 +37,9 @@ function readCachedWeather() {
 export function useProfileWeather() {
   const [profileLocation, setProfileLocation] = useState(() => {
     if (typeof window === "undefined") return "Определяем локацию...";
-    return localStorage.getItem(LOCATION_CACHE_KEY) || "Определяем локацию...";
+    return safeGet(LOCATION_CACHE_KEY) || "Определяем локацию...";
   });
+
   const [profileWeather, setProfileWeather] = useState(() => {
     if (typeof window === "undefined") return WEATHER_FALLBACK;
     return readCachedWeather();
@@ -42,9 +57,7 @@ export function useProfileWeather() {
       if (canceled) return;
       const clean = String(value || "").trim() || LOCATION_FALLBACK;
       setProfileLocation(clean);
-      try {
-        localStorage.setItem(LOCATION_CACHE_KEY, clean);
-      } catch {}
+      safeSet(LOCATION_CACHE_KEY, clean);
     };
 
     const saveWeather = (weather) => {
@@ -54,9 +67,7 @@ export function useProfileWeather() {
         text: String(weather?.text || WEATHER_FALLBACK.text),
       };
       setProfileWeather(clean);
-      try {
-        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(clean));
-      } catch {}
+      safeSet(WEATHER_CACHE_KEY, JSON.stringify(clean));
     };
 
     const fetchWeatherAndLocation = async (lat, lng) => {
@@ -68,19 +79,23 @@ export function useProfileWeather() {
         const rel = points?.properties?.relativeLocation?.properties;
         const city = String(rel?.city || "").trim();
         const state = String(rel?.state || "").trim();
-        const locationLabel = city
-          ? (state ? `${city}, ${state}` : city)
-          : `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+        const locationLabel = city ? (state ? `${city}, ${state}` : city) : LOCATION_FALLBACK;
 
         const forecastUrl = points?.properties?.forecast;
-        if (!forecastUrl) throw new Error("forecast_url_missing");
+        if (!forecastUrl) {
+          return { locationLabel, weather: WEATHER_FALLBACK };
+        }
 
         const forecastRes = await fetch(forecastUrl);
-        if (!forecastRes.ok) throw new Error("forecast_failed");
+        if (!forecastRes.ok) {
+          return { locationLabel, weather: WEATHER_FALLBACK };
+        }
 
         const forecast = await forecastRes.json();
         const period = forecast?.properties?.periods?.[0];
-        if (!period) throw new Error("forecast_empty");
+        if (!period) {
+          return { locationLabel, weather: WEATHER_FALLBACK };
+        }
 
         return {
           locationLabel,
@@ -98,22 +113,29 @@ export function useProfileWeather() {
       navigator.geolocation.getCurrentPosition(
         async ({ coords }) => {
           const payload = await fetchWeatherAndLocation(coords.latitude, coords.longitude);
-          if (payload?.locationLabel) saveLocation(payload.locationLabel);
-          if (payload?.weather) saveWeather(payload.weather);
+          if (!payload) {
+            saveLocation(safeGet(LOCATION_CACHE_KEY) || LOCATION_FALLBACK);
+            saveWeather(readCachedWeather());
+            return;
+          }
+          saveLocation(payload.locationLabel);
+          saveWeather(payload.weather);
         },
         () => {
-          saveLocation(localStorage.getItem(LOCATION_CACHE_KEY) || LOCATION_FALLBACK);
+          saveLocation(safeGet(LOCATION_CACHE_KEY) || LOCATION_FALLBACK);
+          saveWeather(readCachedWeather());
         },
         { enableHighAccuracy: false, timeout: 6000, maximumAge: 5 * 60 * 1000 }
       );
     };
 
     loadGeoData();
+
     const onVisible = () => {
       if (document.visibilityState === "visible") loadGeoData();
     };
-    document.addEventListener("visibilitychange", onVisible);
 
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       canceled = true;
       document.removeEventListener("visibilitychange", onVisible);
