@@ -17,12 +17,16 @@
 
   const formatWeatherTemp = () => {
     const raw = String(profileWeather?.temp || "").trim();
-    const match = raw.match(/(-?\d+(?:\.\d+)?)\s*°?\s*([CF])?/i);
-    if (!match) return raw || "--°";
+    const normalized = raw
+      .replace(/В°/g, "°")
+      .replace(/\s+/g, " ")
+      .trim();
+    const match = normalized.match(/(-?\d+(?:\.\d+)?).*?([CF])?/i);
+    if (!match) return normalized || "--°";
 
     const value = Number(match[1]);
     const unit = String(match[2] || "").toUpperCase();
-    if (!Number.isFinite(value)) return raw || "--°";
+    if (!Number.isFinite(value)) return normalized || "--°";
 
     if (unit === "F") {
       const c = Math.round(((value - 32) * 5) / 9);
