@@ -323,6 +323,7 @@ export const SECTIONS = [
   { id:"events", icon:"🎉", title:"События", desc:"Мероприятия" },
   { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии", soon:true },
   { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
+  { id:"x-tile", icon:"X", title:"X", desc:"", soon:true },
   { id:"chat-sec", icon:"💬", title:"AI Чат", desc:"Помощник" },
 ];
 
