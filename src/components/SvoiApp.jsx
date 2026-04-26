@@ -8,6 +8,7 @@ import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useProfileWeather } from "../hooks/useProfileWeather";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
+import { useSessionState } from "../hooks/useSessionState";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -33,19 +34,18 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export default function App() {
-  const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
+  const [scr, setScr] = useSessionState("scr", "home", {
+    serialize: (value) => String(value || ""),
+    deserialize: (raw) => String(raw || ""),
+  });
   const [selU, setSelU] = useState(null);
-  const [selD, setSelD] = useState(() => { try { const d = sessionStorage.getItem('selD'); return d ? JSON.parse(d) : null; } catch { return null; } });
-  const [selPC, setSelPC] = useState(() => { try { const d = sessionStorage.getItem('selPC'); return d ? JSON.parse(d) : null; } catch { return null; } });
+  const [selD, setSelD] = useSessionState("selD", null);
+  const [selPC, setSelPC] = useSessionState("selPC", null);
   const [selPlace, setSelPlace] = useState(null);
   const [selTC, setSelTC] = useState(null);
   const [tipsSearchInput, setTipsSearchInput] = useState("");
   const [tipsSearchApplied, setTipsSearchApplied] = useState("");
   const [housingBedsFilter, setHousingBedsFilter] = useState("all");
-  // Save screen state on change
-  useEffect(() => { try { sessionStorage.setItem('scr', scr); } catch {} }, [scr]);
-  useEffect(() => { try { sessionStorage.setItem('selD', selD ? JSON.stringify(selD) : ''); } catch {} }, [selD]);
-  useEffect(() => { try { sessionStorage.setItem('selPC', selPC ? JSON.stringify(selPC) : ''); } catch {} }, [selPC]);
   const [exp, setExp] = useState(null);
   const [expF, setExpF] = useState(null);
   const [expTip, setExpTip] = useState(null);
