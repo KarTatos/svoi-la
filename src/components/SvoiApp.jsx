@@ -9,6 +9,7 @@ import { useProfileWeather } from "../hooks/useProfileWeather";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
 import { useSessionState } from "../hooks/useSessionState";
+import { useSvoiRouter } from "../hooks/useSvoiRouter";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -34,10 +35,6 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export default function App() {
-  const [scr, setScr] = useSessionState("scr", "home", {
-    serialize: (value) => String(value || ""),
-    deserialize: (raw) => String(raw || ""),
-  });
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useSessionState("selD", null);
   const [selPC, setSelPC] = useSessionState("selPC", null);
@@ -119,6 +116,13 @@ export default function App() {
   const { profileLocation, profileWeather } = useProfileWeather();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
+  const { scr, setScr } = useSvoiRouter({
+    user,
+    selPlace,
+    places,
+    selHousing,
+    housing,
+  });
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
   const supportRequests = useSupportRequests({ user });
@@ -2059,21 +2063,6 @@ export default function App() {
     { bg: "#FCEAEA", text: "#17324D" },
   ];
 
-  useEffect(() => {
-    if (scr === "place-item" && !activePlace) setScr("places-cat");
-  }, [scr, activePlace]);
-  useEffect(() => {
-    if (scr === "profile" && !user) setScr("home");
-  }, [scr, user]);
-  useEffect(() => {
-    if (scr === "my-places" && !user) setScr("home");
-  }, [scr, user]);
-  useEffect(() => {
-    if (scr === "support" && !user) setScr("home");
-  }, [scr, user]);
-  useEffect(() => {
-    if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
-  }, [scr, activeHousing, housing.length]);
   useEffect(() => {
     if (!showAdd && !showAddTip && !showAddEvent && !showAddHousing && !showAddJob) return;
     const prevOverflow = document.body.style.overflow;
