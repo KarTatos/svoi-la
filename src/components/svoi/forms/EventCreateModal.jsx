@@ -20,6 +20,7 @@ export default function EventCreateModal({
   const [uploading, setUploading] = useState(false);
   const [addrLoading, setAddrLoading] = useState(false);
   const [addrOptions, setAddrOptions] = useState([]);
+  const [addrChosen, setAddrChosen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -31,6 +32,7 @@ export default function EventCreateModal({
     setUploading(false);
     setAddrLoading(false);
     setAddrOptions([]);
+    setAddrChosen(false);
   }, [open]);
 
   const canSubmit = useMemo(() => {
@@ -53,6 +55,11 @@ export default function EventCreateModal({
 
   useEffect(() => {
     if (!open) return;
+    if (addrChosen) {
+      setAddrLoading(false);
+      setAddrOptions([]);
+      return;
+    }
     const q = (location || "").trim();
     if (q.length < 3) {
       setAddrLoading(false);
@@ -74,7 +81,7 @@ export default function EventCreateModal({
       canceled = true;
       clearTimeout(t);
     };
-  }, [open, location, fetchAddressSuggestions]);
+  }, [open, location, fetchAddressSuggestions, addrChosen]);
 
   const submit = () => {
     if (!canSubmit) return;
@@ -148,7 +155,10 @@ export default function EventCreateModal({
         <div style={{ position: "relative", marginBottom: 12 }}>
           <input
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              if (addrChosen) setAddrChosen(false);
+            }}
             placeholder="Адрес или место проведения"
             style={{ width: "100%", padding: "13px 14px", borderRadius: 14, border: `1px solid ${palette.border}`, fontFamily: "inherit", fontSize: 16, boxSizing: "border-box" }}
           />
@@ -162,6 +172,7 @@ export default function EventCreateModal({
                   key={`${opt.value}-${idx}`}
                   onClick={() => {
                     setLocation(opt.value);
+                    setAddrChosen(true);
                     setAddrOptions([]);
                     setAddrLoading(false);
                   }}
