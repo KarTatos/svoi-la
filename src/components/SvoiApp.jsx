@@ -2867,106 +2867,14 @@ export default function App() {
           <button onClick={goHome} style={bk}>← Главная</button>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
             <h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>💼 Работа в LA</h2>
-            <button
-              onClick={() => { if (!user) { handleLogin(); return; } resetJobForm(jobsTab); setShowAddJob(true); }}
-              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
-              title="Добавить"
-            >
-              +
-            </button>
           </div>
-
-          <div style={{ ...cd, padding:10, marginBottom:12, boxShadow:"none", border:`1px solid ${T.border}` }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-              <button onClick={()=>setJobsTab("vacancy")} style={{ ...pl(jobsTab==="vacancy"), padding:"10px 10px", fontSize:13 }}>Вакансии</button>
-              <button onClick={()=>setJobsTab("service")} style={{ ...pl(jobsTab==="service"), padding:"10px 10px", fontSize:13 }}>Услуги</button>
+          <div style={{ ...cd, padding:"22px 16px", border:`1px solid ${T.border}`, boxShadow:"none" }}>
+            <div style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:8 }}>Раздел очищен</div>
+            <div style={{ fontSize:13, color:T.mid, lineHeight:1.5 }}>
+              Внутренности раздела “Работа” полностью убраны. Дальше можем собрать новую структуру с нуля.
             </div>
-          </div>
-
-          <div style={{ display:"flex", flexDirection:"column", gap:10, paddingBottom:70 }}>
-            {jobsFiltered.map((item) => {
-              const canManageJob = canManageByOwnership(item.userId, item.author);
-              return (
-                <div key={item.id} style={{ ...cd, padding:"14px 14px 12px", border:`1px solid ${T.borderL}` }}>
-                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
-                    <div style={{ minWidth:0, flex:1 }}>
-                      <div style={{ fontSize:16, fontWeight:700, lineHeight:1.3, marginBottom:6 }}>{item.title}</div>
-                      <div style={{ fontSize:13, color:T.mid, display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
-                        <span>📍 {item.district}</span>
-                        <span>•</span>
-                        <span style={{ color:T.primary, fontWeight:700 }}>{item.price}</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize:11, color:T.light, whiteSpace:"nowrap" }}>{formatJobDate(item.createdAt)}</div>
-                  </div>
-                  <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginBottom:8 }}>
-                    {!!item.category && <span style={{ fontSize:11, background:"#F7F7FB", color:T.mid, padding:"4px 8px", borderRadius:999 }}>{item.category}</span>}
-                    {item.type === "vacancy" && !!item.schedule && <span style={{ fontSize:11, background:"#F7F7FB", color:T.mid, padding:"4px 8px", borderRadius:999 }}>{item.schedule === "full-time" ? "Full-time" : "Part-time"}</span>}
-                    <span style={{ fontSize:11, background:T.primaryLight, color:T.primary, padding:"4px 8px", borderRadius:999 }}>{item.type === "vacancy" ? "Вакансия" : "Услуга"}</span>
-                  </div>
-                  <div style={{ fontSize:13, lineHeight:1.5, color:T.mid, marginBottom:10 }}>{item.desc}</div>
-                  <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-                    {!!item.telegram && <button onClick={() => openTelegramContact(item.telegram)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Telegram</button>}
-                    {!!item.phone && <button onClick={() => openMessageContact(item.phone)} style={{ ...pl(false), flex:1, padding:"8px 10px", fontSize:12 }}>Сообщение</button>}
-                  </div>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
-                    <span style={{ fontSize:11, color:T.light }}>от {item.author || "Пользователь"}</span>
-                    {canManageJob && (
-                      <button onClick={() => setJobsItems((prev) => prev.filter((x) => x.id !== item.id))} style={{ ...pl(false), padding:"6px 12px", fontSize:11, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>
-                        Удалить
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {jobsFiltered.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет объявлений в этой вкладке</p>}
-            <button onClick={() => { if (!user) { handleLogin(); return; } resetJobForm(jobsTab); setShowAddJob(true); }} style={{ ...cd, width:"100%", marginTop:2, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить {jobsTab === "vacancy" ? "вакансию" : "услугу"}</button>
           </div>
         </div>)}
-
-        {/* ADD JOB MODAL */}
-        {showAddJob && (
-          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:10000, display:"flex", alignItems:"flex-end", justifyContent:"center", touchAction:"none", pointerEvents:"auto", isolation:"isolate" }} onClick={() => { setShowAddJob(false); resetJobForm(jobsTab); }}>
-            <div style={{ ...cd, position:"relative", zIndex:1, width:"100%", maxWidth:480, borderRadius:"24px 24px 0 0", padding:"24px 20px 32px", maxHeight:"90vh", overflowY:"auto", overscrollBehavior:"contain", touchAction:"pan-y", WebkitOverflowScrolling:"touch" }} onClick={(e)=>e.stopPropagation()}>
-              <div style={{ width:40, height:4, borderRadius:2, background:T.border, margin:"0 auto 20px" }} />
-              <h3 style={{ fontSize:18, fontWeight:700, margin:"0 0 18px" }}>{newJob.type === "vacancy" ? "💼 Новая вакансия" : "🛠️ Новая услуга"}</h3>
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Тип *</label>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-                <button onClick={() => setNewJob((s) => ({ ...s, type:"vacancy" }))} style={{ ...pl(newJob.type === "vacancy"), padding:"10px 10px", fontSize:12 }}>Вакансия</button>
-                <button onClick={() => setNewJob((s) => ({ ...s, type:"service" }))} style={{ ...pl(newJob.type === "service"), padding:"10px 10px", fontSize:12 }}>Услуга</button>
-              </div>
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Заголовок *</label>
-              <input value={newJob.title} onChange={(e)=>setNewJob((s)=>({ ...s, title:e.target.value }))} placeholder={newJob.type === "vacancy" ? "Например: Нужен мастер маникюра" : "Например: Ремонт и сборка мебели"} style={{ ...iS, marginBottom:14 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Район *</label>
-              <input value={newJob.district} onChange={(e)=>setNewJob((s)=>({ ...s, district:e.target.value }))} placeholder="Downtown LA" style={{ ...iS, marginBottom:14 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>{newJob.type === "vacancy" ? "Оплата *" : "Цена от *"}</label>
-              <input value={newJob.price} onChange={(e)=>setNewJob((s)=>({ ...s, price:e.target.value }))} placeholder={newJob.type === "vacancy" ? "$20/час или $4000/мес" : "от $100"} style={{ ...iS, marginBottom:14 }} />
-              {newJob.type === "vacancy" && (
-                <>
-                  <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>График</label>
-                  <select value={newJob.schedule} onChange={(e)=>setNewJob((s)=>({ ...s, schedule:e.target.value }))} style={{ ...iS, marginBottom:14 }}>
-                    <option value="full-time">Full-time</option>
-                    <option value="part-time">Part-time</option>
-                  </select>
-                </>
-              )}
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>{newJob.type === "vacancy" ? "Сфера" : "Категория"}</label>
-              <input value={newJob.category} onChange={(e)=>setNewJob((s)=>({ ...s, category:e.target.value }))} placeholder={newJob.type === "vacancy" ? "Общепит, склад, салон..." : "Клининг, ремонт, доставка..."} style={{ ...iS, marginBottom:14 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Описание *</label>
-              <textarea value={newJob.desc} maxLength={CARD_TEXT_MAX} onChange={(e)=>setNewJob((s)=>({ ...s, desc:e.target.value.slice(0, CARD_TEXT_MAX) }))} placeholder="Коротко опишите условия..." style={{ ...iS, minHeight:84, resize:"vertical", marginBottom:6 }} />
-              <div style={{ fontSize:11, color:T.light, marginBottom:12, textAlign:"right" }}>{newJob.desc.length}/{CARD_TEXT_MAX}</div>
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Telegram</label>
-              <input value={newJob.telegram} onChange={(e)=>setNewJob((s)=>({ ...s, telegram:e.target.value }))} placeholder="@username" style={{ ...iS, marginBottom:12 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:T.mid, marginBottom:6, display:"block" }}>Номер телефона</label>
-              <input value={newJob.phone} onChange={(e)=>setNewJob((s)=>({ ...s, phone:e.target.value }))} placeholder="+1..." style={{ ...iS, marginBottom:18 }} />
-              <div style={{ display:"flex", gap:10 }}>
-                <button onClick={() => { setShowAddJob(false); resetJobForm(jobsTab); }} style={{ ...pl(false), flex:1, padding:14 }}>Отмена</button>
-                <button onClick={handleAddJob} disabled={!newJob.title.trim() || !newJob.district.trim() || !newJob.price.trim() || !newJob.desc.trim()} style={{ ...pl(true), flex:2, padding:14, opacity:(!newJob.title.trim() || !newJob.district.trim() || !newJob.price.trim() || !newJob.desc.trim()) ? 0.5 : 1 }}>Опубликовать</button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* HOUSING */}
         {scr==="housing" && (<div>
