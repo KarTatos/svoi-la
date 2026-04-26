@@ -240,6 +240,7 @@ export default function App() {
     editingEvent,
     setEditingEvent,
     resetEventForm,
+    openAddEventForm,
     handleEventPhotos,
     startEditEvent,
     handleDeleteEvent,
@@ -2680,6 +2681,13 @@ export default function App() {
               <div style={{ width:48, height:48, borderRadius:14, background:`${selEC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selEC.icon}</div>
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
             </div>
+            <button
+              onClick={openAddEventForm}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить"
+            >
+              +
+            </button>
           </div>
           {/* Date filter bar */}
           <div style={{ marginBottom:16 }}>
@@ -2806,6 +2814,7 @@ export default function App() {
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
+          <button onClick={openAddEventForm} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
 
         {/* ADD EVENT MODAL */}
