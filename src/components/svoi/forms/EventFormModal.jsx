@@ -36,7 +36,14 @@ export default function EventFormModal({
     setEditingEvent(null);
   };
 
-  const canSubmit = !!(newEvent.title && newEvent.date && newEvent.desc && newEvent.cat && newEvent.location.trim() && addrValidEvent);
+  const canSubmit = !!(
+    newEvent.title &&
+    newEvent.date &&
+    newEvent.desc &&
+    newEvent.cat &&
+    newEvent.location.trim() &&
+    addrValidEvent
+  );
 
   return (
     <div
@@ -80,7 +87,9 @@ export default function EventFormModal({
       >
         <div style={{ padding: "16px 20px 12px", borderBottom: `1px solid ${T.borderL}`, background: T.card }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border, margin: "0 auto 12px" }} />
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{editingEvent ? "✏️ Редактировать событие" : "🎉 Новое событие"}</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+            {editingEvent ? "Редактировать событие" : "Новое событие"}
+          </h3>
         </div>
 
         {!user ? (
@@ -89,14 +98,27 @@ export default function EventFormModal({
             <button onClick={handleLogin} style={{ ...pl(true), padding: "14px 28px" }}>
               Войти через Google
             </button>
-            <div style={{ marginTop: 10, fontSize: 12, color: T.mid, background: T.bg, border: `1px solid ${T.borderL}`, borderRadius: 10, padding: "10px 12px", lineHeight: 1.45 }}>
-              Вход через Google безопасен: мы не видим ваш пароль Google. Сохраняются только имя, email и аватар для работы аккаунта.
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                color: T.mid,
+                background: T.bg,
+                border: `1px solid ${T.borderL}`,
+                borderRadius: 10,
+                padding: "10px 12px",
+                lineHeight: 1.45,
+              }}
+            >
+              Вход через Google безопасен: мы не видим ваш пароль Google. Сохраняются только имя, email и аватар.
             </div>
           </div>
         ) : (
           <>
             <div style={{ padding: "16px 20px 20px", overflowY: "auto", flex: 1, minHeight: 0 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>Название *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>
+                Название *
+              </label>
               <input
                 autoComplete="off"
                 value={newEvent.title}
@@ -105,7 +127,9 @@ export default function EventFormModal({
                 style={{ ...iS, marginBottom: 14 }}
               />
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>Категория *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>
+                Категория *
+              </label>
               <select
                 value={newEvent.cat}
                 onChange={(e) => setNewEvent({ ...newEvent, cat: e.target.value })}
@@ -119,7 +143,9 @@ export default function EventFormModal({
                 ))}
               </select>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>Дата и время *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>
+                Дата и время *
+              </label>
               <input
                 type="datetime-local"
                 value={newEvent.date}
@@ -127,7 +153,9 @@ export default function EventFormModal({
                 style={{ ...iS, marginBottom: 14 }}
               />
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>Место *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>
+                Место *
+              </label>
               <input
                 value={newEvent.location}
                 onChange={(e) => {
@@ -135,11 +163,27 @@ export default function EventFormModal({
                   setAddrValidEvent(false);
                 }}
                 placeholder="Адрес или название места"
-                style={{ ...iS, marginBottom: 6, borderColor: newEvent.location && !addrValidEvent ? "#f5b7b1" : T.border }}
+                style={{
+                  ...iS,
+                  marginBottom: 6,
+                  borderColor: newEvent.location && !addrValidEvent ? "#f5b7b1" : T.border,
+                }}
               />
-              {addrLoadingEvent && <div style={{ fontSize: 12, color: T.mid, marginBottom: 8 }}>Ищем место...</div>}
+              {addrLoadingEvent && (
+                <div style={{ fontSize: 12, color: T.mid, marginBottom: 8 }}>Ищем место...</div>
+              )}
               {!addrLoadingEvent && addrOptionsEvent.length > 0 && !addrValidEvent && (
-                <div style={{ marginBottom: 10, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", maxHeight: 180, overflowY: "auto", background: T.card }}>
+                <div
+                  style={{
+                    marginBottom: 10,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    maxHeight: 180,
+                    overflowY: "auto",
+                    background: T.card,
+                  }}
+                >
                   {addrOptionsEvent
                     .filter((opt) => opt && opt.value)
                     .map((opt, i) => (
@@ -153,7 +197,8 @@ export default function EventFormModal({
                           textAlign: "left",
                           padding: "10px 12px",
                           border: "none",
-                          borderBottom: i < addrOptionsEvent.length - 1 ? `1px solid ${T.borderL}` : "none",
+                          borderBottom:
+                            i < addrOptionsEvent.length - 1 ? `1px solid ${T.borderL}` : "none",
                           background: T.card,
                           cursor: "pointer",
                           fontFamily: "inherit",
@@ -166,13 +211,21 @@ export default function EventFormModal({
                     ))}
                 </div>
               )}
-              {newEvent.location && !addrValidEvent && <div style={{ fontSize: 12, color: "#E74C3C", marginBottom: 10 }}>Выберите реальное место из подсказок.</div>}
+              {newEvent.location && !addrValidEvent && (
+                <div style={{ fontSize: 12, color: "#E74C3C", marginBottom: 10 }}>
+                  Выберите реальное место из подсказок.
+                </div>
+              )}
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>Описание *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>
+                Описание *
+              </label>
               <textarea
                 value={newEvent.desc}
                 maxLength={CARD_TEXT_MAX}
-                onChange={(e) => setNewEvent({ ...newEvent, desc: e.target.value.slice(0, CARD_TEXT_MAX) })}
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, desc: e.target.value.slice(0, CARD_TEXT_MAX) })
+                }
                 placeholder="Подробности..."
                 style={{ ...iS, minHeight: 90, resize: "vertical", marginBottom: 6 }}
               />
@@ -180,7 +233,9 @@ export default function EventFormModal({
                 {newEvent.desc.length}/{CARD_TEXT_MAX}
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>Сайт (необязательно)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: T.mid, marginBottom: 6, display: "block" }}>
+                Сайт (необязательно)
+              </label>
               <input
                 value={newEvent.website || ""}
                 onChange={(e) => setNewEvent({ ...newEvent, website: e.target.value })}
@@ -188,17 +243,55 @@ export default function EventFormModal({
                 style={{ ...iS, marginBottom: 14 }}
               />
 
-              <input ref={eventFileRef} type="file" accept="image/*" multiple onChange={handleEventPhotos} style={{ display: "none" }} />
+              <input
+                ref={eventFileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleEventPhotos}
+                style={{ display: "none" }}
+              />
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                 {newEventPhotos.map((p, i) => (
-                  <div key={i} style={{ position: "relative", width: 66, height: 66, borderRadius: 10, overflow: "hidden", border: `1px solid ${T.border}`, flexShrink: 0 }}>
-                    <img src={p.preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <div
+                    key={i}
+                    style={{
+                      position: "relative",
+                      width: 66,
+                      height: 66,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      border: `1px solid ${T.border}`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={p.preview}
+                      alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
                     <button
                       type="button"
                       onClick={() => setNewEventPhotos((pr) => pr.filter((_, j) => j !== i))}
-                      style={{ position: "absolute", top: 3, right: 3, background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", cursor: "pointer", borderRadius: "50%", width: 20, height: 20, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                      style={{
+                        position: "absolute",
+                        top: 3,
+                        right: 3,
+                        background: "rgba(0,0,0,0.55)",
+                        border: "none",
+                        color: "#fff",
+                        cursor: "pointer",
+                        borderRadius: "50%",
+                        width: 20,
+                        height: 20,
+                        fontSize: 11,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 0,
+                      }}
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
                 ))}
@@ -206,24 +299,56 @@ export default function EventFormModal({
                   <button
                     type="button"
                     onClick={() => eventFileRef.current?.click()}
-                    style={{ padding: "8px 14px", background: T.bg, border: `1.5px dashed ${T.border}`, borderRadius: 10, color: T.primary, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                    style={{
+                      padding: "8px 14px",
+                      background: T.bg,
+                      border: `1.5px dashed ${T.border}`,
+                      borderRadius: 10,
+                      color: T.primary,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
                   >
-                    ＋ Фото (до 3)
+                    + Фото (до 3)
                   </button>
                 )}
               </div>
             </div>
 
-            <div style={{ padding: "12px 20px 16px", borderTop: `1px solid ${T.borderL}`, background: T.card, display: "flex", gap: 10 }}>
+            <div
+              style={{
+                padding: "12px 20px 16px",
+                borderTop: `1px solid ${T.borderL}`,
+                background: T.card,
+                display: "flex",
+                gap: 10,
+              }}
+            >
               <button onClick={closeModal} style={{ ...pl(false), flex: 1, padding: 14 }}>
                 Отмена
               </button>
               {editingEvent && canManageEvent(editingEvent) && (
-                <button onClick={() => handleDeleteEvent(editingEvent.id)} style={{ ...pl(false), flex: 1, padding: 14, border: "1.5px solid #fecaca", color: "#E74C3C", background: "#FFF5F5" }}>
+                <button
+                  onClick={() => handleDeleteEvent(editingEvent.id)}
+                  style={{
+                    ...pl(false),
+                    flex: 1,
+                    padding: 14,
+                    border: "1.5px solid #fecaca",
+                    color: "#E74C3C",
+                    background: "#FFF5F5",
+                  }}
+                >
                   Удалить
                 </button>
               )}
-              <button onClick={handleAddEvent} disabled={!canSubmit} style={{ ...pl(true), flex: 2, padding: 14, opacity: canSubmit ? 1 : 0.5 }}>
+              <button
+                onClick={handleAddEvent}
+                disabled={!canSubmit}
+                style={{ ...pl(true), flex: 2, padding: 14, opacity: canSubmit ? 1 : 0.5 }}
+              >
                 {editingEvent ? "Сохранить" : "Опубликовать"}
               </button>
             </div>
