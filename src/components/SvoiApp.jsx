@@ -312,11 +312,12 @@ export default function App() {
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) {
       setProfileLocation("Локация недоступна");
-      setProfileWeather({ temp: "--°", text: "Геолокация не поддерживается" });
+      setProfileWeather((prev) => (prev?.temp && prev?.text ? prev : { temp: "--°", text: "Геолокация не поддерживается" }));
       return;
     }
 
     let canceled = false;
+    let hasSuccessfulWeather = false;
     const loadGeoWeather = () => {
       navigator.geolocation.getCurrentPosition(
         async ({ coords }) => {
@@ -358,6 +359,7 @@ export default function App() {
             if (canceled) return;
             const period = forecast?.properties?.periods?.[0];
             if (!period) throw new Error("forecast_empty");
+            hasSuccessfulWeather = true;
             setProfileWeather({
               temp: `${period.temperature}°${period.temperatureUnit || ""}`,
               text: period.shortForecast || "Без описания",
@@ -365,13 +367,17 @@ export default function App() {
           } catch {
             if (canceled) return;
             setProfileLocation(`${lat}, ${lng}`);
-            setProfileWeather({ temp: "--°", text: "Погода недоступна" });
+            if (!hasSuccessfulWeather) {
+              setProfileWeather((prev) => (prev?.temp && prev?.text ? prev : { temp: "--°", text: "Погода недоступна" }));
+            }
           }
         },
         () => {
           if (canceled) return;
           setProfileLocation("Локация отключена");
-          setProfileWeather({ temp: "--°", text: "Разрешите геолокацию" });
+          if (!hasSuccessfulWeather) {
+            setProfileWeather((prev) => (prev?.temp && prev?.text ? prev : { temp: "--°", text: "Разрешите геолокацию" }));
+          }
         },
         { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
       );
@@ -3345,17 +3351,4 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
