@@ -2868,10 +2868,30 @@ export default function App() {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
             <h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>💼 Работа в LA</h2>
           </div>
-          <div style={{ ...cd, padding:"22px 16px", border:`1px solid ${T.border}`, boxShadow:"none" }}>
-            <div style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:8 }}>Раздел очищен</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+            <button
+              onClick={() => setJobsTab("vacancy")}
+              style={{ ...cd, padding:"18px 14px", border:`1px solid ${jobsTab==="vacancy"?`${T.primary}55`:T.border}`, boxShadow:jobsTab==="vacancy"?T.shH:"none", cursor:"pointer", fontFamily:"inherit", textAlign:"left", background:jobsTab==="vacancy"?T.primaryLight:T.card }}
+            >
+              <div style={{ fontSize:24, marginBottom:8 }}>💼</div>
+              <div style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:2 }}>Вакансии</div>
+              <div style={{ fontSize:12, color:T.mid }}>Поиск работы</div>
+            </button>
+            <button
+              onClick={() => setJobsTab("service")}
+              style={{ ...cd, padding:"18px 14px", border:`1px solid ${jobsTab==="service"?`${T.primary}55`:T.border}`, boxShadow:jobsTab==="service"?T.shH:"none", cursor:"pointer", fontFamily:"inherit", textAlign:"left", background:jobsTab==="service"?T.primaryLight:T.card }}
+            >
+              <div style={{ fontSize:24, marginBottom:8 }}>🛠️</div>
+              <div style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:2 }}>Услуги</div>
+              <div style={{ fontSize:12, color:T.mid }}>Услуги специалистов</div>
+            </button>
+          </div>
+          <div style={{ ...cd, padding:"18px 14px", border:`1px solid ${T.border}`, boxShadow:"none" }}>
+            <div style={{ fontSize:15, fontWeight:700, color:T.text, marginBottom:6 }}>
+              {jobsTab === "vacancy" ? "Вакансии" : "Услуги"}
+            </div>
             <div style={{ fontSize:13, color:T.mid, lineHeight:1.5 }}>
-              Внутренности раздела “Работа” полностью убраны. Дальше можем собрать новую структуру с нуля.
+              Внутренности этого подраздела пока очищены. Следующим шагом соберем новую структуру именно для {jobsTab === "vacancy" ? "вакансий" : "услуг"}.
             </div>
           </div>
         </div>)}
