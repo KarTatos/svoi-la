@@ -1,3 +1,5 @@
+import WeatherCard from "../layout/WeatherCard";
+
 export default function HomeScreen({
   T,
   cd,
@@ -13,6 +15,8 @@ export default function HomeScreen({
 }) {
   return (
     <div>
+      <WeatherCard T={T} cd={cd} profileLocation={profileLocation} profileWeather={profileWeather} />
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         {sections.map((s, i) => (
           <button
