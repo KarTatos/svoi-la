@@ -405,9 +405,8 @@ export default function App() {
     try {
       const saved = JSON.parse(localStorage.getItem('nav'));
       if (saved?.scr) {
-        let hasSessionScr = false;
-        try { hasSessionScr = !!sessionStorage.getItem('scr'); } catch {}
-        if (!hasSessionScr) setScr(saved.scr);
+        // Keep current screen source of truth in session state only.
+        // Restoring `scr` from localStorage caused visible screen jumps.
         if (saved.selDId) setSelD(DISTRICTS.find(d => d.id === saved.selDId) || null);
         if (saved.selPCId) setSelPC(PLACE_CATS.find(c => c.id === saved.selPCId) || null);
         if (saved.selPlaceId) setSelPlace({ id: saved.selPlaceId });
