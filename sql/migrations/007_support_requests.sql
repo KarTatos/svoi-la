@@ -39,13 +39,12 @@ create policy "support_requests_admin_select"
 on public.support_requests
 for select
 to authenticated
-using (lower(auth.jwt() ->> 'email') = 'kushnir4work@gmail.com');
+using (public.is_admin_user());
 
 drop policy if exists "support_requests_admin_update" on public.support_requests;
 create policy "support_requests_admin_update"
 on public.support_requests
 for update
 to authenticated
-using (lower(auth.jwt() ->> 'email') = 'kushnir4work@gmail.com')
+using (public.is_admin_user())
 with check (true);
-

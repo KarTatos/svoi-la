@@ -36,12 +36,8 @@ export default function PrivacyPage() {
 
       <h2 style={{ fontSize: 22, margin: "18px 0 8px", fontWeight: 800 }}>Контакты</h2>
       <p style={{ margin: 0 }}>
-        По вопросам конфиденциальности:{" "}
-        <a href="mailto:kushnir4work@gmail.com" style={{ color: "#F47B20", textDecoration: "none", fontWeight: 700 }}>
-          kushnir4work@gmail.com
-        </a>
+        По вопросам конфиденциальности используйте раздел поддержки в приложении.
       </p>
     </main>
   );
 }
-

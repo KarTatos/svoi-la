@@ -27,8 +27,12 @@ import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
 import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
 
+const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+  .split(",")
+  .map((x) => x.trim().toLowerCase())
+  .filter(Boolean);
+
 export default function App() {
-  const ADMIN_EMAIL = "kushnir4work@gmail.com";
   const [scr, setScr] = useState(() => { try { return sessionStorage.getItem('scr') || 'home'; } catch { return 'home'; } });
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useState(() => { try { const d = sessionStorage.getItem('selD'); return d ? JSON.parse(d) : null; } catch { return null; } });
@@ -69,7 +73,7 @@ export default function App() {
   const [places, setPlaces] = useState([]);
   const [tips, setTips] = useState([]);
   const [housing, setHousing] = useState([]);
-  const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth([ADMIN_EMAIL]);
+  const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth(ADMIN_EMAILS);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
