@@ -863,12 +863,15 @@ export default function App() {
     setNameOptionsPlace([]);
   };
   const onSelectEventAddressSuggestion = (opt) => {
-    setNewEvent((prev) => ({ ...prev, location: opt.value }));
-    if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) {
-      saveGeocodeCache({ name: newEvent.title, address: opt.value }, { lat: opt.lat, lng: opt.lng });
+    const selectedAddress = String(opt?.value || "").trim();
+    if (!selectedAddress) return;
+    setNewEvent((prev) => ({ ...prev, location: selectedAddress }));
+    if (Number.isFinite(opt?.lat) && Number.isFinite(opt?.lng)) {
+      saveGeocodeCache({ name: newEvent?.title || "", address: selectedAddress }, { lat: opt.lat, lng: opt.lng });
     }
     setAddrValidEvent(true);
     setAddrOptionsEvent([]);
+    setAddrLoadingEvent(false);
   };
   const geocodePlace = async (place) => {
     if (Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng))) {
@@ -1117,17 +1120,27 @@ export default function App() {
   }, [np.name, showAdd, selD, addrValidPlace]);
 
   useEffect(() => {
+    if (!showAddEvent) {
+      setAddrLoadingEvent(false);
+      setAddrOptionsEvent([]);
+      return;
+    }
     const q = (newEvent.location || "").trim();
-    if (addrValidEvent) { setAddrOptionsEvent([]); return; }
-    if (q.length < 3) { setAddrOptionsEvent([]); return; }
+    if (addrValidEvent) { setAddrLoadingEvent(false); setAddrOptionsEvent([]); return; }
+    if (q.length < 3) { setAddrLoadingEvent(false); setAddrOptionsEvent([]); return; }
+    let canceled = false;
     const t = setTimeout(async () => {
       setAddrLoadingEvent(true);
-      const opts = await fetchAddressSuggestions(q);
-      setAddrOptionsEvent(opts);
-      setAddrLoadingEvent(false);
+      try {
+        const opts = await fetchAddressSuggestions(q);
+        if (canceled) return;
+        setAddrOptionsEvent(Array.isArray(opts) ? opts.filter((o) => o && o.value) : []);
+      } finally {
+        if (!canceled) setAddrLoadingEvent(false);
+      }
     }, 280);
-    return () => clearTimeout(t);
-  }, [newEvent.location, addrValidEvent]);
+    return () => { canceled = true; clearTimeout(t); };
+  }, [showAddEvent, newEvent.location, addrValidEvent]);
 
   useEffect(() => {
     const q = (newHousing.address || "").trim();
