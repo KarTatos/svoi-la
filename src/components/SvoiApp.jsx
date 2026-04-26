@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useAuth } from "../hooks/useAuth";
@@ -22,6 +22,7 @@ import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
 import PlaceFormModal from "./svoi/forms/PlaceFormModal";
 import TipFormModal from "./svoi/forms/TipFormModal";
+import EventCreateModal from "./svoi/forms/EventCreateModal";
 import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
 import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
@@ -79,6 +80,8 @@ export default function App() {
   const [editCommentText, setEditCommentText] = useState("");
   const [events, setEvents] = useState([]);
   const [selEC, setSelEC] = useState(null);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [eventSaving, setEventSaving] = useState(false);
   const [showAddHousing, setShowAddHousing] = useState(false);
   const [editingHousing, setEditingHousing] = useState(null);
   const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
@@ -455,7 +458,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1552,6 +1555,58 @@ export default function App() {
     else if (type === "event") setEvents(updater);
     setEditingComment(null); setEditCommentText("");
   };
+  const handleCreateEvent = async (payload) => {
+    if (!user) { handleLogin(); return; }
+    if (!selEC?.id) return;
+    const title = String(payload?.title || "").trim();
+    const date = String(payload?.date || "").trim();
+    const location = normalizeAddressText(String(payload?.location || "").trim());
+    const desc = limitCardText(String(payload?.desc || ""));
+    const photos = Array.isArray(payload?.photos) ? payload.photos.filter((x) => typeof x === "string" && x.startsWith("http")) : [];
+    if (!title || !date || !location || !desc) return;
+
+    setEventSaving(true);
+    try {
+      const dbPayload = {
+        category: selEC.id,
+        title,
+        date,
+        location,
+        description: encodeRichText(desc, photos, {}),
+        author: user.name || "Пользователь",
+        user_id: user.id,
+      };
+      const { data, error } = await dbAddEvent(dbPayload);
+      if (error) {
+        alert(error.message || "Не удалось добавить событие");
+        return;
+      }
+      const row = data?.[0];
+      if (!row) {
+        alert("Не удалось добавить событие");
+        return;
+      }
+      setEvents((prev) => [{
+        id: row.id,
+        cat: row.category,
+        title: row.title,
+        date: row.date,
+        location: row.location || "",
+        desc,
+        website: "",
+        photos,
+        author: row.author || user.name || "Пользователь",
+        userId: row.user_id || user.id,
+        likes: Number(row.likes_count || 0),
+        views: Number(row.views || 0),
+        comments: [],
+        fromDB: true,
+      }, ...prev]);
+      setShowAddEvent(false);
+    } finally {
+      setEventSaving(false);
+    }
+  };
   const handleAddHousing = async () => {
     if (!user) { handleLogin(); return; }
     if (!newHousing.address.trim() || !newHousing.minPrice) return;
@@ -1970,7 +2025,7 @@ export default function App() {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
-    if (!showAdd && !showAddTip && !showAddHousing && !showAddJob) return;
+    if (!showAdd && !showAddTip && !showAddEvent && !showAddHousing && !showAddJob) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
     const prevPosition = document.body.style.position;
@@ -1993,7 +2048,7 @@ export default function App() {
       document.body.style.touchAction = prevTouchAction;
       window.scrollTo(0, scrollY);
     };
-  }, [showAdd, showAddTip, showAddHousing, showAddJob]);
+  }, [showAdd, showAddTip, showAddEvent, showAddHousing, showAddJob]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -2604,6 +2659,13 @@ export default function App() {
               <div style={{ width:48, height:48, borderRadius:14, background:`${selEC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selEC.icon}</div>
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
             </div>
+            <button
+              onClick={() => { if (!user) { handleLogin(); return; } setShowAddEvent(true); }}
+              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+              title="Добавить событие"
+            >
+              +
+            </button>
           </div>
           {/* Date filter bar */}
           <div style={{ marginBottom:16 }}>
@@ -2725,7 +2787,18 @@ export default function App() {
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
+          <button onClick={() => { if (!user) { handleLogin(); return; } setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
+        <EventCreateModal
+          open={showAddEvent}
+          onClose={() => { if (!eventSaving) setShowAddEvent(false); }}
+          onSubmit={handleCreateEvent}
+          onUploadPhoto={uploadPhoto}
+          submitting={eventSaving}
+          categoryTitle={selEC?.title || ""}
+          cardTextMax={CARD_TEXT_MAX}
+          palette={T}
+        />
         {/* JOBS */}
         {scr==="jobs" && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
