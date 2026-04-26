@@ -5,6 +5,7 @@ export default function EventCreateModal({
   onClose,
   onSubmit,
   onUploadPhoto,
+  fetchAddressSuggestions,
   submitting,
   categoryTitle,
   cardTextMax = 500,
@@ -17,6 +18,8 @@ export default function EventCreateModal({
   const [about, setAbout] = useState("");
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [addrLoading, setAddrLoading] = useState(false);
+  const [addrOptions, setAddrOptions] = useState([]);
 
   useEffect(() => {
     if (!open) return;
@@ -26,6 +29,8 @@ export default function EventCreateModal({
     setAbout("");
     setPhotos([]);
     setUploading(false);
+    setAddrLoading(false);
+    setAddrOptions([]);
   }, [open]);
 
   const canSubmit = useMemo(() => {
@@ -45,6 +50,31 @@ export default function EventCreateModal({
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const q = (location || "").trim();
+    if (q.length < 3) {
+      setAddrLoading(false);
+      setAddrOptions([]);
+      return;
+    }
+    let canceled = false;
+    const t = setTimeout(async () => {
+      setAddrLoading(true);
+      try {
+        const opts = await fetchAddressSuggestions(q);
+        if (canceled) return;
+        setAddrOptions(Array.isArray(opts) ? opts.filter((o) => o && o.value) : []);
+      } finally {
+        if (!canceled) setAddrLoading(false);
+      }
+    }, 280);
+    return () => {
+      canceled = true;
+      clearTimeout(t);
+    };
+  }, [open, location, fetchAddressSuggestions]);
 
   const submit = () => {
     if (!canSubmit) return;
@@ -115,12 +145,34 @@ export default function EventCreateModal({
         />
 
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: palette.mid, marginBottom: 6 }}>Место *</label>
-        <input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Адрес или место проведения"
-          style={{ width: "100%", padding: "13px 14px", borderRadius: 14, border: `1px solid ${palette.border}`, fontFamily: "inherit", fontSize: 16, marginBottom: 12, boxSizing: "border-box" }}
-        />
+        <div style={{ position: "relative", marginBottom: 12 }}>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Адрес или место проведения"
+            style={{ width: "100%", padding: "13px 14px", borderRadius: 14, border: `1px solid ${palette.border}`, fontFamily: "inherit", fontSize: 16, boxSizing: "border-box" }}
+          />
+          {addrLoading && (
+            <div style={{ fontSize: 11, color: palette.light, marginTop: 5 }}>Ищем адрес...</div>
+          )}
+          {!!addrOptions.length && (
+            <div style={{ marginTop: 6, border: `1px solid ${palette.border}`, borderRadius: 12, background: palette.card, boxShadow: palette.sh, overflow: "hidden" }}>
+              {addrOptions.slice(0, 6).map((opt, idx) => (
+                <button
+                  key={`${opt.value}-${idx}`}
+                  onClick={() => {
+                    setLocation(opt.value);
+                    setAddrOptions([]);
+                    setAddrLoading(false);
+                  }}
+                  style={{ width: "100%", border: "none", borderBottom: idx < Math.min(addrOptions.length, 6) - 1 ? `1px solid ${palette.borderL}` : "none", background: "transparent", textAlign: "left", padding: "10px 12px", fontFamily: "inherit", fontSize: 13, color: palette.text, cursor: "pointer" }}
+                >
+                  {opt.label || opt.value}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: palette.mid, marginBottom: 6 }}>О событии *</label>
         <textarea
@@ -176,4 +228,3 @@ export default function EventCreateModal({
     </div>
   );
 }
-

@@ -2794,6 +2794,7 @@ export default function App() {
           onClose={() => { if (!eventSaving) setShowAddEvent(false); }}
           onSubmit={handleCreateEvent}
           onUploadPhoto={uploadPhoto}
+          fetchAddressSuggestions={fetchAddressSuggestions}
           submitting={eventSaving}
           categoryTitle={selEC?.title || ""}
           cardTextMax={CARD_TEXT_MAX}
