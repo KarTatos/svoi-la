@@ -2,8 +2,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { logError, logInfo, requestMeta } from "@/lib/logger";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
 
 const RICH_PREFIX = "__LA_RICH_V1__";
 
@@ -341,8 +341,9 @@ export async function POST(request) {
     return Response.json({ text: text || "Не удалось получить ответ.", queryType, localDataUsed: localContext.hasData });
   } catch (error) {
     logError("chat.unhandled", error, meta);
-    if (error?.status === 401) return Response.json({ error: "Ошибка API ключа." }, { status: 500 });
-    if (error?.status === 429) return Response.json({ error: "Слишком много запросов. Подождите." }, { status: 429 });
+    const status = Number(error && typeof error === "object" ? error["status"] : 0);
+    if (status === 401) return Response.json({ error: "Ошибка API ключа." }, { status: 500 });
+    if (status === 429) return Response.json({ error: "Слишком много запросов. Подождите." }, { status: 429 });
     return Response.json({ error: "Ошибка сервера." }, { status: 500 });
   }
 }

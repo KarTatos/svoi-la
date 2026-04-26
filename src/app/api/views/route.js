@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { logError, logInfo, requestMeta } from "@/lib/logger";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 const TABLE_BY_TYPE = {
   place: "places",
@@ -77,7 +77,8 @@ export async function GET(request) {
     return Response.json({ ok: true, counts });
   } catch (error) {
     logError("views.get.unhandled", error, meta);
-    return Response.json({ error: error?.message || "Server error." }, { status: 500 });
+    const message = String(error && typeof error === "object" && error["message"] ? error["message"] : "Server error.");
+    return Response.json({ error: message }, { status: 500 });
   }
 }
 
@@ -127,6 +128,7 @@ export async function POST(request) {
     return Response.json({ ok: true, counted: true, views: Number(incremented.views || 0) });
   } catch (error) {
     logError("views.post.unhandled", error, meta);
-    return Response.json({ error: error?.message || "Server error." }, { status: 500 });
+    const message = String(error && typeof error === "object" && error["message"] ? error["message"] : "Server error.");
+    return Response.json({ error: message }, { status: 500 });
   }
 }
