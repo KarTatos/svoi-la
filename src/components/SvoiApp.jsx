@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useAuth } from "../hooks/useAuth";
@@ -8,7 +8,6 @@ import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useProfileWeather } from "../hooks/useProfileWeather";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
-import { useEventForm } from "../hooks/useEventForm";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -23,7 +22,6 @@ import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
 import PlaceFormModal from "./svoi/forms/PlaceFormModal";
 import TipFormModal from "./svoi/forms/TipFormModal";
-import EventFormModal from "./svoi/forms/EventFormModal";
 import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
 import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
@@ -102,14 +100,11 @@ export default function App() {
   });
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
-  const [addrOptionsEvent, setAddrOptionsEvent] = useState([]);
   const [addrOptionsHousing, setAddrOptionsHousing] = useState([]);
   const [addrLoadingPlace, setAddrLoadingPlace] = useState(false);
   const [nameLoadingPlace, setNameLoadingPlace] = useState(false);
-  const [addrLoadingEvent, setAddrLoadingEvent] = useState(false);
   const [addrLoadingHousing, setAddrLoadingHousing] = useState(false);
   const [addrValidPlace, setAddrValidPlace] = useState(false);
-  const [addrValidEvent, setAddrValidEvent] = useState(false);
   const [addrValidHousing, setAddrValidHousing] = useState(false);
   const [photoViewer, setPhotoViewer] = useState(null);
   const [photoZoom, setPhotoZoom] = useState(1);
@@ -132,7 +127,6 @@ export default function App() {
   };
   const canManagePlace = (item) => canManageByOwnership(item?.userId, item?.addedBy);
   const canManageTip = (item) => canManageByOwnership(item?.userId, item?.author);
-  const canManageEvent = (item) => canManageByOwnership(item?.userId, item?.author);
   const canManageHousing = (item) => canManageByOwnership(item?.userId, null);
   const placeForm = usePlaceForm({
     user,
@@ -211,42 +205,6 @@ export default function App() {
     handleDeleteTip,
     handleAddTip,
   } = tipForm;
-  const eventForm = useEventForm({
-    user,
-    events,
-    canManageEvent,
-    setEvents,
-    setExp,
-    addrValidEvent,
-    setAddrValidEvent,
-    setAddrOptionsEvent,
-    dbAddEvent,
-    dbUpdateEvent,
-    dbDeleteEvent,
-    uploadPhoto,
-    limitCardText,
-    encodeRichText,
-    normalizeExternalUrl,
-    onRequireAuth: () => handleLogin(),
-    defaultCategoryId: selEC?.id || "",
-  });
-  const {
-    showAddEvent,
-    setShowAddEvent,
-    newEvent,
-    setNewEvent,
-    newEventPhotos,
-    setNewEventPhotos,
-    editingEvent,
-    setEditingEvent,
-    resetEventForm,
-    openAddEventForm,
-    handleEventPhotos,
-    startEditEvent,
-    handleDeleteEvent,
-    handleAddEvent,
-  } = eventForm;
-
   useEffect(() => {
     if (scr === "housing-item") setHousingTextCollapsed(false);
   }, [scr, selHousing?.id]);
@@ -286,7 +244,6 @@ export default function App() {
   const inpRef = useRef(null);
   const fileRef = useRef(null);
   const tipFileRef = useRef(null);
-  const eventFileRef = useRef(null);
   const housingFileRef = useRef(null);
   const mapContainerRef = useRef(null);
   const miniMapContainerRef = useRef(null);
@@ -498,7 +455,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); resetEventForm(); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -785,17 +742,6 @@ export default function App() {
     setAddrOptionsPlace([]);
     setNameOptionsPlace([]);
   };
-  const onSelectEventAddressSuggestion = (opt) => {
-    const selectedAddress = String(opt?.value || "").trim();
-    if (!selectedAddress) return;
-    setNewEvent((prev) => ({ ...prev, location: selectedAddress }));
-    if (Number.isFinite(opt?.lat) && Number.isFinite(opt?.lng)) {
-      saveGeocodeCache({ name: newEvent?.title || "", address: selectedAddress }, { lat: opt.lat, lng: opt.lng });
-    }
-    setAddrValidEvent(true);
-    setAddrOptionsEvent([]);
-    setAddrLoadingEvent(false);
-  };
   const geocodePlace = async (place) => {
     if (Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng))) {
       return { lat: Number(place.lat), lng: Number(place.lng) };
@@ -1041,29 +987,6 @@ export default function App() {
     }, 320);
     return () => { canceled = true; clearTimeout(t); };
   }, [np.name, showAdd, selD, addrValidPlace]);
-
-  useEffect(() => {
-    if (!showAddEvent) {
-      setAddrLoadingEvent(false);
-      setAddrOptionsEvent([]);
-      return;
-    }
-    const q = (newEvent.location || "").trim();
-    if (addrValidEvent) { setAddrLoadingEvent(false); setAddrOptionsEvent([]); return; }
-    if (q.length < 3) { setAddrLoadingEvent(false); setAddrOptionsEvent([]); return; }
-    let canceled = false;
-    const t = setTimeout(async () => {
-      setAddrLoadingEvent(true);
-      try {
-        const opts = await fetchAddressSuggestions(q);
-        if (canceled) return;
-        setAddrOptionsEvent(Array.isArray(opts) ? opts.filter((o) => o && o.value) : []);
-      } finally {
-        if (!canceled) setAddrLoadingEvent(false);
-      }
-    }, 280);
-    return () => { canceled = true; clearTimeout(t); };
-  }, [showAddEvent, newEvent.location, addrValidEvent]);
 
   useEffect(() => {
     const q = (newHousing.address || "").trim();
@@ -2047,7 +1970,7 @@ export default function App() {
     if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
   }, [scr, activeHousing, housing.length]);
   useEffect(() => {
-    if (!showAdd && !showAddTip && !showAddHousing && !showAddEvent && !showAddJob) return;
+    if (!showAdd && !showAddTip && !showAddHousing && !showAddJob) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
     const prevPosition = document.body.style.position;
@@ -2070,7 +1993,7 @@ export default function App() {
       document.body.style.touchAction = prevTouchAction;
       window.scrollTo(0, scrollY);
     };
-  }, [showAdd, showAddTip, showAddHousing, showAddEvent, showAddJob]);
+  }, [showAdd, showAddTip, showAddHousing, showAddJob]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -2681,13 +2604,6 @@ export default function App() {
               <div style={{ width:48, height:48, borderRadius:14, background:`${selEC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{selEC.icon}</div>
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
             </div>
-            <button
-              onClick={openAddEventForm}
-              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
-              title="Добавить"
-            >
-              +
-            </button>
           </div>
           {/* Date filter bar */}
           <div style={{ marginBottom:16 }}>
@@ -2806,46 +2722,10 @@ export default function App() {
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
               </div>
               {renderComments(ev, "event", addEventComment)}
-              {canManageEvent(ev) && (
-                <div style={{ padding:"0 16px 16px" }}>
-                  <button onClick={(e)=>{e.stopPropagation(); startEditEvent(ev);}} style={{ width:"100%", padding:"10px 0", borderRadius:24, border:`1.5px solid ${T.primary}55`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, background:T.primaryLight, color:T.primary }}>Редактировать событие</button>
-                </div>
-              )}
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
-          <button onClick={openAddEventForm} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
-
-        {/* ADD EVENT MODAL */}
-        <EventFormModal
-          showAddEvent={showAddEvent}
-          setShowAddEvent={setShowAddEvent}
-          setNewEventPhotos={setNewEventPhotos}
-          setAddrOptionsEvent={setAddrOptionsEvent}
-          setAddrValidEvent={setAddrValidEvent}
-          setEditingEvent={setEditingEvent}
-          cd={cd}
-          T={T}
-          user={user}
-          handleLogin={handleLogin}
-          pl={pl}
-          editingEvent={editingEvent}
-          newEvent={newEvent}
-          setNewEvent={setNewEvent}
-          iS={iS}
-          EVENT_CATS={EVENT_CATS}
-          addrLoadingEvent={addrLoadingEvent}
-          addrOptionsEvent={addrOptionsEvent}
-          onSelectEventAddressSuggestion={onSelectEventAddressSuggestion}
-          CARD_TEXT_MAX={CARD_TEXT_MAX}
-          eventFileRef={eventFileRef}
-          handleEventPhotos={handleEventPhotos}
-          newEventPhotos={newEventPhotos}
-          canManageEvent={canManageEvent}
-          handleDeleteEvent={handleDeleteEvent}
-          handleAddEvent={handleAddEvent}
-        />
         {/* JOBS */}
         {scr==="jobs" && (<div>
           <button onClick={goHome} style={bk}>← Главная</button>
