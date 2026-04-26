@@ -359,7 +359,6 @@ export const SECTIONS = [
   { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии" },
   { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
   { id:"chat-sec", icon:"💬", title:"AI", desc:"Помощник", accent:true },
-  { id:"xx", icon:"❌", title:"ХХ", desc:"Скоро", soon:true },
   { id:"sell", icon:"🏷️", title:"Продам", desc:"Объявления", soon:true },
   { id:"community-chat", icon:"🗨️", title:"Чат", desc:"Общение", soon:true },
 ];
