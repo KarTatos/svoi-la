@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from "react";
-import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
+import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useAuth } from "../hooks/useAuth";
@@ -82,6 +82,7 @@ export default function App() {
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [showAddHousing, setShowAddHousing] = useState(false);
   const [editingHousing, setEditingHousing] = useState(null);
   const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
@@ -130,6 +131,7 @@ export default function App() {
   };
   const canManagePlace = (item) => canManageByOwnership(item?.userId, item?.addedBy);
   const canManageTip = (item) => canManageByOwnership(item?.userId, item?.author);
+  const canManageEvent = (item) => canManageByOwnership(item?.userId, item?.author);
   const canManageHousing = (item) => canManageByOwnership(item?.userId, null);
   const placeForm = usePlaceForm({
     user,
@@ -458,7 +460,7 @@ export default function App() {
   }, [user?.id]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1555,9 +1557,41 @@ export default function App() {
     else if (type === "event") setEvents(updater);
     setEditingComment(null); setEditCommentText("");
   };
-  const handleCreateEvent = async (payload) => {
+  const startEditEvent = (eventItem) => {
+    if (!eventItem) return;
+    if (!canManageEvent(eventItem)) {
+      alert("Редактировать событие может только автор или админ.");
+      return;
+    }
+    setEditingEvent(eventItem);
+    setShowAddEvent(true);
+  };
+  const mapDbEventToState = (row, fallback = {}) => {
+    const rich = decodeRichText(row?.description);
+    return {
+      id: row.id,
+      cat: row.category,
+      title: row.title || "",
+      date: row.date,
+      location: row.location || "",
+      desc: rich.text || "",
+      website: rich.website || "",
+      photos: Array.isArray(rich.photos) ? rich.photos : [],
+      author: row.author || fallback.author || "Пользователь",
+      userId: row.user_id || fallback.userId || null,
+      likes: Number(row.likes_count ?? fallback.likes ?? 0),
+      views: Number(row.views ?? fallback.views ?? 0),
+      comments: Array.isArray(fallback.comments) ? fallback.comments : [],
+      fromDB: true,
+    };
+  };
+  const handleSaveEvent = async (payload) => {
     if (!user) { handleLogin(); return; }
     if (!selEC?.id) return;
+    if (editingEvent && !canManageEvent(editingEvent)) {
+      alert("Редактировать событие может только автор или админ.");
+      return;
+    }
     const title = String(payload?.title || "").trim();
     const date = String(payload?.date || "").trim();
     const location = normalizeAddressText(String(payload?.location || "").trim());
@@ -1572,37 +1606,53 @@ export default function App() {
         title,
         date,
         location,
-        description: encodeRichText(desc, photos, {}),
-        author: user.name || "Пользователь",
-        user_id: user.id,
+        description: encodeRichText(desc, photos, { website: editingEvent?.website || "" }),
+        author: editingEvent?.author || user.name || "Пользователь",
+        user_id: editingEvent?.userId || user.id,
       };
-      const { data, error } = await dbAddEvent(dbPayload);
+      const saveResult = editingEvent
+        ? await dbUpdateEvent(editingEvent.id, dbPayload)
+        : await dbAddEvent(dbPayload);
+      const { data, error } = saveResult || {};
       if (error) {
-        alert(error.message || "Не удалось добавить событие");
+        alert(error.message || "Не удалось сохранить событие");
         return;
       }
       const row = data?.[0];
       if (!row) {
-        alert("Не удалось добавить событие");
+        alert("Не удалось сохранить событие");
         return;
       }
-      setEvents((prev) => [{
-        id: row.id,
-        cat: row.category,
-        title: row.title,
-        date: row.date,
-        location: row.location || "",
-        desc,
-        website: "",
-        photos,
-        author: row.author || user.name || "Пользователь",
-        userId: row.user_id || user.id,
-        likes: Number(row.likes_count || 0),
-        views: Number(row.views || 0),
-        comments: [],
-        fromDB: true,
-      }, ...prev]);
+      const mapped = mapDbEventToState(row, editingEvent || {});
+      if (editingEvent) {
+        setEvents((prev) => prev.map((ev) => (ev.id === editingEvent.id ? mapped : ev)));
+      } else {
+        setEvents((prev) => [mapped, ...prev]);
+      }
+      setEditingEvent(null);
       setShowAddEvent(false);
+    } finally {
+      setEventSaving(false);
+    }
+  };
+  const handleDeleteEvent = async () => {
+    if (!editingEvent?.id) return;
+    if (!canManageEvent(editingEvent)) {
+      alert("Удалять событие может только автор или админ.");
+      return;
+    }
+    if (!confirm("Удалить это событие?")) return;
+    setEventSaving(true);
+    try {
+      const { error } = await dbDeleteEvent(editingEvent.id);
+      if (error) {
+        alert(error.message || "Не удалось удалить событие");
+        return;
+      }
+      setEvents((prev) => prev.filter((ev) => ev.id !== editingEvent.id));
+      if (exp === `ev-${editingEvent.id}`) setExp(null);
+      setShowAddEvent(false);
+      setEditingEvent(null);
     } finally {
       setEventSaving(false);
     }
@@ -2660,7 +2710,7 @@ export default function App() {
               <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selEC.title}</h2></div>
             </div>
             <button
-              onClick={() => { if (!user) { handleLogin(); return; } setShowAddEvent(true); }}
+              onClick={() => { if (!user) { handleLogin(); return; } setEditingEvent(null); setShowAddEvent(true); }}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
               title="Добавить событие"
             >
@@ -2784,21 +2834,33 @@ export default function App() {
                 <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:ev.title, text:ev.desc, url:window.location.href });}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
               </div>
               {renderComments(ev, "event", addEventComment)}
+              {canManageEvent(ev) && (
+                <div style={{ padding:"0 16px 16px" }}>
+                  <button
+                    onClick={(e)=>{ e.stopPropagation(); startEditEvent(ev); }}
+                    style={{ width:"100%", padding:"11px 0", borderRadius:24, border:`1.5px solid ${T.primary}55`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, background:T.primaryLight, color:T.primary }}
+                  >
+                    ✏️ Редактировать событие
+                  </button>
+                </div>
+              )}
             </div>)}
           </div>); })}
           {catEvents.length===0 && <p style={{ fontSize:13, color:T.mid, textAlign:"center", padding:20 }}>Пока нет событий в этой категории</p>}
-          <button onClick={() => { if (!user) { handleLogin(); return; } setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
+          <button onClick={() => { if (!user) { handleLogin(); return; } setEditingEvent(null); setShowAddEvent(true); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить событие</button>
         </div>)}
         <EventCreateModal
           open={showAddEvent}
-          onClose={() => { if (!eventSaving) setShowAddEvent(false); }}
-          onSubmit={handleCreateEvent}
+          onClose={() => { if (!eventSaving) { setShowAddEvent(false); setEditingEvent(null); } }}
+          onSubmit={handleSaveEvent}
+          onDelete={handleDeleteEvent}
           onUploadPhoto={uploadPhoto}
           fetchAddressSuggestions={fetchAddressSuggestions}
           submitting={eventSaving}
           categoryTitle={selEC?.title || ""}
           cardTextMax={CARD_TEXT_MAX}
           palette={T}
+          initialData={editingEvent}
         />
         {/* JOBS */}
         {scr==="jobs" && (<div>

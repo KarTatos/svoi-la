@@ -1,15 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+function toDateTimeLocal(value) {
+  if (!value) return "";
+  try {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return "";
+  }
+}
+
 export default function EventCreateModal({
   open,
   onClose,
   onSubmit,
+  onDelete,
   onUploadPhoto,
   fetchAddressSuggestions,
   submitting,
   categoryTitle,
   cardTextMax = 500,
   palette,
+  initialData = null,
 }) {
   const fileRef = useRef(null);
   const [title, setTitle] = useState("");
@@ -22,18 +36,20 @@ export default function EventCreateModal({
   const [addrOptions, setAddrOptions] = useState([]);
   const [addrChosen, setAddrChosen] = useState(false);
 
+  const isEdit = Boolean(initialData?.id);
+
   useEffect(() => {
     if (!open) return;
-    setTitle("");
-    setDateTime("");
-    setLocation("");
-    setAbout("");
-    setPhotos([]);
+    setTitle(String(initialData?.title || ""));
+    setDateTime(toDateTimeLocal(initialData?.date));
+    setLocation(String(initialData?.location || ""));
+    setAbout(String(initialData?.desc || ""));
+    setPhotos(Array.isArray(initialData?.photos) ? initialData.photos.filter((x) => typeof x === "string") : []);
     setUploading(false);
     setAddrLoading(false);
     setAddrOptions([]);
     setAddrChosen(false);
-  }, [open]);
+  }, [open, initialData]);
 
   const canSubmit = useMemo(() => {
     return Boolean(title.trim() && dateTime && location.trim() && about.trim()) && !submitting && !uploading;
@@ -43,14 +59,18 @@ export default function EventCreateModal({
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     setUploading(true);
-    const uploaded = [];
-    for (const file of files.slice(0, 10 - photos.length)) {
-      const { url } = await onUploadPhoto(file, "events");
-      if (url) uploaded.push(url);
+    try {
+      const uploaded = [];
+      for (const file of files.slice(0, 10 - photos.length)) {
+        const res = await onUploadPhoto(file);
+        const url = typeof res === "string" ? res : res?.url || null;
+        if (url) uploaded.push(url);
+      }
+      setPhotos((prev) => [...prev, ...uploaded].slice(0, 10));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
-    setPhotos((prev) => [...prev, ...uploaded].slice(0, 10));
-    setUploading(false);
-    if (fileRef.current) fileRef.current.value = "";
   };
 
   useEffect(() => {
@@ -132,7 +152,7 @@ export default function EventCreateModal({
       >
         <div style={{ width: 40, height: 4, borderRadius: 2, background: palette.border, margin: "0 auto 18px" }} />
         <h3 style={{ margin: "0 0 14px", fontSize: 20, fontWeight: 800, lineHeight: 1.2, color: palette.text }}>
-          🎉 Новое событие{categoryTitle ? ` · ${categoryTitle}` : ""}
+          {isEdit ? "✏️ Редактировать событие" : "🎉 Новое событие"}{categoryTitle ? ` · ${categoryTitle}` : ""}
         </h3>
 
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: palette.mid, marginBottom: 6 }}>Название *</label>
@@ -220,6 +240,15 @@ export default function EventCreateModal({
         <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handlePickPhotos} />
 
         <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          {isEdit && (
+            <button
+              onClick={onDelete}
+              disabled={submitting || uploading}
+              style={{ flex: 1, padding: "13px 14px", borderRadius: 24, border: "1px solid #fecaca", fontFamily: "inherit", fontSize: 14, fontWeight: 700, cursor: "pointer", background: "#FFF5F5", color: "#E74C3C", opacity: submitting ? 0.7 : 1 }}
+            >
+              Удалить
+            </button>
+          )}
           <button
             onClick={onClose}
             disabled={submitting || uploading}
@@ -232,10 +261,11 @@ export default function EventCreateModal({
             disabled={!canSubmit}
             style={{ flex: 2, padding: "13px 14px", borderRadius: 24, border: "none", fontFamily: "inherit", fontSize: 14, fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", background: palette.primary, color: "#fff", opacity: canSubmit ? 1 : 0.5 }}
           >
-            {submitting ? "Сохраняю..." : "Опубликовать"}
+            {submitting ? "Сохраняю..." : (isEdit ? "Сохранить" : "Опубликовать")}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
