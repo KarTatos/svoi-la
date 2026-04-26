@@ -21,7 +21,7 @@ export default function UscisCategoryScreen({
         const isExpanded = expandedIndex === i;
         const pdfUrl = getPdfUrl(d);
         return (
-          <div key={i} style={{ ...cd, marginBottom:10, overflow:"hidden", borderColor:isExpanded?T.primary+"40":T.borderL }}>
+          <div key={`${selectedCategory.id}-${d.form || d.name}`} style={{ ...cd, marginBottom:10, overflow:"hidden", borderColor:isExpanded?T.primary+"40":T.borderL }}>
             <div onClick={() => onExpand(isExpanded ? null : i)} style={{ padding:"16px", cursor:"pointer" }} onMouseEnter={e=>{e.currentTarget.style.background=T.bg}} onMouseLeave={e=>{e.currentTarget.style.background=T.card}}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
@@ -48,4 +48,3 @@ export default function UscisCategoryScreen({
     </div>
   );
 }
-

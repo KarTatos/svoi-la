@@ -2731,7 +2731,7 @@ export default function App() {
                 const isToday = i === 0;
                 const isTodayAccent = isToday && !isActive;
                 return (
-                  <button key={i} onClick={() => setFilterDate(isActive ? null : d.toISOString())}
+                  <button key={d.toISOString().slice(0, 10)} onClick={() => setFilterDate(isActive ? null : d.toISOString())}
                     style={{ padding:"5px 4px", borderRadius:12, border:`1.5px solid ${isActive?T.primary:(isTodayAccent?"#E74C3C":T.border)}`, background:isActive?T.primary:(isTodayAccent?"#FFF5F5":T.card), color:isActive?"#fff":(isTodayAccent?"#C0392B":T.text), fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", minWidth:0, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:2, justifyContent:"center" }}>
                     <span style={{ fontSize:9, color:isActive?"#fff":(isTodayAccent?"#C0392B":T.light), fontWeight:400, lineHeight:1 }}>{isToday?"Сег":dayNames[d.getDay()]}</span>
                     <span style={{ fontSize:14, fontWeight:700, lineHeight:1 }}>{d.getDate()}</span>
@@ -3127,7 +3127,7 @@ export default function App() {
               />
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:18 }}>
                 {newHousingPhotos.map((p, i) => (
-                  <div key={i} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
+                  <div key={`${p.preview || p.name || 'photo'}-${p.file?.lastModified || ''}-${p.file?.size || ''}`} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
                     <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
                     <button onClick={()=>setNewHousingPhotos((pr)=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button>
                   </div>

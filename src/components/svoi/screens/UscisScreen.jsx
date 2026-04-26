@@ -24,7 +24,7 @@ export default function UscisScreen({
         <div style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.light, pointerEvents:"none" }}>🔎</div>
         <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Поиск формы..." style={{ ...iS, paddingLeft:42, borderColor:srch?T.primary:T.border }} />
       </div>
-      {srch.trim().length>=2 ? (<div>{searchResults.map((d,i) => { return (<div key={i} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
+      {srch.trim().length>=2 ? (<div>{searchResults.map((d) => { return (<div key={`${d.cI}-${d.form || d.name}`} style={{ ...cd, padding:"14px 16px", marginBottom:8 }}>
         <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center", flexWrap:"wrap" }}>
           {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight, textDecoration:"none" }}>{d.form} ↗</a> : <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, color:T.primary, background:T.primaryLight }}>{d.form}</span>}
           <span style={{ fontSize:11, color:T.mid }}>{d.cI} {d.cT}</span>

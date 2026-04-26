@@ -6,6 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "supabase:types": "node scripts/generate-supabase-types.mjs"
   },
@@ -13,7 +17,6 @@
     "@anthropic-ai/sdk": "^0.30.0",
     "@sentry/nextjs": "^10.49.0",
     "@supabase/supabase-js": "^2.45.0",
-    "leaflet": "^1.9.4",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
@@ -22,6 +25,10 @@
     "@types/node": "^25.6.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.33",
+    "eslint-config-prettier": "^9.1.2",
+    "prettier": "^3.3.3",
     "typescript": "^5.6.3"
   }
 }
