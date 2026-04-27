@@ -120,7 +120,7 @@ export default function App() {
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
-  const { profileLocation, profileWeather } = useProfileWeather();
+  const { profileLocation, profileWeather, userCoords: geoCoords } = useProfileWeather();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const { scr, setScr } = useSvoiRouter({
@@ -1826,6 +1826,7 @@ export default function App() {
             mt={mt}
             districts={DISTRICTS}
             places={places}
+            userCoords={geoCoords}
             onGoHome={goHome}
             onSelectDistrict={(d) => { setSelD(d); setScr("district"); }}
           />
