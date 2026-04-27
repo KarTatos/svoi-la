@@ -216,3 +216,24 @@ export async function uploadPhoto(file) {
 
   return urlData.publicUrl;
 }
+
+// ═══ JOBS ═══
+export async function getJobs() {
+  const { data, error } = await supabase.from('jobs').select('*').order('created_at', { ascending: false });
+  return { data: data || [], error };
+}
+
+export async function addJob(job) {
+  const { data, error } = await supabase.from('jobs').insert([job]).select();
+  return { data, error };
+}
+
+export async function updateJob(id, updates) {
+  const { data, error } = await supabase.from('jobs').update(updates).eq('id', id).select();
+  return { data, error };
+}
+
+export async function deleteJob(id) {
+  const { error } = await supabase.from('jobs').delete().eq('id', id);
+  return { error };
+}

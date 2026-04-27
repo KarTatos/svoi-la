@@ -1,8 +1,9 @@
 ﻿'use client';
 import { useCallback, useState, useEffect, useRef } from "react";
-import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto } from "../lib/supabase";
+import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto, addJob as dbAddJob, updateJob as dbUpdateJob, deleteJob as dbDeleteJob } from "../lib/supabase";
 
-import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import JobsScreen from "./svoi/screens/JobsScreen";
 import { useAuth } from "../hooks/useAuth";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useProfileWeather } from "../hooks/useProfileWeather";
@@ -77,6 +78,7 @@ export default function App() {
     tips, setTips,
     events, setEvents,
     housing, setHousing,
+    jobs, setJobs,
     liked, setLiked,
   } = useAppData({ user, authReady });
   const [newComment, setNewComment] = useState("");
@@ -92,20 +94,6 @@ export default function App() {
   const [newHousing, setNewHousing] = useState({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" });
   const [newHousingPhotos, setNewHousingPhotos] = useState([]);
   const [filterDate, setFilterDate] = useState(null);
-  const [jobsItems, setJobsItems] = useState(INIT_JOBS);
-  const [jobsTab, setJobsTab] = useState("vacancy");
-  const [showAddJob, setShowAddJob] = useState(false);
-  const [newJob, setNewJob] = useState({
-    type: "vacancy",
-    title: "",
-    district: "",
-    price: "",
-    schedule: "full-time",
-    category: "",
-    desc: "",
-    telegram: "",
-    phone: "",
-  });
   const [addrOptionsPlace, setAddrOptionsPlace] = useState([]);
   const [nameOptionsPlace, setNameOptionsPlace] = useState([]);
   const [addrOptionsHousing, setAddrOptionsHousing] = useState([]);
@@ -262,20 +250,6 @@ export default function App() {
     } catch {}
   }, [favorites, user?.id]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("jobs_board_v1");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setJobsItems(parsed);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("jobs_board_v1", JSON.stringify(jobsItems || []));
-    } catch {}
-  }, [jobsItems]);
   const chatEnd = useRef(null);
   const inpRef = useRef(null);
   const fileRef = useRef(null);
@@ -322,7 +296,7 @@ export default function App() {
   }, [setSelD, setSelPC]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1477,59 +1451,6 @@ export default function App() {
   };
   const activeHousing = selHousing ? (housing.find((h) => h.id === selHousing.id) || null) : null;
   const canManageActiveHousing = canManageHousing(activeHousing);
-  const jobsFiltered = jobsItems
-    .filter((item) => item.type === jobsTab)
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-  const formatJobDate = (value) => {
-    try {
-      const dt = new Date(value);
-      if (Number.isNaN(dt.getTime())) return "";
-      return dt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-    } catch {
-      return "";
-    }
-  };
-  const resetJobForm = (type = jobsTab) => {
-    setNewJob({
-      type,
-      title: "",
-      district: "",
-      price: "",
-      schedule: "full-time",
-      category: "",
-      desc: "",
-      telegram: "",
-      phone: "",
-    });
-  };
-  const handleAddJob = () => {
-    const title = String(newJob.title || "").trim();
-    const district = String(newJob.district || "").trim();
-    const price = String(newJob.price || "").trim();
-    const desc = String(newJob.desc || "").trim();
-    if (!title || !district || !price || !desc) return;
-    if (!user) return;
-
-    const next = {
-      id: `job-${Date.now()}`,
-      type: newJob.type === "service" ? "service" : "vacancy",
-      title,
-      district,
-      price,
-      schedule: String(newJob.schedule || "").trim(),
-      category: String(newJob.category || "").trim(),
-      desc,
-      telegram: String(newJob.telegram || "").trim(),
-      phone: String(newJob.phone || "").trim(),
-      author: user.name || "Пользователь",
-      userId: user.id || null,
-      likes: 0,
-      createdAt: new Date().toISOString(),
-    };
-    setJobsItems((prev) => [next, ...prev]);
-    setShowAddJob(false);
-    resetJobForm(next.type);
-  };
   useEffect(() => {
     if (scr !== "place-item" || !activePlace?.id || !activePlace?.fromDB) return;
     if (viewedRef.current.place === activePlace.id) return;
@@ -1603,7 +1524,7 @@ export default function App() {
   ];
 
   useEffect(() => {
-    if (!showAdd && !showAddTip && !showAddEvent && !showAddHousing && !showAddJob) return;
+    if (!showAdd && !showAddTip && !showAddEvent && !showAddHousing) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
     const prevPosition = document.body.style.position;
@@ -1626,7 +1547,7 @@ export default function App() {
       document.body.style.touchAction = prevTouchAction;
       window.scrollTo(0, scrollY);
     };
-  }, [showAdd, showAddTip, showAddEvent, showAddHousing, showAddJob]);
+  }, [showAdd, showAddTip, showAddEvent, showAddHousing]);
 
   // ─── Reusable Comments Block ───
   const renderComments = (item, type, addFn) => {
@@ -2352,38 +2273,32 @@ export default function App() {
           initialData={editingEvent}
         />
         {/* JOBS */}
-        {scr==="jobs" && (<div>
-          <button onClick={goHome} style={bk}>← Главная</button>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>💼 Работа в LA</h2>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-            <button
-              onClick={() => setJobsTab("vacancy")}
-              style={{ ...cd, padding:"18px 14px", border:`1px solid ${jobsTab==="vacancy"?`${T.primary}55`:T.border}`, boxShadow:jobsTab==="vacancy"?T.shH:"none", cursor:"pointer", fontFamily:"inherit", textAlign:"left", background:jobsTab==="vacancy"?T.primaryLight:T.card }}
-            >
-              <div style={{ fontSize:24, marginBottom:8 }}>💼</div>
-              <div style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:2 }}>Вакансии</div>
-              <div style={{ fontSize:12, color:T.mid }}>Поиск работы</div>
-            </button>
-            <button
-              onClick={() => setJobsTab("service")}
-              style={{ ...cd, padding:"18px 14px", border:`1px solid ${jobsTab==="service"?`${T.primary}55`:T.border}`, boxShadow:jobsTab==="service"?T.shH:"none", cursor:"pointer", fontFamily:"inherit", textAlign:"left", background:jobsTab==="service"?T.primaryLight:T.card }}
-            >
-              <div style={{ fontSize:24, marginBottom:8 }}>🛠️</div>
-              <div style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:2 }}>Услуги</div>
-              <div style={{ fontSize:12, color:T.mid }}>Услуги специалистов</div>
-            </button>
-          </div>
-          <div style={{ ...cd, padding:"18px 14px", border:`1px solid ${T.border}`, boxShadow:"none" }}>
-            <div style={{ fontSize:15, fontWeight:700, color:T.text, marginBottom:6 }}>
-              {jobsTab === "vacancy" ? "Вакансии" : "Услуги"}
-            </div>
-            <div style={{ fontSize:13, color:T.mid, lineHeight:1.5 }}>
-              Внутренности этого подраздела пока очищены. Следующим шагом соберем новую структуру именно для {jobsTab === "vacancy" ? "вакансий" : "услуг"}.
-            </div>
-          </div>
-        </div>)}
+        {scr === "jobs" && (
+          <JobsScreen
+            T={T} cd={cd} bk={bk} pl={pl} iS={iS}
+            user={user}
+            jobs={jobs}
+            liked={liked}
+            onGoHome={goHome}
+            onToggleLike={(id, type) => handleToggleLike(id, type)}
+            onShare={(job) => handleNativeShare({ title: job.title, text: job.description || "", url: window.location.href })}
+            onRequireAuth={handleLogin}
+            trackView={trackView}
+            onAdd={async (payload) => {
+              const { data } = await dbAddJob(payload);
+              if (data?.[0]) setJobs((prev) => [{ ...data[0], likes: 0, views: 0 }, ...prev]);
+            }}
+            onUpdate={async (id, payload) => {
+              const { data } = await dbUpdateJob(id, payload);
+              if (data?.[0]) setJobs((prev) => prev.map((j) => j.id === id ? { ...j, ...data[0] } : j));
+            }}
+            onDelete={async (id) => {
+              await dbDeleteJob(id);
+              setJobs((prev) => prev.filter((j) => j.id !== id));
+            }}
+            canManage={(job) => canManageByOwnership(job?.user_id, job?.author)}
+          />
+        )}
 
         {/* HOUSING */}
         {scr==="housing" && (<div>

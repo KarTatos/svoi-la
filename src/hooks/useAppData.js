@@ -6,6 +6,7 @@ import {
   getTips as fetchTips,
   getEvents as fetchEvents,
   getHousing as fetchHousing,
+  getJobs as fetchJobs,
   getAllComments,
   getUserLikes,
   supabase,
@@ -138,6 +139,7 @@ export function useAppData({ user, authReady }) {
   const [tips, setTips] = useState([]);
   const [events, setEvents] = useState([]);
   const [housing, setHousing] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [liked, setLiked] = useState({});
   const reloadTimerRef = useRef(null);
 
@@ -147,6 +149,7 @@ export function useAppData({ user, authReady }) {
       { data: dbTips, error: tipsError },
       { data: dbEvents, error: eventsError },
       { data: dbHousing, error: housingError },
+      { data: dbJobs, error: jobsError },
       { data: placeComments },
       { data: tipComments },
       { data: eventComments },
@@ -155,6 +158,7 @@ export function useAppData({ user, authReady }) {
       fetchTips(),
       fetchEvents(),
       fetchHousing(),
+      fetchJobs(),
       getAllComments("place"),
       getAllComments("tip"),
       getAllComments("event"),
@@ -176,6 +180,15 @@ export function useAppData({ user, authReady }) {
     if (!eventsError) setEvents(mappedEvents);
     if (!housingError) setHousing(mappedHousing);
     else setHousing(INIT_HOUSING);
+    if (!jobsError) setJobs((dbJobs || []).map((j) => ({
+      id: j.id, title: j.title, district: j.district,
+      price: j.price, schedule: j.schedule, english_lvl: j.english_lvl,
+      work_auth: j.work_auth, description: j.description,
+      telegram: j.telegram, phone: j.phone,
+      author: j.author, user_id: j.user_id,
+      likes: j.likes_count || 0, views: Number(j.views || 0),
+      created_at: j.created_at,
+    })));
 
     if (authUser?.id) {
       const userLikes = await getUserLikes(authUser.id);
@@ -205,6 +218,7 @@ export function useAppData({ user, authReady }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "tips" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "housing" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, scheduleReload)
       .subscribe();
@@ -216,16 +230,12 @@ export function useAppData({ user, authReady }) {
   }, [user, reload]);
 
   return {
-    places,
-    setPlaces,
-    tips,
-    setTips,
-    events,
-    setEvents,
-    housing,
-    setHousing,
-    liked,
-    setLiked,
+    places, setPlaces,
+    tips, setTips,
+    events, setEvents,
+    housing, setHousing,
+    jobs, setJobs,
+    liked, setLiked,
     reload,
   };
 }

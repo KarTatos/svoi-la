@@ -351,6 +351,27 @@ export const INIT_JOBS = [
   },
 ];
 
+export const JOB_SCHEDULES = [
+  { id: "full-time",  label: "Full-time" },
+  { id: "part-time",  label: "Part-time" },
+  { id: "flexible",   label: "Гибкий" },
+  { id: "one-time",   label: "Разово" },
+];
+
+export const JOB_ENGLISH = [
+  { id: "none",         label: "Не нужен" },
+  { id: "basic",        label: "Базовый" },
+  { id: "intermediate", label: "Средний" },
+  { id: "fluent",       label: "Свободный" },
+];
+
+// Work auth shown as emoji only — no explicit "work authorization" text
+export const JOB_WORK_AUTH = [
+  { id: "yes", emoji: "📋", label: "С документами" },
+  { id: "no",  emoji: "🤝", label: "Без документов" },
+  { id: "ask", emoji: "💬", label: "Уточняйте" },
+];
+
 export const SECTIONS = [
   { id:"uscis", icon:"📋", title:"USCIS", desc:"Документы" },
   { id:"places", icon:"📍", title:"Места", desc:"От своих" },
