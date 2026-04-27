@@ -1,5 +1,5 @@
 ﻿'use client';
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { getPlaces as fetchPlaces, addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, getTips as fetchTips, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, getEvents as fetchEvents, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, getHousing as fetchHousing, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, getAllComments, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, getUserLikes, uploadPhoto, supabase } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, INIT_PLACES, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, INIT_TIPS, EVENT_CATS, INIT_EVENTS, INIT_HOUSING, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
@@ -9,6 +9,9 @@ import { useProfileWeather } from "../hooks/useProfileWeather";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
 import { useSessionState } from "../hooks/useSessionState";
+import { useSvoiRouter } from "../hooks/useSvoiRouter";
+import { cacheGeocodeFor, ensureGoogleMapsApi, fetchAddressSuggestions, geocodePlace } from "../lib/maps";
+import { trackCardView } from "../lib/views";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -33,11 +36,41 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .map((x) => x.trim().toLowerCase())
   .filter(Boolean);
 
+async function fetchViewCounts(itemType, ids = []) {
+  const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
+  if (!cleanIds.length) return {};
+  try {
+    const query = new URLSearchParams({
+      itemType,
+      itemIds: cleanIds.join(","),
+    });
+    const res = await fetch(`/api/views?${query.toString()}`);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
+    return payload.counts || {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeAddressText(value = "") {
+  const noHtml = String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const firstVariant = noHtml.split(" / ")[0].split("/")[0].trim();
+  const normalized = (firstVariant || noHtml)
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/(,\s*){2,}/g, ", ")
+    .replace(/,\s*$/, "")
+    .trim();
+  const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 4) return parts.slice(0, 4).join(", ");
+  return normalized;
+}
+
 export default function App() {
-  const [scr, setScr] = useSessionState("scr", "home", {
-    serialize: (value) => String(value || ""),
-    deserialize: (raw) => String(raw || ""),
-  });
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useSessionState("selD", null);
   const [selPC, setSelPC] = useSessionState("selPC", null);
@@ -119,6 +152,38 @@ export default function App() {
   const { profileLocation, profileWeather } = useProfileWeather();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
+  const { scr, setScr } = useSvoiRouter({
+    user,
+    selPlace,
+    places,
+    selHousing,
+    housing,
+  });
+  const recordView = useCallback(
+    (itemType, item) =>
+      trackCardView(itemType, item, {
+        authReady,
+        userId: user?.id || null,
+        onUpdated: (views) => {
+          const next = Number(views || 0);
+          const id = item?.id;
+          if (!id) return;
+          const updater = (it) => (it?.id === id ? { ...it, views: next } : it);
+          if (itemType === "place") {
+            setPlaces((prev) => prev.map(updater));
+            setSelPlace((prev) => (prev?.id === id ? { ...prev, views: next } : prev));
+          } else if (itemType === "tip") {
+            setTips((prev) => prev.map(updater));
+          } else if (itemType === "event") {
+            setEvents((prev) => prev.map(updater));
+          } else if (itemType === "housing") {
+            setHousing((prev) => prev.map(updater));
+            setSelHousing((prev) => (prev?.id === id ? { ...prev, views: next } : prev));
+          }
+        },
+      }),
+    [authReady, user?.id]
+  );
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
   const supportRequests = useSupportRequests({ user });
@@ -259,12 +324,7 @@ export default function App() {
   const miniGoogleUserMarkerRef = useRef(null);
   const googleDirectionsRendererRef = useRef(null);
   const miniGoogleDirectionsRendererRef = useRef(null);
-  const googleMapsLoaderRef = useRef(null);
   const datePickerRef = useRef(null);
-  const googleAutocompleteRef = useRef(null);
-  const googlePlacesServiceRef = useRef(null);
-  const googleGeocoderRef = useRef(null);
-  const geocodeCacheRef = useRef({});
   const viewedRef = useRef({ place: null, housing: null });
   const photoSwipeRef = useRef({ startX: 0, startY: 0, active: false });
   const photoPinchRef = useRef({ baseDistance: 0, baseZoom: 1 });
@@ -294,24 +354,8 @@ export default function App() {
         if (saved.selHousingId) setSelHousing({ id: saved.selHousingId });
       }
     } catch {}
-  }, []);
-  const fetchViewCounts = async (itemType, ids = []) => {
-    const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
-    if (!cleanIds.length) return {};
-    try {
-      const query = new URLSearchParams({
-        itemType,
-        itemIds: cleanIds.join(","),
-      });
-      const res = await fetch(`/api/views?${query.toString()}`);
-      const payload = await res.json().catch(() => null);
-      if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
-      return payload.counts || {};
-    } catch {
-      return {};
-    }
-  };
-  const loadAllData = async (authUser = null) => {
+  }, [setSelD, setSelPC]);
+  const loadAllData = useCallback(async (authUser = null) => {
     const [
       { data: dbPlaces, error: placesError },
       { data: dbTips, error: tipsError },
@@ -427,13 +471,13 @@ export default function App() {
       const userLikes = await getUserLikes(authUser.id);
       setLiked(userLikes || {});
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!authReady) return;
     if (!user) setLiked({});
     loadAllData(user || null);
-  }, [authReady, user?.id]);
+  }, [authReady, user, loadAllData]);
 
   useEffect(() => {
     const scheduleReload = () => {
@@ -457,7 +501,7 @@ export default function App() {
       if (realtimeReloadTimerRef.current) clearTimeout(realtimeReloadTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user, loadAllData]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
   const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
@@ -526,7 +570,7 @@ export default function App() {
       if (eventCat) setSelEC(eventCat);
       setScr("events");
       setExp(`ev-${ev.id}`);
-      trackCardView("event", ev);
+      recordView("event", ev);
       return;
     }
     if (type === "tip") {
@@ -536,7 +580,7 @@ export default function App() {
       if (tipCat) setSelTC(tipCat);
       setScr("tips");
       setExpTip(tip.id);
-      trackCardView("tip", tip);
+      recordView("tip", tip);
       return;
     }
   };
@@ -609,122 +653,10 @@ export default function App() {
       }
     } catch {}
   };
-  const ensureGoogleMapsApi = () => {
-    if (typeof window === "undefined") return Promise.reject(new Error("No browser"));
-    if (window.google?.maps) return Promise.resolve(window.google.maps);
-    if (googleMapsLoaderRef.current) return googleMapsLoaderRef.current;
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) return Promise.reject(new Error("Google Maps API key is missing"));
-
-    googleMapsLoaderRef.current = new Promise((resolve, reject) => {
-      const existing = document.getElementById("google-maps-js");
-      if (existing) {
-        existing.addEventListener("load", () => resolve(window.google?.maps), { once: true });
-        existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")), { once: true });
-        return;
-      }
-      const callbackName = `initGoogleMaps_${Date.now()}`;
-      window[callbackName] = () => {
-        resolve(window.google?.maps);
-        try { delete window[callbackName]; } catch {}
-      };
-      const script = document.createElement("script");
-      script.id = "google-maps-js";
-      script.async = true;
-      script.defer = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}&libraries=places`;
-      script.onerror = () => {
-        googleMapsLoaderRef.current = null;
-        reject(new Error("Failed to load Google Maps script"));
-      };
-      document.head.appendChild(script);
-    });
-    return googleMapsLoaderRef.current;
-  };
-  const getGeocodeCacheKeys = (place = {}) => {
-    const address = String(place.address || "").trim().toLowerCase();
-    const name = String(place.name || "").trim().toLowerCase();
-    return {
-      primary: `${name}|${address}`,
-      byAddress: `addr|${address}`,
-    };
-  };
-  const setCardViewsLocally = (itemType, itemId, views) => {
-    const nextViews = Number(views || 0);
-    const updater = (item) => item.id === itemId ? { ...item, views: nextViews } : item;
-    if (itemType === "place") {
-      setPlaces((prev) => prev.map(updater));
-      setSelPlace((prev) => prev?.id === itemId ? { ...prev, views: nextViews } : prev);
-    } else if (itemType === "tip") {
-      setTips((prev) => prev.map(updater));
-    } else if (itemType === "event") {
-      setEvents((prev) => prev.map(updater));
-    } else if (itemType === "housing") {
-      setHousing((prev) => prev.map(updater));
-      setSelHousing((prev) => prev?.id === itemId ? { ...prev, views: nextViews } : prev);
-    }
-  };
-  const getViewerKey = () => {
-    if (user?.id) return `user:${user.id}`;
-    try {
-      const storageKey = "la_viewer_key";
-      let guestKey = localStorage.getItem(storageKey);
-      if (!guestKey) {
-        guestKey = (window?.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-        localStorage.setItem(storageKey, guestKey);
-      }
-      return `guest:${guestKey}`;
-    } catch {
-      return "guest:anonymous";
-    }
-  };
-  const trackCardView = async (itemType, item) => {
-    const itemId = item?.id;
-    if (!itemId || !item?.fromDB) return false;
-    if (!authReady) return false;
-    const viewerKey = getViewerKey();
-    if (!viewerKey) return false;
-    const viewedStorageKey = `viewed_once_${viewerKey}`;
-    const viewedItemKey = `${itemType}:${itemId}`;
-    try {
-      const viewedRaw = localStorage.getItem(viewedStorageKey);
-      const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-      if (viewedMap?.[viewedItemKey]) return true;
-    } catch {}
-    try {
-      const response = await fetch("/api/views", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemType, itemId, viewerKey }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (response.ok && payload?.ok && Number.isFinite(Number(payload.views))) {
-        setCardViewsLocally(itemType, itemId, Number(payload.views));
-        try {
-          const viewedRaw = localStorage.getItem(viewedStorageKey);
-          const viewedMap = viewedRaw ? JSON.parse(viewedRaw) : {};
-          viewedMap[viewedItemKey] = true;
-          localStorage.setItem(viewedStorageKey, JSON.stringify(viewedMap));
-        } catch {}
-        return true;
-      }
-      console.error("View track failed:", itemType, itemId, payload?.error || response.status);
-      return false;
-    } catch (err) {
-      console.error("View track request error:", itemType, itemId, err);
-      return false;
-    }
-  };
-  const saveGeocodeCache = (place, coords) => {
-    if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return;
-    const { primary, byAddress } = getGeocodeCacheKeys(place);
-    if (primary) geocodeCacheRef.current[primary] = coords;
-    if (byAddress) geocodeCacheRef.current[byAddress] = coords;
-  };
   const onSelectPlaceNameSuggestion = (opt) => {
     setNp((prev) => ({ ...prev, name: opt.placeName || prev.name, address: opt.value }));
     if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) {
-      saveGeocodeCache({ name: opt.placeName || np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
+      cacheGeocodeFor({ name: opt.placeName || np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
       setPlaceCoords({ lat: opt.lat, lng: opt.lng });
       setAddrValidPlace(true);
     } else {
@@ -737,7 +669,7 @@ export default function App() {
   const onSelectPlaceAddressSuggestion = (opt) => {
     setNp((prev) => ({ ...prev, address: opt.value }));
     if (Number.isFinite(opt.lat) && Number.isFinite(opt.lng)) {
-      saveGeocodeCache({ name: np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
+      cacheGeocodeFor({ name: np.name, address: opt.value }, { lat: opt.lat, lng: opt.lng });
       setPlaceCoords({ lat: opt.lat, lng: opt.lng });
       setAddrValidPlace(true);
     } else {
@@ -746,50 +678,6 @@ export default function App() {
     }
     setAddrOptionsPlace([]);
     setNameOptionsPlace([]);
-  };
-  const geocodePlace = async (place) => {
-    if (Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng))) {
-      return { lat: Number(place.lat), lng: Number(place.lng) };
-    }
-    const { primary, byAddress } = getGeocodeCacheKeys(place);
-    if (primary && geocodeCacheRef.current[primary]) return geocodeCacheRef.current[primary];
-    if (byAddress && geocodeCacheRef.current[byAddress]) return geocodeCacheRef.current[byAddress];
-
-    // Prefer Google geocoder for better match with Google Maps pins.
-    try {
-      const maps = await ensureGoogleMapsApi();
-      if (maps?.Geocoder) {
-        if (!googleGeocoderRef.current) googleGeocoderRef.current = new maps.Geocoder();
-        const q = `${place.address || place.name}, Los Angeles County, California`;
-        const googleCoords = await new Promise((resolve) => {
-          googleGeocoderRef.current.geocode({ address: q, region: "us" }, (results, status) => {
-            const loc = Array.isArray(results) ? results[0]?.geometry?.location : null;
-            if (status !== "OK" || !loc) return resolve(null);
-            resolve({ lat: Number(loc.lat()), lng: Number(loc.lng()) });
-          });
-        });
-        if (googleCoords && Number.isFinite(googleCoords.lat) && Number.isFinite(googleCoords.lng)) {
-          saveGeocodeCache(place, googleCoords);
-          return googleCoords;
-        }
-      }
-    } catch {}
-
-    // Fallback, if Google geocode is unavailable.
-    const query = encodeURIComponent(`${place.address || place.name}, Los Angeles County, California`);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&addressdetails=1&q=${query}`);
-      const data = await res.json();
-      if (!Array.isArray(data) || !data[0]) return null;
-      const lat = Number(data[0].lat);
-      const lng = Number(data[0].lon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      const coords = { lat, lng };
-      saveGeocodeCache(place, coords);
-      return coords;
-    } catch {
-      return null;
-    }
   };
   const openAllOnMap = async (placesArr) => {
     setShowMapModal(true);
@@ -846,123 +734,6 @@ export default function App() {
       return { ...prev, index: nextIndex };
     });
     setPhotoZoom(1);
-  };
-
-  const getGoogleComponent = (components, type, mode = "long") => {
-    const found = (components || []).find((c) => (c.types || []).includes(type));
-    if (!found) return "";
-    return mode === "short" ? (found.short_name || "") : (found.long_name || "");
-  };
-  const normalizeAddressText = (value = "") => {
-    const noHtml = String(value || "")
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    const firstVariant = noHtml.split(" / ")[0].split("/")[0].trim();
-    const normalized = (firstVariant || noHtml)
-      .replace(/\s*,\s*/g, ", ")
-      .replace(/(,\s*){2,}/g, ", ")
-      .replace(/,\s*$/, "")
-      .trim();
-    const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 4) return parts.slice(0, 4).join(", ");
-    return normalized;
-  };
-  const shortAddressFromGoogle = (components, fallback = "") => {
-    const streetNumber = getGoogleComponent(components, "street_number");
-    const route = getGoogleComponent(components, "route");
-    const city =
-      getGoogleComponent(components, "locality") ||
-      getGoogleComponent(components, "sublocality_level_1") ||
-      getGoogleComponent(components, "postal_town") ||
-      "Los Angeles";
-    const state = getGoogleComponent(components, "administrative_area_level_1", "short") || "CA";
-    const line = [streetNumber, route].filter(Boolean).join(" ").trim();
-    if (line) return `${line}, ${city}, ${state}`;
-    if (fallback) {
-      const parts = String(fallback).split(",").map((p) => p.trim()).filter(Boolean);
-      return parts.slice(0, 3).join(", ");
-    }
-    return `${city}, ${state}`;
-  };
-  const ensureGooglePlacesServices = async () => {
-    const maps = await ensureGoogleMapsApi();
-    if (!maps?.places) throw new Error("Google Places library is not available");
-    if (!googleAutocompleteRef.current) {
-      googleAutocompleteRef.current = new maps.places.AutocompleteService();
-    }
-    if (!googlePlacesServiceRef.current) {
-      const el = document.createElement("div");
-      googlePlacesServiceRef.current = new maps.places.PlacesService(el);
-    }
-    return { maps, autocomplete: googleAutocompleteRef.current, placesService: googlePlacesServiceRef.current };
-  };
-  const getGooglePredictions = (autocomplete, input) => new Promise((resolve) => {
-    const center = { lat: 34.0522, lng: -118.2437 };
-    const req = {
-      input,
-      componentRestrictions: { country: "us" },
-      locationBias: new window.google.maps.Circle({ center, radius: 90000 }).getBounds(),
-    };
-    autocomplete.getPlacePredictions(req, (predictions, status) => {
-      const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
-      if (!ok && status !== window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-        console.error("Autocomplete status:", status);
-      }
-      resolve(ok ? predictions || [] : []);
-    });
-  });
-  const getGooglePlaceDetails = (placesService, placeId) => new Promise((resolve) => {
-    placesService.getDetails(
-      { placeId, fields: ["name", "formatted_address", "address_components", "geometry"] },
-      (result, status) => {
-        const ok = status === window.google.maps.places.PlacesServiceStatus.OK;
-        resolve(ok ? result : null);
-      },
-    );
-  });
-  const fetchAddressSuggestions = async (query) => {
-    const q = (query || "").trim();
-    if (q.length < 3) return [];
-    try {
-      const { autocomplete, placesService } = await ensureGooglePlacesServices();
-      const predictions = await getGooglePredictions(autocomplete, q);
-      const top = predictions.slice(0, 6);
-      const detailed = await Promise.all(
-        top.map(async (pred) => {
-          const details = pred?.place_id ? await getGooglePlaceDetails(placesService, pred.place_id) : null;
-          const short = shortAddressFromGoogle(details?.address_components, details?.formatted_address || pred?.description || "");
-          const placeName = details?.name || pred?.structured_formatting?.main_text || "";
-          const label = placeName && !short.toLowerCase().includes(String(placeName).toLowerCase())
-            ? `${placeName} — ${short}`
-            : short;
-          const lat = details?.geometry?.location?.lat?.();
-          const lng = details?.geometry?.location?.lng?.();
-          return {
-            label,
-            value: short,
-            placeName,
-            lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-            lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
-          };
-        }),
-      );
-      const uniq = [];
-      const seen = new Set();
-      for (const item of detailed) {
-        if (!item?.value) continue;
-        if (!Number.isFinite(item.lat) || !Number.isFinite(item.lng)) continue;
-        const key = `${item.value}|${item.label}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        uniq.push(item);
-      }
-      return uniq;
-    } catch (err) {
-      console.error("Address suggestions failed:", err);
-      return [];
-    }
   };
 
   useEffect(() => {
@@ -1984,11 +1755,11 @@ export default function App() {
     if (viewedRef.current.place === activePlace.id) return;
     let canceled = false;
     (async () => {
-      const ok = await trackCardView("place", activePlace);
+      const ok = await recordView("place", activePlace);
       if (!canceled && ok) viewedRef.current.place = activePlace.id;
     })();
     return () => { canceled = true; };
-  }, [scr, activePlace?.id, authReady]);
+  }, [scr, activePlace, authReady, recordView]);
   useEffect(() => {
     if (scr !== "place-item") viewedRef.current.place = null;
   }, [scr]);
@@ -1997,11 +1768,11 @@ export default function App() {
     if (viewedRef.current.housing === activeHousing.id) return;
     let canceled = false;
     (async () => {
-      const ok = await trackCardView("housing", activeHousing);
+      const ok = await recordView("housing", activeHousing);
       if (!canceled && ok) viewedRef.current.housing = activeHousing.id;
     })();
     return () => { canceled = true; };
-  }, [scr, activeHousing?.id, authReady]);
+  }, [scr, activeHousing, authReady, recordView]);
   useEffect(() => {
     if (scr !== "housing-item") viewedRef.current.housing = null;
   }, [scr]);
@@ -2059,21 +1830,6 @@ export default function App() {
     { bg: "#FCEAEA", text: "#17324D" },
   ];
 
-  useEffect(() => {
-    if (scr === "place-item" && !activePlace) setScr("places-cat");
-  }, [scr, activePlace]);
-  useEffect(() => {
-    if (scr === "profile" && !user) setScr("home");
-  }, [scr, user]);
-  useEffect(() => {
-    if (scr === "my-places" && !user) setScr("home");
-  }, [scr, user]);
-  useEffect(() => {
-    if (scr === "support" && !user) setScr("home");
-  }, [scr, user]);
-  useEffect(() => {
-    if (scr === "housing-item" && housing.length > 0 && !activeHousing) setScr("housing");
-  }, [scr, activeHousing, housing.length]);
   useEffect(() => {
     if (!showAdd && !showAddTip && !showAddEvent && !showAddHousing && !showAddJob) return;
     const prevOverflow = document.body.style.overflow;
