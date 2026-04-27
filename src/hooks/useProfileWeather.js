@@ -15,13 +15,33 @@ function haversineKm(aLat, aLng, bLat, bLng) {
 }
 
 function getNearestDistrictLabel(lat, lng) {
-  const nearestDistrict = DISTRICTS.reduce((best, d) => {
+  const nearest = DISTRICTS.reduce((best, d) => {
     if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) return best;
     const dist = haversineKm(lat, lng, Number(d.lat), Number(d.lng));
     if (!best || dist < best.dist) return { name: d.name, dist };
     return best;
   }, null);
-  return nearestDistrict && nearestDistrict.dist <= 50 ? nearestDistrict.name : "";
+  return nearest && nearest.dist <= 50 ? nearest.name : "";
+}
+
+// WMO weather code → short description
+function wmoText(code) {
+  if (code === 0) return "Clear sky";
+  if (code === 1) return "Mainly clear";
+  if (code === 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code <= 49) return "Foggy";
+  if (code <= 55) return "Drizzle";
+  if (code <= 57) return "Freezing drizzle";
+  if (code <= 65) return "Rain";
+  if (code <= 67) return "Freezing rain";
+  if (code <= 75) return "Snow";
+  if (code === 77) return "Snow grains";
+  if (code <= 82) return "Rain showers";
+  if (code <= 86) return "Snow showers";
+  if (code === 95) return "Thunderstorm";
+  if (code <= 99) return "Thunderstorm w/ hail";
+  return "Unknown";
 }
 
 export function useProfileWeather() {
@@ -42,44 +62,41 @@ export function useProfileWeather() {
         const lat = Number(coords.latitude);
         const lng = Number(coords.longitude);
         if (!canceled) setUserCoords({ lat, lng });
-        const latLabel = lat.toFixed(4);
-        const lngLabel = lng.toFixed(4);
+
+        const districtLabel = getNearestDistrictLabel(lat, lng);
+        if (!canceled) setProfileLocation(districtLabel || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
 
         try {
-          const pointsRes = await fetch(`https://api.weather.gov/points/${latLabel},${lngLabel}`);
-          if (!pointsRes.ok) throw new Error("points_failed");
-          const points = await pointsRes.json();
+          const url =
+            `https://api.open-meteo.com/v1/forecast` +
+            `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
+            `&current=temperature_2m,weather_code` +
+            `&temperature_unit=fahrenheit` +
+            `&forecast_days=1`;
+
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("open_meteo_failed");
+          const data = await res.json();
           if (canceled) return;
 
-          const rel = points?.properties?.relativeLocation?.properties;
-          const city = rel?.city || "";
-          const state = rel?.state || "";
-          const districtLabel = getNearestDistrictLabel(lat, lng);
-          setProfileLocation(districtLabel || (city && state ? `${city}, ${state}` : `${latLabel}, ${lngLabel}`));
+          const temp = data?.current?.temperature_2m;
+          const code = data?.current?.weather_code;
 
-          const forecastUrl = points?.properties?.forecast;
-          if (!forecastUrl) throw new Error("forecast_url_missing");
-          const forecastRes = await fetch(forecastUrl);
-          if (!forecastRes.ok) throw new Error("forecast_failed");
-          const forecast = await forecastRes.json();
-          if (canceled) return;
-          const period = forecast?.properties?.periods?.[0];
-          if (!period) throw new Error("forecast_empty");
+          if (temp == null) throw new Error("no_temp");
 
           setProfileWeather({
-            temp: `${period.temperature}°${period.temperatureUnit || ""}`,
-            text: period.shortForecast || "Без описания",
+            temp: `${Math.round(temp)}°F`,
+            text: wmoText(code ?? -1),
           });
         } catch {
           if (canceled) return;
-          setProfileLocation(`${latLabel}, ${lngLabel}`);
-          setProfileWeather((prev) => (prev?.temp && prev?.text ? prev : { temp: "--°", text: "Погода недоступна" }));
+          setProfileWeather({ temp: "--°", text: "Погода недоступна" });
         }
       },
       () => {
         if (canceled) return;
         setProfileLocation("Локация отключена");
-        setProfileWeather((prev) => (prev?.temp && prev?.text ? prev : { temp: "--°", text: "Разрешите геолокацию" }));
+        setProfileWeather({ temp: "--°", text: "Разрешите геолокацию" });
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 }
     );
