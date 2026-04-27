@@ -9,6 +9,17 @@ create table if not exists public.admin_users (
 
 alter table public.admin_users enable row level security;
 
+-- Seed initial admin. Idempotent via ON CONFLICT.
+insert into public.admin_users (email) values ('kushnir4work@gmail.com')
+on conflict (email) do nothing;
+
+-- Allow only admins themselves to read the allowlist.
+drop policy if exists "admin_users_self_select" on public.admin_users;
+create policy "admin_users_self_select"
+on public.admin_users for select
+to authenticated
+using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+
 create or replace function public.is_admin_user()
 returns boolean
 language sql

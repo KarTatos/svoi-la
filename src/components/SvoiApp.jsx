@@ -1061,46 +1061,10 @@ export default function App() {
     const msg = t || inp.trim(); if (!msg) return;
     setChat(p => [...p, { role:"user", text:msg }]); setInp(""); setTyping(true);
     try {
-      const appData = {
-        places: places.slice(0, 250).map((p) => ({
-          id: p.id,
-          name: p.name,
-          district: p.district,
-          cat: p.cat,
-          address: p.address,
-          tip: p.tip,
-          likes: p.likes || 0,
-        })),
-        tips: tips.slice(0, 120).map((t) => ({
-          id: t.id,
-          title: t.title,
-          cat: t.cat,
-          text: t.text,
-        })),
-        events: events.slice(0, 120).map((e) => ({
-          id: e.id,
-          title: e.title,
-          cat: e.cat,
-          location: e.location,
-          date: e.date,
-          desc: e.desc,
-        })),
-        housing: housing.slice(0, 120).map((h) => ({
-          id: h.id,
-          title: h.title,
-          district: h.district,
-          type: h.type,
-          address: h.address,
-          minPrice: h.minPrice,
-          comment: h.comment || "",
-          telegram: h.telegram,
-          messageContact: h.messageContact,
-        })),
-      };
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ message:msg, history:chat.slice(-10), appData }),
+        body:JSON.stringify({ message:msg, history:chat.slice(-10) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error);

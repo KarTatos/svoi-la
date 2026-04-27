@@ -97,62 +97,6 @@ function formatHousingLine(item) {
   return `- ${item.title || item.address || "Жильё"} (${type}, ${area}) — ${price} | Адрес: ${item.address || "не указан"} | Контакт: ${contact} | link: app://housing/${item.id}`;
 }
 
-function sanitizeClientData(appData) {
-  if (!appData || typeof appData !== "object") return { places: [], tips: [], events: [], housing: [] };
-  const places = Array.isArray(appData.places) ? appData.places : [];
-  const tips = Array.isArray(appData.tips) ? appData.tips : [];
-  const events = Array.isArray(appData.events) ? appData.events : [];
-  const housing = Array.isArray(appData.housing) ? appData.housing : [];
-
-  return {
-    places: places
-      .slice(0, 250)
-      .map((p) => ({
-        id: p.id,
-        name: p.name || "",
-        district: p.district || "",
-        cat: p.cat || p.category || "",
-        address: p.address || "",
-        tip: p.tip || "",
-        likes: Number(p.likes || 0),
-      }))
-      .filter((p) => p.name),
-    tips: tips
-      .slice(0, 120)
-      .map((t) => ({
-        id: t.id,
-        title: t.title || "",
-        category: t.cat || t.category || "",
-        text: t.text || "",
-      }))
-      .filter((t) => t.title),
-    events: events
-      .slice(0, 120)
-      .map((e) => ({
-        id: e.id,
-        title: e.title || "",
-        category: e.cat || e.category || "",
-        location: e.location || "",
-        date: e.date || "",
-        desc: e.desc || e.description || "",
-      }))
-      .filter((e) => e.title),
-    housing: housing
-      .slice(0, 120)
-      .map((h) => ({
-        id: h.id,
-        title: h.title || "",
-        district: h.district || "",
-        type: h.type || "",
-        address: h.address || "",
-        minPrice: Number(h.minPrice || h.min_price || 0),
-        telegram: h.telegram || "",
-        messageContact: h.messageContact || h.message_contact || "",
-      }))
-      .filter((h) => h.title || h.address),
-  };
-}
-
 async function fetchSupabaseDataFallback(query) {
   try {
     const q = normalizeText(query);
@@ -280,7 +224,7 @@ function buildLocalContext(message, data) {
 export async function POST(request) {
   const meta = requestMeta(request);
   try {
-    const { message, history = [], appData = null } = await request.json();
+    const { message, history = [] } = await request.json();
     if (!message || typeof message !== "string") {
       logInfo("chat.bad_request", meta);
       return Response.json({ error: "Пустое сообщение" }, { status: 400 });
@@ -288,17 +232,9 @@ export async function POST(request) {
 
     const queryType = classifyQuery(message);
 
-    const clientData = sanitizeClientData(appData);
-    const hasClientData = clientData.places.length || clientData.tips.length || clientData.events.length || clientData.housing.length;
-    const fallbackData = hasClientData ? { places: [], tips: [], events: [], housing: [] } : await fetchSupabaseDataFallback(message);
-    const mergedData = {
-      places: [...clientData.places, ...fallbackData.places],
-      tips: [...clientData.tips, ...fallbackData.tips],
-      events: [...clientData.events, ...fallbackData.events],
-      housing: [...clientData.housing, ...fallbackData.housing],
-    };
-
-    const localContext = buildLocalContext(message, mergedData);
+    // Always fetch from Supabase server-side. We do not trust any client-supplied data.
+    const data = await fetchSupabaseDataFallback(message);
+    const localContext = buildLocalContext(message, data);
     const localDataBlock = localContext.hasData
       ? `\n\nДАННЫЕ ПРИЛОЖЕНИЯ (используй только их для рекомендаций):\n${localContext.context}`
       : "\n\nДАННЫЕ ПРИЛОЖЕНИЯ: подходящих записей не найдено.";
