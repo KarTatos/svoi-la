@@ -1,28 +1,4 @@
 import { useEffect, useState } from "react";
-import { DISTRICTS } from "../components/svoi/config";
-
-function toRad(v) {
-  return (v * Math.PI) / 180;
-}
-
-function haversineKm(aLat, aLng, bLat, bLng) {
-  const R = 6371;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const s1 = Math.sin(dLat / 2) ** 2;
-  const s2 = Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s1 + s2));
-}
-
-function getNearestDistrictLabel(lat, lng) {
-  const nearest = DISTRICTS.reduce((best, d) => {
-    if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) return best;
-    const dist = haversineKm(lat, lng, Number(d.lat), Number(d.lng));
-    if (!best || dist < best.dist) return { name: d.name, dist };
-    return best;
-  }, null);
-  return nearest && nearest.dist <= 50 ? nearest.name : "";
-}
 
 // WMO weather code → short description
 function wmoText(code) {
@@ -63,34 +39,54 @@ export function useProfileWeather() {
         const lng = Number(coords.longitude);
         if (!canceled) setUserCoords({ lat, lng });
 
-        const districtLabel = getNearestDistrictLabel(lat, lng);
-        if (!canceled) setProfileLocation(districtLabel || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        const weatherUrl =
+          `https://api.open-meteo.com/v1/forecast` +
+          `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
+          `&current=temperature_2m,weather_code` +
+          `&temperature_unit=fahrenheit` +
+          `&forecast_days=1`;
 
+        const geoUrl =
+          `https://api.bigdatacloud.net/data/reverse-geocode-client` +
+          `?latitude=${lat.toFixed(6)}&longitude=${lng.toFixed(6)}&localityLanguage=en`;
+
+        const [weatherRes, geoRes] = await Promise.allSettled([
+          fetch(weatherUrl),
+          fetch(geoUrl),
+        ]);
+
+        if (canceled) return;
+
+        // — Location name —
         try {
-          const url =
-            `https://api.open-meteo.com/v1/forecast` +
-            `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
-            `&current=temperature_2m,weather_code` +
-            `&temperature_unit=fahrenheit` +
-            `&forecast_days=1`;
-
-          const res = await fetch(url);
-          if (!res.ok) throw new Error("open_meteo_failed");
-          const data = await res.json();
-          if (canceled) return;
-
-          const temp = data?.current?.temperature_2m;
-          const code = data?.current?.weather_code;
-
-          if (temp == null) throw new Error("no_temp");
-
-          setProfileWeather({
-            temp: `${Math.round(temp)}°F`,
-            text: wmoText(code ?? -1),
-          });
+          if (geoRes.status === "fulfilled" && geoRes.value.ok) {
+            const geo = await geoRes.value.json();
+            const locality = geo?.locality || geo?.city || "";
+            if (locality) setProfileLocation(locality);
+            else setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+          } else {
+            setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+          }
         } catch {
-          if (canceled) return;
-          setProfileWeather({ temp: "--°", text: "Погода недоступна" });
+          if (!canceled) setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+
+        // — Weather —
+        try {
+          if (weatherRes.status === "fulfilled" && weatherRes.value.ok) {
+            const data = await weatherRes.value.json();
+            const temp = data?.current?.temperature_2m;
+            const code = data?.current?.weather_code;
+            if (temp == null) throw new Error("no_temp");
+            if (!canceled) setProfileWeather({
+              temp: `${Math.round(temp)}°F`,
+              text: wmoText(code ?? -1),
+            });
+          } else {
+            throw new Error("weather_failed");
+          }
+        } catch {
+          if (!canceled) setProfileWeather({ temp: "--°", text: "Погода недоступна" });
         }
       },
       () => {
