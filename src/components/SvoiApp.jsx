@@ -36,6 +36,40 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .map((x) => x.trim().toLowerCase())
   .filter(Boolean);
 
+async function fetchViewCounts(itemType, ids = []) {
+  const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
+  if (!cleanIds.length) return {};
+  try {
+    const query = new URLSearchParams({
+      itemType,
+      itemIds: cleanIds.join(","),
+    });
+    const res = await fetch(`/api/views?${query.toString()}`);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
+    return payload.counts || {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeAddressText(value = "") {
+  const noHtml = String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const firstVariant = noHtml.split(" / ")[0].split("/")[0].trim();
+  const normalized = (firstVariant || noHtml)
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/(,\s*){2,}/g, ", ")
+    .replace(/,\s*$/, "")
+    .trim();
+  const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 4) return parts.slice(0, 4).join(", ");
+  return normalized;
+}
+
 export default function App() {
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useSessionState("selD", null);
@@ -320,24 +354,8 @@ export default function App() {
         if (saved.selHousingId) setSelHousing({ id: saved.selHousingId });
       }
     } catch {}
-  }, []);
-  const fetchViewCounts = async (itemType, ids = []) => {
-    const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
-    if (!cleanIds.length) return {};
-    try {
-      const query = new URLSearchParams({
-        itemType,
-        itemIds: cleanIds.join(","),
-      });
-      const res = await fetch(`/api/views?${query.toString()}`);
-      const payload = await res.json().catch(() => null);
-      if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
-      return payload.counts || {};
-    } catch {
-      return {};
-    }
-  };
-  const loadAllData = async (authUser = null) => {
+  }, [setSelD, setSelPC]);
+  const loadAllData = useCallback(async (authUser = null) => {
     const [
       { data: dbPlaces, error: placesError },
       { data: dbTips, error: tipsError },
@@ -453,13 +471,13 @@ export default function App() {
       const userLikes = await getUserLikes(authUser.id);
       setLiked(userLikes || {});
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!authReady) return;
     if (!user) setLiked({});
     loadAllData(user || null);
-  }, [authReady, user?.id]);
+  }, [authReady, user, loadAllData]);
 
   useEffect(() => {
     const scheduleReload = () => {
@@ -483,7 +501,7 @@ export default function App() {
       if (realtimeReloadTimerRef.current) clearTimeout(realtimeReloadTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user, loadAllData]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
   const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setShowAddJob(false); setJobsTab("vacancy"); setNewJob({ type:"vacancy", title:"", district:"", price:"", schedule:"full-time", category:"", desc:"", telegram:"", phone:"" }); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
@@ -716,23 +734,6 @@ export default function App() {
       return { ...prev, index: nextIndex };
     });
     setPhotoZoom(1);
-  };
-
-  const normalizeAddressText = (value = "") => {
-    const noHtml = String(value || "")
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    const firstVariant = noHtml.split(" / ")[0].split("/")[0].trim();
-    const normalized = (firstVariant || noHtml)
-      .replace(/\s*,\s*/g, ", ")
-      .replace(/(,\s*){2,}/g, ", ")
-      .replace(/,\s*$/, "")
-      .trim();
-    const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 4) return parts.slice(0, 4).join(", ");
-    return normalized;
   };
 
   useEffect(() => {
