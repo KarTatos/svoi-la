@@ -27,6 +27,7 @@ function getNearestDistrictLabel(lat, lng) {
 export function useProfileWeather() {
   const [profileLocation, setProfileLocation] = useState("Определяем локацию...");
   const [profileWeather, setProfileWeather] = useState({ temp: "--°", text: "Погода загружается..." });
+  const [userCoords, setUserCoords] = useState(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -40,6 +41,7 @@ export function useProfileWeather() {
       async ({ coords }) => {
         const lat = Number(coords.latitude);
         const lng = Number(coords.longitude);
+        if (!canceled) setUserCoords({ lat, lng });
         const latLabel = lat.toFixed(4);
         const lngLabel = lng.toFixed(4);
 
@@ -87,5 +89,5 @@ export function useProfileWeather() {
     };
   }, []);
 
-  return { profileLocation, profileWeather };
+  return { profileLocation, profileWeather, userCoords };
 }
