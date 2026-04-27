@@ -46,24 +46,31 @@ export function useProfileWeather() {
           `&temperature_unit=fahrenheit` +
           `&forecast_days=1`;
 
-        const geoUrl =
-          `https://api.bigdatacloud.net/data/reverse-geocode-client` +
-          `?latitude=${lat.toFixed(6)}&longitude=${lng.toFixed(6)}&localityLanguage=en`;
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+        const geoUrl = apiKey
+          ? `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`
+          : null;
 
         const [weatherRes, geoRes] = await Promise.allSettled([
           fetch(weatherUrl),
-          fetch(geoUrl),
+          geoUrl ? fetch(geoUrl) : Promise.reject("no_key"),
         ]);
 
         if (canceled) return;
 
-        // — Location name —
+        // — Location name via Google reverse geocoding —
         try {
           if (geoRes.status === "fulfilled" && geoRes.value.ok) {
             const geo = await geoRes.value.json();
-            const locality = geo?.locality || geo?.city || "";
-            if (locality) setProfileLocation(locality);
-            else setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            const components = geo?.results?.[0]?.address_components || [];
+            // Pick the most specific useful component
+            const priority = ["neighborhood", "sublocality_level_1", "sublocality", "locality"];
+            let label = "";
+            for (const type of priority) {
+              const found = components.find((c) => c.types.includes(type));
+              if (found) { label = found.long_name; break; }
+            }
+            setProfileLocation(label || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           } else {
             setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           }
