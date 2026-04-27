@@ -29,6 +29,7 @@ import AppHeader from "./svoi/layout/AppHeader";
 import PlaceFormModal from "./svoi/forms/PlaceFormModal";
 import TipFormModal from "./svoi/forms/TipFormModal";
 import EventCreateModal from "./svoi/forms/EventCreateModal";
+import TipCard from "./svoi/cards/TipCard";
 import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
 import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
@@ -2056,47 +2057,33 @@ export default function App() {
               {tipsSearchResults.length === 0 && (
                 <div style={{ ...cd, padding:16, fontSize:13, color:T.mid }}>Ничего не найдено по запросу: “{tipsSearchApplied}”</div>
               )}
-              {tipsSearchResults.map((tip) => {
-                const isE = expTip === tip.id;
-                const isL = liked[`tip-${tip.id}`];
-                const isF = favorites[`tip-${tip.id}`];
-                const catTitle = TIPS_CATS.find((c) => c.id === tip.cat)?.title || "";
-                return (
-                  <div key={tip.id} style={{ ...cd, marginBottom:0, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-                    <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
-                      <div style={{ fontSize:11, color:T.light, marginBottom:4 }}>{catTitle}</div>
-                      <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
-                      <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
-                      <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
-                        <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
-                        <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }}
-                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
-                            title="Избранное"
-                          >
-                            <StarIcon active={!!isF} size={14} />
-                          </button>
-                          <span>👁 {tip.views || 0}</span>
-                          <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
-                          <span>💬 {(tip.comments||[]).length}</span>
-                          <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
-                        </div>
-                      </div>
-                    </div>
-                    {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                      <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
-                        <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {tip.views || 0}</span>
-                        <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
-                        <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
-                      </div>
-                      {renderComments(tip, "tip", handleAddComment)}
-                    </div>)}
-                  </div>
-                );
-              })}
+              {tipsSearchResults.map((tip) => (
+                <TipCard
+                  key={tip.id}
+                  tip={tip}
+                  isExpanded={expTip === tip.id}
+                  isLiked={!!liked[`tip-${tip.id}`]}
+                  isFavorited={!!favorites[`tip-${tip.id}`]}
+                  canEdit={false}
+                  categoryLabel={TIPS_CATS.find((c) => c.id === tip.cat)?.title || ""}
+                  marginBottom={0}
+                  T={T}
+                  cd={cd}
+                  pl={pl}
+                  onToggleExpand={(open) => setExpTip(open ? tip.id : null)}
+                  onOpenPhoto={(photos, pi) => openPhotoViewer(photos, pi)}
+                  onToggleFavorite={() => toggleFavorite(tip.id, "tip")}
+                  onToggleLike={() => handleToggleLike(tip.id, "tip")}
+                  onOpenComments={() => setShowComments(`tip-${tip.id}`)}
+                  onShare={() =>
+                    handleNativeShare({ title: tip.title, text: tip.text, url: window.location.href })
+                  }
+                  onEdit={() => {}}
+                  onDelete={() => {}}
+                  renderComments={renderComments}
+                  handleAddComment={handleAddComment}
+                />
+              ))}
             </div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
@@ -2129,57 +2116,34 @@ export default function App() {
               +
             </button>
           </div>
-          {catTips.map((tip, i) => { const isE = expTip===tip.id; const isL = liked[`tip-${tip.id}`]; const isF = favorites[`tip-${tip.id}`]; return (
-            <div key={tip.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-              <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); if (nextOpen) trackCardView("tip", tip); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
-                <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
-                <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
-                {isE && tip.photos?.length > 0 && (
-                  <div style={{ display:"flex", gap:8, overflowX:"auto", marginTop:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
-                    {tip.photos.map((ph, pi) => (
-                      <img key={pi} src={ph} alt="" style={{ width:86, height:86, objectFit:"cover", borderRadius:10, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={(e)=>{e.stopPropagation(); openPhotoViewer(tip.photos, pi);}} />
-                    ))}
-                  </div>
-                )}
-                {isE && tip.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginTop:2 }}>Листайте фото →</div>}
-                <div style={{ display:"flex", justifyContent:"space-between", marginTop:10 }}>
-                  <span style={{ fontSize:11, color:T.light }}>от {tip.author}</span>
-                  <div style={{ display:"flex", gap:10, fontSize:12, color:T.mid, alignItems:"center" }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }}
-                      style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:isF ? "#D68910" : T.light, padding:0, fontSize:14, lineHeight:1 }}
-                      title="Избранное"
-                    >
-                      <StarIcon active={!!isF} size={14} />
-                    </button>
-                    <span>👁 {tip.views || 0}</span>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:isL?"#E74C3C":T.mid }}><HeartIcon active={!!isL} size={14} /> {tip.likes||0}</span>
-                    <span>💬 {tip.comments.length}</span>
-                    <span style={{ color:isE?T.primary:T.light, transform:isE?"rotate(180deg)":"", transition:"0.3s" }}>▼</span>
-                  </div>
-                </div>
-              </div>
-              {isE && (<div style={{ borderTop:`1px solid ${T.borderL}` }}>
-                <div style={{ padding:"16px 16px 0", display:"none" }}>
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ ...pl(isL), marginBottom:8, fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}>{isL ? <HeartIcon active={true} size={14} /> : <HeartIcon active={false} size={14} />} {isL ? "Понравилось" : "Нравится"}</button>
-                </div>
-                <div style={{ padding:"14px 16px 10px", display:"flex", gap:14, alignItems:"center" }}>
-                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isF?"#D68910":T.mid, padding:0 }} title="Избранное"><StarIcon active={!!isF} size={18} /></button>
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleLike(tip.id,"tip"); }} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:isL?"#E74C3C":T.mid, padding:0 }} title="Нравится"><HeartIcon active={!!isL} /> <span style={{ fontSize:14 }}>{tip.likes||0}</span></button>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:14, color:T.mid }}>👁 {tip.views || 0}</span>
-                  <button onClick={(e)=>{e.stopPropagation(); setShowComments(`tip-${tip.id}`);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, fontSize:18, color:T.mid, padding:0 }} title="Комментарии">◌ <span style={{ fontSize:14 }}>{(tip.comments||[]).length}</span></button>
-                  <button onClick={(e)=>{e.stopPropagation(); handleNativeShare({ title:tip.title, text:tip.text, url:window.location.href });}} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
-                </div>
-                {renderComments(tip, "tip", handleAddComment)}
-                {canManageTip(tip) && (
-                  <div style={{ padding:"0 16px 16px", display:"flex", gap:8 }}>
-                    <button onClick={(e)=>{e.stopPropagation(); startEditTip(tip);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12 }}>✏️ Редактировать</button>
-                    <button onClick={(e)=>{e.stopPropagation(); handleDeleteTip(tip.id);}} style={{ ...pl(false), flex:1, padding:10, fontSize:12, border:"1.5px solid #fecaca", color:"#E74C3C", background:"#FFF5F5" }}>🗑 Удалить</button>
-                  </div>
-                )}
-              </div>)}
-            </div>
-          ); })}
+          {catTips.map((tip) => (
+            <TipCard
+              key={tip.id}
+              tip={tip}
+              isExpanded={expTip === tip.id}
+              isLiked={!!liked[`tip-${tip.id}`]}
+              isFavorited={!!favorites[`tip-${tip.id}`]}
+              canEdit={canManageTip(tip)}
+              T={T}
+              cd={cd}
+              pl={pl}
+              onToggleExpand={(open) => {
+                setExpTip(open ? tip.id : null);
+                if (open) trackView("tip", tip);
+              }}
+              onOpenPhoto={(photos, pi) => openPhotoViewer(photos, pi)}
+              onToggleFavorite={() => toggleFavorite(tip.id, "tip")}
+              onToggleLike={() => handleToggleLike(tip.id, "tip")}
+              onOpenComments={() => setShowComments(`tip-${tip.id}`)}
+              onShare={() =>
+                handleNativeShare({ title: tip.title, text: tip.text, url: window.location.href })
+              }
+              onEdit={() => startEditTip(tip)}
+              onDelete={() => handleDeleteTip(tip.id)}
+              renderComments={renderComments}
+              handleAddComment={handleAddComment}
+            />
+          ))}
           <button onClick={openAddTipForm} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Поделиться опытом</button>
         </div>)}
 
@@ -2281,7 +2245,7 @@ export default function App() {
             )}
           </div>
           {catEvents.map((ev, i) => { const isEvExp = exp === `ev-${ev.id}`; const isF = favorites[`event-${ev.id}`]; const eventWebsite = normalizeExternalUrl(ev.website); const dateBadge = getEventDateBadge(ev.date); const eventTime = getEventTimeLabel(ev.date); const cardPalette = eventCardPalettes[i % eventCardPalettes.length]; const goingCount = Math.max(Number(ev.likes) || 0, 0); return (<div key={ev.id} style={{ ...cd, marginBottom:12, overflow:"hidden", borderColor:isEvExp?T.primary+"40":T.borderL, padding:0 }}>
-            <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackCardView("event", ev); }} style={{ padding:"14px 14px 12px", cursor:"pointer", background:T.card }}>
+            <div onClick={() => { const nextOpen = !isEvExp; setExp(nextOpen ? `ev-${ev.id}` : null); if (nextOpen) trackView("event", ev); }} style={{ padding:"14px 14px 12px", cursor:"pointer", background:T.card }}>
               <div style={{ display:"flex", alignItems:"stretch", gap:12 }}>
                 <div style={{ width:72, minWidth:72, borderRadius:18, background:cardPalette.bg, color:cardPalette.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 6px", textAlign:"center", boxSizing:"border-box" }}>
                   <div style={{ fontSize:14, lineHeight:1, fontWeight:700, color:"#8D97AC", marginBottom:4 }}>{dateBadge.dow}</div>
