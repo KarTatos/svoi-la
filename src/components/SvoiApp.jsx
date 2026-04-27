@@ -152,7 +152,7 @@ export default function App() {
           }
         },
       }),
-    [authReady, user?.id]
+    [authReady, user?.id, setPlaces, setTips, setEvents, setHousing]
   );
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
@@ -1742,9 +1742,7 @@ export default function App() {
   const iS = { width:"100%", padding:"14px 16px", background:T.card, border:`1px solid ${T.border}`, borderRadius:T.rs, color:T.text, fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
 
   return (
-    <div style={{ fontFamily:"'Roboto', sans-serif", minHeight:"100vh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
-
+    <div style={{ minHeight:"100vh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
       <AppHeader
         T={T}
         mt={mt}
