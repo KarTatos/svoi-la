@@ -47,23 +47,13 @@ export default function PlacesDistrictsScreen({
       })
     : districtsWithDist;
 
-  const nearestId = hasCoords ? sorted[0]?.id : null;
-
   return (
     <div>
       <button onClick={onGoHome} style={bk}>← Главная</button>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 16px" }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>📍 Выбери район</h2>
-        {hasCoords && (
-          <span style={{ fontSize: 11, color: T.light, display: "inline-flex", alignItems: "center", gap: 4 }}>
-            📍 по расстоянию
-          </span>
-        )}
-      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: "4px 0 16px" }}>📍 Выбери район</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sorted.map((d, i) => {
           const cnt = places.filter((p) => p.district === d.id).length;
-          const isNearest = d.id === nearestId;
           return (
             <button
               key={d.id}
@@ -80,32 +70,20 @@ export default function PlacesDistrictsScreen({
                 textAlign: "left",
                 opacity: mt ? 1 : 0,
                 transition: `all 0.4s ease ${i * 0.04}s`,
-                borderColor: isNearest ? `${T.primary}55` : cd.borderColor,
               }}
               onMouseEnter={(e) => { e.currentTarget.style.boxShadow = T.shH; }}
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = T.sh; }}
             >
               <div style={{
                 width: 48, height: 48, borderRadius: T.rs,
-                background: isNearest ? T.primaryLight : T.bg,
+                background: T.bg,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 24, flexShrink: 0,
               }}>
                 {d.emoji}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>{d.name}</span>
-                  {isNearest && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, color: T.primary,
-                      background: T.primaryLight, border: `1px solid ${T.primary}30`,
-                      borderRadius: 4, padding: "1px 5px", textTransform: "uppercase", letterSpacing: "0.3px",
-                    }}>
-                      рядом
-                    </span>
-                  )}
-                </div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{d.name}</div>
                 <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>{d.desc}</div>
               </div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
