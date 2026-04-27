@@ -46,30 +46,23 @@ export function useProfileWeather() {
           `&temperature_unit=fahrenheit` +
           `&forecast_days=1`;
 
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-        const geoUrl = apiKey
-          ? `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`
-          : null;
+        const geoUrl =
+          `https://nominatim.openstreetmap.org/reverse` +
+          `?format=json&lat=${lat}&lon=${lng}&zoom=15&addressdetails=1`;
 
         const [weatherRes, geoRes] = await Promise.allSettled([
           fetch(weatherUrl),
-          geoUrl ? fetch(geoUrl) : Promise.reject("no_key"),
+          fetch(geoUrl, { headers: { "User-Agent": "SvoiLA-App/1.0" } }),
         ]);
 
         if (canceled) return;
 
-        // — Location name via Google reverse geocoding —
+        // — Location name via Nominatim reverse geocoding —
         try {
           if (geoRes.status === "fulfilled" && geoRes.value.ok) {
             const geo = await geoRes.value.json();
-            const components = geo?.results?.[0]?.address_components || [];
-            // Pick the most specific useful component
-            const priority = ["neighborhood", "sublocality_level_1", "sublocality", "locality"];
-            let label = "";
-            for (const type of priority) {
-              const found = components.find((c) => c.types.includes(type));
-              if (found) { label = found.long_name; break; }
-            }
+            const a = geo?.address || {};
+            const label = a.neighbourhood || a.suburb || a.city_district || a.city || "";
             setProfileLocation(label || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           } else {
             setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
