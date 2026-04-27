@@ -2070,7 +2070,10 @@ export default function App() {
                   T={T}
                   cd={cd}
                   pl={pl}
-                  onToggleExpand={(open) => setExpTip(open ? tip.id : null)}
+                  onToggleExpand={(open) => {
+                    setExpTip(open ? tip.id : null);
+                    if (open) trackView("tip", tip);
+                  }}
                   onOpenPhoto={(photos, pi) => openPhotoViewer(photos, pi)}
                   onToggleFavorite={() => toggleFavorite(tip.id, "tip")}
                   onToggleLike={() => handleToggleLike(tip.id, "tip")}
