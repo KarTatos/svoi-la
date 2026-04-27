@@ -18,23 +18,6 @@ import {
 } from "../components/svoi/config";
 import { normalizeAddressText } from "../lib/text";
 
-async function fetchViewCounts(itemType, ids = []) {
-  const cleanIds = Array.from(new Set((ids || []).map((v) => String(v || "").trim()).filter(Boolean)));
-  if (!cleanIds.length) return {};
-  try {
-    const query = new URLSearchParams({
-      itemType,
-      itemIds: cleanIds.join(","),
-    });
-    const res = await fetch(`/api/views?${query.toString()}`);
-    const payload = await res.json().catch(() => null);
-    if (!res.ok || !payload?.ok || typeof payload.counts !== "object") return {};
-    return payload.counts || {};
-  } catch {
-    return {};
-  }
-}
-
 function groupComments(rows) {
   const grouped = {};
   (rows || []).forEach((c) => {
@@ -57,7 +40,7 @@ function mapPlace(p, commentsByItem) {
     img: p.img || "📍",
     photos: p.photos || [],
     likes: p.likes_count || 0,
-    views: 0,
+    views: Number(p.views || 0),
     comments: commentsByItem[p.id] || [],
     lat: Number.isFinite(Number(p.lat)) ? Number(p.lat) : null,
     lng: Number.isFinite(Number(p.lng)) ? Number(p.lng) : null,
@@ -76,7 +59,7 @@ function mapTip(t, commentsByItem) {
     author: t.author,
     userId: t.user_id,
     likes: t.likes_count || 0,
-    views: 0,
+    views: Number(t.views || 0),
     comments: commentsByItem[t.id] || [],
     fromDB: true,
   };
@@ -96,7 +79,7 @@ function mapEvent(e, commentsByItem) {
     author: e.author,
     userId: e.user_id,
     likes: e.likes_count || 0,
-    views: 0,
+    views: Number(e.views || 0),
     comments: commentsByItem[e.id] || [],
     fromDB: true,
   };
@@ -145,13 +128,9 @@ function mapHousing(h) {
     photo: photos[0] || "",
     userId: h.user_id,
     likes: h.likes_count || 0,
-    views: 0,
+    views: Number(h.views || 0),
     fromDB: true,
   };
-}
-
-function withViews(rows, viewMap) {
-  return rows.map((row) => ({ ...row, views: Number(viewMap?.[row.id] || 0) }));
 }
 
 export function useAppData({ user, authReady }) {
@@ -192,17 +171,10 @@ export function useAppData({ user, authReady }) {
     const mappedEvents = (dbEvents || []).map((e) => mapEvent(e, eventsByItem));
     const mappedHousing = (dbHousing || []).map((h) => mapHousing(h));
 
-    const [placeViews, tipViews, eventViews, housingViews] = await Promise.all([
-      fetchViewCounts("place", mappedPlaces.map((x) => x.id)),
-      fetchViewCounts("tip", mappedTips.map((x) => x.id)),
-      fetchViewCounts("event", mappedEvents.map((x) => x.id)),
-      fetchViewCounts("housing", mappedHousing.map((x) => x.id)),
-    ]);
-
-    if (!placesError) setPlaces(withViews(mappedPlaces, placeViews));
-    if (!tipsError) setTips(withViews(mappedTips, tipViews));
-    if (!eventsError) setEvents(withViews(mappedEvents, eventViews));
-    if (!housingError) setHousing(withViews(mappedHousing, housingViews));
+    if (!placesError) setPlaces(mappedPlaces);
+    if (!tipsError) setTips(mappedTips);
+    if (!eventsError) setEvents(mappedEvents);
+    if (!housingError) setHousing(mappedHousing);
     else setHousing(INIT_HOUSING);
 
     if (authUser?.id) {

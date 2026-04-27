@@ -1,8 +1,8 @@
-// Track once-per-viewer card views via /api/views.
-// Pure module — does not touch React state. Caller passes ctx and an
-// onUpdated callback to apply the new view count locally.
+// View tracking via Supabase RPC (atomic on the server side).
+// One unique view per (user-or-guest) × (card), forever.
 
-const VIEWED_STORAGE_PREFIX = "viewed_once_";
+import { supabase } from "./supabase";
+
 const GUEST_KEY_STORAGE = "la_viewer_key";
 
 function getStorage() {
@@ -31,67 +31,31 @@ function getViewerKey(userId) {
   }
 }
 
-function readViewedMap(viewerKey) {
-  const storage = getStorage();
-  if (!storage) return {};
-  try {
-    const raw = storage.getItem(`${VIEWED_STORAGE_PREFIX}${viewerKey}`);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function markViewed(viewerKey, itemKey) {
-  const storage = getStorage();
-  if (!storage) return;
-  try {
-    const map = readViewedMap(viewerKey);
-    map[itemKey] = true;
-    storage.setItem(`${VIEWED_STORAGE_PREFIX}${viewerKey}`, JSON.stringify(map));
-  } catch {}
-}
-
 /**
- * Record a card view.
+ * Records a view atomically on the server.
+ * Returns the current views count (incremented if new, unchanged if already counted).
  *
  * @param {"place"|"tip"|"event"|"housing"} itemType
- * @param {{id: any, fromDB?: boolean}} item
- * @param {{authReady?: boolean, userId?: string|null, onUpdated?: (views: number) => void}} [ctx]
- * @returns {Promise<boolean>} true when the view was registered or already known
+ * @param {string|number} itemId
+ * @param {string|null} userId  optional logged-in user id
+ * @returns {Promise<number>} current views count, or 0 on error
  */
-export async function trackCardView(itemType, item, ctx = {}) {
-  const itemId = item?.id;
-  if (!itemId || !item?.fromDB) return false;
-  if (ctx.authReady === false) return false;
-
-  const viewerKey = getViewerKey(ctx.userId);
-  if (!viewerKey) return false;
-  const itemKey = `${itemType}:${itemId}`;
-
-  // Already counted for this viewer — fast path.
-  if (readViewedMap(viewerKey)?.[itemKey]) return true;
-
+export async function recordView(itemType, itemId, userId = null) {
+  if (!itemId) return 0;
+  const viewerKey = getViewerKey(userId);
   try {
-    const response = await fetch("/api/views", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemType, itemId, viewerKey }),
+    const { data, error } = await supabase.rpc("record_view", {
+      p_item_type: itemType,
+      p_item_id: String(itemId),
+      p_viewer_key: viewerKey,
     });
-    const payload = await response.json().catch(() => null);
-    if (response.ok && payload?.ok && Number.isFinite(Number(payload.views))) {
-      markViewed(viewerKey, itemKey);
-      if (typeof ctx.onUpdated === "function") {
-        try {
-          ctx.onUpdated(Number(payload.views));
-        } catch {}
-      }
-      return true;
+    if (error) {
+      console.error("record_view failed:", error);
+      return 0;
     }
-    console.error("View track failed:", itemType, itemId, payload?.error || response.status);
-    return false;
+    return Number(data || 0);
   } catch (err) {
-    console.error("View track request error:", itemType, itemId, err);
-    return false;
+    console.error("record_view error:", err);
+    return 0;
   }
 }

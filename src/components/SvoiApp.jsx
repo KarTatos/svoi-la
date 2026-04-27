@@ -2,7 +2,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto } from "../lib/supabase";
 
-import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, ViewIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, INIT_JOBS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import { useAuth } from "../hooks/useAuth";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useProfileWeather } from "../hooks/useProfileWeather";
@@ -13,7 +13,7 @@ import { useSvoiRouter } from "../hooks/useSvoiRouter";
 import { useAppData } from "../hooks/useAppData";
 import { cacheGeocodeFor, ensureGoogleMapsApi, fetchAddressSuggestions, geocodePlace } from "../lib/maps";
 import { normalizeAddressText } from "../lib/text";
-import { trackCardView } from "../lib/views";
+import { recordView } from "../lib/views";
 import { useCivicsTest } from "./svoi/useCivicsTest";
 import CivicsTestScreen from "./svoi/screens/CivicsTestScreen";
 import UscisScreen from "./svoi/screens/UscisScreen";
@@ -129,30 +129,25 @@ export default function App() {
     selHousing,
     housing,
   });
-  const recordView = useCallback(
-    (itemType, item) =>
-      trackCardView(itemType, item, {
-        authReady,
-        userId: user?.id || null,
-        onUpdated: (views) => {
-          const next = Number(views || 0);
-          const id = item?.id;
-          if (!id) return;
-          const updater = (it) => (it?.id === id ? { ...it, views: next } : it);
-          if (itemType === "place") {
-            setPlaces((prev) => prev.map(updater));
-            setSelPlace((prev) => (prev?.id === id ? { ...prev, views: next } : prev));
-          } else if (itemType === "tip") {
-            setTips((prev) => prev.map(updater));
-          } else if (itemType === "event") {
-            setEvents((prev) => prev.map(updater));
-          } else if (itemType === "housing") {
-            setHousing((prev) => prev.map(updater));
-            setSelHousing((prev) => (prev?.id === id ? { ...prev, views: next } : prev));
-          }
-        },
-      }),
-    [authReady, user?.id, setPlaces, setTips, setEvents, setHousing]
+  const trackView = useCallback(
+    async (itemType, item) => {
+      if (!item?.id) return;
+      const id = item.id;
+      const newViews = await recordView(itemType, id, user?.id || null);
+      const updater = (it) => (it?.id === id ? { ...it, views: newViews } : it);
+      if (itemType === "place") {
+        setPlaces((prev) => prev.map(updater));
+        setSelPlace((prev) => (prev?.id === id ? { ...prev, views: newViews } : prev));
+      } else if (itemType === "tip") {
+        setTips((prev) => prev.map(updater));
+      } else if (itemType === "event") {
+        setEvents((prev) => prev.map(updater));
+      } else if (itemType === "housing") {
+        setHousing((prev) => prev.map(updater));
+        setSelHousing((prev) => (prev?.id === id ? { ...prev, views: newViews } : prev));
+      }
+    },
+    [user?.id, setPlaces, setTips, setEvents, setHousing]
   );
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
@@ -392,7 +387,6 @@ export default function App() {
       if (eventCat) setSelEC(eventCat);
       setScr("events");
       setExp(`ev-${ev.id}`);
-      recordView("event", ev);
       return;
     }
     if (type === "tip") {
@@ -402,7 +396,6 @@ export default function App() {
       if (tipCat) setSelTC(tipCat);
       setScr("tips");
       setExpTip(tip.id);
-      recordView("tip", tip);
       return;
     }
   };
@@ -1537,28 +1530,20 @@ export default function App() {
     resetJobForm(next.type);
   };
   useEffect(() => {
-    if (scr !== "place-item" || !activePlace?.id) return;
+    if (scr !== "place-item" || !activePlace?.id || !activePlace?.fromDB) return;
     if (viewedRef.current.place === activePlace.id) return;
-    let canceled = false;
-    (async () => {
-      const ok = await recordView("place", activePlace);
-      if (!canceled && ok) viewedRef.current.place = activePlace.id;
-    })();
-    return () => { canceled = true; };
-  }, [scr, activePlace, authReady, recordView]);
+    viewedRef.current.place = activePlace.id;
+    trackView("place", activePlace);
+  }, [scr, activePlace, trackView]);
   useEffect(() => {
     if (scr !== "place-item") viewedRef.current.place = null;
   }, [scr]);
   useEffect(() => {
-    if (scr !== "housing-item" || !activeHousing?.id) return;
+    if (scr !== "housing-item" || !activeHousing?.id || !activeHousing?.fromDB) return;
     if (viewedRef.current.housing === activeHousing.id) return;
-    let canceled = false;
-    (async () => {
-      const ok = await recordView("housing", activeHousing);
-      if (!canceled && ok) viewedRef.current.housing = activeHousing.id;
-    })();
-    return () => { canceled = true; };
-  }, [scr, activeHousing, authReady, recordView]);
+    viewedRef.current.housing = activeHousing.id;
+    trackView("housing", activeHousing);
+  }, [scr, activeHousing, trackView]);
   useEffect(() => {
     if (scr !== "housing-item") viewedRef.current.housing = null;
   }, [scr]);
@@ -1993,11 +1978,8 @@ export default function App() {
                     ))}
                   </div>
                 )}
-                <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"flex-start", gap:10 }}>
                   <span style={{ fontSize:11, color:T.light }}>от {p.addedBy}</span>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}>
-                    <ViewIcon size={13} /> {p.views || 0}
-                  </span>
                 </div>
               </div>
             </button>
@@ -2020,7 +2002,6 @@ export default function App() {
                 </div>
                 <div style={{ minWidth:118, display:"flex", justifyContent:"flex-end", gap:6 }}>
                   <button onClick={() => toggleFavorite(activePlace.id,"place")} style={{ border:"none", background:favorites[`place-${activePlace.id}`] ? "#FFF8E8" : "#F7F7F8", color:favorites[`place-${activePlace.id}`] ? "#D68910" : T.mid, borderRadius:999, padding:"5px 9px", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Избранное"><StarIcon active={!!favorites[`place-${activePlace.id}`]} size={15} /></button>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}><ViewIcon size={13} /> {activePlace.views || 0}</span>
                   <button
                     onClick={() => handleToggleLike(activePlace.id,"place")}
                     style={{ border:"none", borderRadius:999, padding:"5px 9px", background:liked[`place-${activePlace.id}`] ? "#FFF1F1" : T.bg, color:liked[`place-${activePlace.id}`] ? "#C0392B" : T.mid, fontWeight:700, fontSize:12, lineHeight:1, display:"inline-flex", alignItems:"center", gap:4, cursor:"pointer", fontFamily:"inherit" }}
@@ -2082,7 +2063,7 @@ export default function App() {
                 const catTitle = TIPS_CATS.find((c) => c.id === tip.cat)?.title || "";
                 return (
                   <div key={tip.id} style={{ ...cd, marginBottom:0, overflow:"hidden", borderColor:isE?T.primary+"40":T.borderL }}>
-                    <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); if (nextOpen) trackCardView("tip", tip); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
+                    <div onClick={() => { const nextOpen = !isE; setExpTip(nextOpen ? tip.id : null); }} style={{ padding:16, cursor:"pointer", background:isE ? T.bg : T.card }}>
                       <div style={{ fontSize:11, color:T.light, marginBottom:4 }}>{catTitle}</div>
                       <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{tip.title}</div>
                       <div style={{ ...(!isE ? twoLineClampStyle : {}), fontSize:13, lineHeight:1.6, color:T.mid, whiteSpace:isE ? "pre-wrap" : "normal", overflowWrap:"anywhere", wordBreak:"break-word" }}>{limitCardText(tip.text)}</div>
