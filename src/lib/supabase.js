@@ -237,3 +237,24 @@ export async function deleteJob(id) {
   const { error } = await supabase.from('jobs').delete().eq('id', id);
   return { error };
 }
+
+// ── Marketplace ──────────────────────────────────────────────────────────────
+export async function getMarket() {
+  const { data, error } = await supabase.from('marketplace').select('*').order('created_at', { ascending: false });
+  return { data: data || [], error };
+}
+
+export async function addMarketItem(item) {
+  const { data, error } = await supabase.from('marketplace').insert([item]).select();
+  return { data, error };
+}
+
+export async function updateMarketItem(id, updates) {
+  const { data, error } = await supabase.from('marketplace').update(updates).eq('id', id).select();
+  return { data, error };
+}
+
+export async function deleteMarketItem(id) {
+  const { error } = await supabase.from('marketplace').delete().eq('id', id);
+  return { error };
+}
