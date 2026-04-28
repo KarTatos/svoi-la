@@ -1,25 +1,21 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 const MAX_PHOTOS = 5;
 
 export default function MarketFormModal({
-  open,
-  editing,
-  form,
-  setForm,
-  saving,
-  onSave,
-  onDelete,
-  onClose,
-  T,
-  cd,
-  pl,
-  iS,
-  user,
-  onRequireAuth,
+  open, editing, form, setForm, saving,
+  onSave, onDelete, onClose, T, cd, pl, iS, user, onRequireAuth,
 }) {
   const fileRef = useRef(null);
   const [photoError, setPhotoError] = useState("");
+
+  // Блокируем прокрутку фона пока модал открыт
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
 
   if (!open) return null;
 
@@ -49,16 +45,21 @@ export default function MarketFormModal({
   const photoSrc = (p) => (typeof p === "string" ? p : p.preview);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
-      <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: T.card, borderRadius: "20px 20px 0 0", maxHeight: "93vh", overflowY: "auto", padding: "20px 16px 40px" }}>
-
-        {/* Header */}
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: T.card, borderRadius: "20px 20px 0 0", maxHeight: "93vh", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: "20px 16px 40px" }}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
+        {/* Заголовок */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 17, fontWeight: 700 }}>{editing ? "Редактировать" : "Новое объявление"}</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: T.mid, lineHeight: 1, padding: 0, fontFamily: "inherit" }}>×</button>
         </div>
 
-        {/* Photos */}
+        {/* Фото */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 8 }}>Фото (до {MAX_PHOTOS})</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -83,19 +84,19 @@ export default function MarketFormModal({
           <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFileChange} />
         </div>
 
-        {/* Title */}
+        {/* Название */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Название *</div>
           <input value={form.title} onChange={field("title")} placeholder="iPhone 14, диван, велосипед..." style={{ ...iS, marginBottom: 0 }} />
         </div>
 
-        {/* Price */}
+        {/* Цена */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Цена</div>
           <input value={form.price} onChange={field("price")} placeholder="$150, Бесплатно, Торг" style={{ ...iS, marginBottom: 0 }} />
         </div>
 
-        {/* Description */}
+        {/* Описание */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Описание *</div>
           <textarea
@@ -107,7 +108,7 @@ export default function MarketFormModal({
           />
         </div>
 
-        {/* Contacts */}
+        {/* Контакты */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Telegram</div>
           <input value={form.telegram} onChange={field("telegram")} placeholder="@username" style={{ ...iS, marginBottom: 0 }} />
@@ -117,7 +118,6 @@ export default function MarketFormModal({
           <input value={form.phone} onChange={field("phone")} placeholder="+1 (323) 555-0100" style={{ ...iS, marginBottom: 0 }} />
         </div>
 
-        {/* Save */}
         <button
           onClick={user ? onSave : onRequireAuth}
           disabled={saving || !valid}

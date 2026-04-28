@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { JOB_SCHEDULES, JOB_ENGLISH, JOB_WORK_AUTH, DISTRICTS } from "../config";
 
 function Chips({ options, value, onChange, T, pl }) {
@@ -34,6 +35,14 @@ export default function JobFormModal({
   user,
   onRequireAuth,
 }) {
+  // Блокируем прокрутку фона пока модал открыт
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
 
   const isService = type === "service";
@@ -55,8 +64,8 @@ export default function JobFormModal({
   const deleteLabel = isService ? "🗑 Удалить услугу" : "🗑 Удалить вакансию";
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
-      <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: T.card, borderRadius: "20px 20px 0 0", maxHeight: "92vh", overflowY: "auto", padding: "20px 16px 40px" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }} onTouchMove={(e) => e.preventDefault()}>
+      <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: T.card, borderRadius: "20px 20px 0 0", maxHeight: "92vh", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: "20px 16px 40px" }} onTouchMove={(e) => e.stopPropagation()}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 17, fontWeight: 700 }}>{modalTitle}</div>

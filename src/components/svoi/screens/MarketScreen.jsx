@@ -10,19 +10,9 @@ const EMPTY_FORM = {
 
 export default function MarketScreen({
   T, cd, bk, pl, iS,
-  user,
-  items,
-  liked,
-  onGoHome,
-  onToggleLike,
-  onShare,
-  onRequireAuth,
-  trackView,
-  onAdd,
-  onUpdate,
-  onDelete,
-  canManage,
-  uploadPhoto,
+  user, items, liked,
+  onGoHome, onToggleLike, onShare, onRequireAuth,
+  trackView, onAdd, onUpdate, onDelete, canManage, uploadPhoto,
 }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -32,13 +22,11 @@ export default function MarketScreen({
   const [saving, setSaving] = useState(false);
 
   const query = search.trim().toLowerCase();
-  const filtered = items.filter((it) => {
-    if (!query) return true;
-    return (
-      it.title?.toLowerCase().includes(query) ||
-      it.description?.toLowerCase().includes(query)
-    );
-  });
+  const filtered = items.filter((it) =>
+    !query ||
+    it.title?.toLowerCase().includes(query) ||
+    it.description?.toLowerCase().includes(query)
+  );
 
   const openAdd = () => {
     if (!user) { onRequireAuth(); return; }
@@ -67,11 +55,10 @@ export default function MarketScreen({
     if (!title || !description) return;
     setSaving(true);
 
-    // Upload any new (file-based) photos
     const uploadedPhotos = [];
     for (const p of form.photos || []) {
       if (typeof p === "string") {
-        uploadedPhotos.push(p); // already a URL
+        uploadedPhotos.push(p);
       } else if (p.file) {
         const url = await uploadPhoto(p.file);
         if (url) uploadedPhotos.push(url);
@@ -122,7 +109,6 @@ export default function MarketScreen({
         >+</button>
       </div>
 
-      {/* Search */}
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -130,7 +116,6 @@ export default function MarketScreen({
         style={{ ...iS, marginBottom: 14 }}
       />
 
-      {/* Grid */}
       {filtered.length === 0 ? (
         <div style={{ ...cd, padding: 20, textAlign: "center", fontSize: 13, color: T.mid }}>
           {query ? `Ничего не найдено по запросу «${search}»` : "Объявлений пока нет. Будьте первым!"}
@@ -142,40 +127,28 @@ export default function MarketScreen({
               key={item.id}
               item={item}
               isLiked={!!liked[`market-${item.id}`]}
-              T={T}
-              cd={cd}
-              pl={pl}
-              onClick={() => {
-                setSelected(item);
-                trackView("market", item);
-              }}
+              T={T} cd={cd} pl={pl}
+              onClick={() => { setSelected(item); trackView("market", item); }}
               onToggleLike={() => onToggleLike(item.id, "market")}
             />
           ))}
         </div>
       )}
 
-      {/* Detail modal */}
       {selected && (
         <MarketDetailModal
           item={selected}
           isLiked={!!liked[`market-${selected.id}`]}
           canEdit={canManage(selected)}
-          T={T}
-          cd={cd}
-          pl={pl}
+          T={T} cd={cd} pl={pl}
           onClose={() => setSelected(null)}
           onToggleLike={() => onToggleLike(selected.id, "market")}
           onShare={() => onShare(selected)}
           onEdit={() => openEdit(selected)}
-          onDelete={async () => {
-            await onDelete(selected.id);
-            setSelected(null);
-          }}
+          onDelete={async () => { await onDelete(selected.id); setSelected(null); }}
         />
       )}
 
-      {/* Form modal */}
       <MarketFormModal
         open={showForm}
         editing={editing}
@@ -185,10 +158,7 @@ export default function MarketScreen({
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={() => { setShowForm(false); setEditing(null); }}
-        T={T}
-        cd={cd}
-        pl={pl}
-        iS={iS}
+        T={T} cd={cd} pl={pl} iS={iS}
         user={user}
         onRequireAuth={onRequireAuth}
       />
