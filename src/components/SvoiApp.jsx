@@ -118,6 +118,15 @@ export default function App() {
     selHousing,
     housing,
   });
+  // Трекинг просмотренных событий на этом устройстве (должен быть ДО trackView)
+  const seenEventIds = useRef(
+    new Set(JSON.parse(typeof window !== "undefined" ? (localStorage.getItem("seenEventIds") || "[]") : "[]"))
+  );
+  const markEventSeen = useCallback((id) => {
+    seenEventIds.current.add(String(id));
+    try { localStorage.setItem("seenEventIds", JSON.stringify([...seenEventIds.current])); } catch {}
+  }, []);
+
   const trackView = useCallback(
     async (itemType, item) => {
       if (!item?.id) return;
@@ -255,14 +264,6 @@ export default function App() {
   const inpRef = useRef(null);
   const fileRef = useRef(null);
 
-  // Трекинг просмотренных событий на этом устройстве
-  const seenEventIds = useRef(
-    new Set(JSON.parse(typeof window !== "undefined" ? (localStorage.getItem("seenEventIds") || "[]") : "[]"))
-  );
-  const markEventSeen = useCallback((id) => {
-    seenEventIds.current.add(String(id));
-    try { localStorage.setItem("seenEventIds", JSON.stringify([...seenEventIds.current])); } catch {}
-  }, []);
   const tipFileRef = useRef(null);
   const housingFileRef = useRef(null);
   const mapContainerRef = useRef(null);
