@@ -116,7 +116,7 @@ export default function MarketDetailModal({
             )}
             {item.phone && (
               <a
-                href={`tel:${item.phone}`}
+                href={`sms:${item.phone}`}
                 style={{ ...pl(false), padding: "11px 14px", fontSize: 18, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                 title={item.phone}
               >📞</a>

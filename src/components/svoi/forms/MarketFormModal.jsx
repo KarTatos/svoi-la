@@ -20,6 +20,8 @@ export default function MarketFormModal({
   if (!open) return null;
 
   const field = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const numField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d]/g, "") }));
+  const priceField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d.,$ ]/g, "") }));
   const valid = String(form.title || "").trim() && String(form.description || "").trim();
 
   const handleFileChange = (e) => {
@@ -93,7 +95,7 @@ export default function MarketFormModal({
         {/* Цена */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Цена</div>
-          <input value={form.price} onChange={field("price")} placeholder="$150, Бесплатно, Торг" style={{ ...iS, marginBottom: 0 }} />
+          <input value={form.price} onChange={priceField("price")} inputMode="decimal" placeholder="150" style={{ ...iS, marginBottom: 0 }} />
         </div>
 
         {/* Описание */}
@@ -115,7 +117,7 @@ export default function MarketFormModal({
         </div>
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Телефон (необязательно)</div>
-          <input value={form.phone} onChange={field("phone")} placeholder="+1 (323) 555-0100" style={{ ...iS, marginBottom: 0 }} />
+          <input value={form.phone} onChange={numField("phone")} type="tel" inputMode="numeric" placeholder="13235550100" style={{ ...iS, marginBottom: 0 }} />
         </div>
 
         <button
