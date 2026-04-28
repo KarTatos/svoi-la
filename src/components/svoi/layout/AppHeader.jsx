@@ -26,12 +26,22 @@
       {user ? (
         <button
           onClick={onOpenProfile}
-          style={{ border:"none", background:T.primaryLight, borderRadius:999, padding:"6px 10px 6px 6px", display:"inline-flex", alignItems:"center", gap:8, cursor:"pointer", fontFamily:"inherit" }}
+          style={{
+            border: "1px solid rgba(255,255,255,0.3)",
+            background: "rgba(255,255,255,0.15)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            borderRadius: 999,
+            padding: "6px 12px 6px 6px",
+            display: "inline-flex", alignItems: "center", gap: 8,
+            cursor: "pointer", fontFamily: "inherit",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          }}
         >
-          <span style={{ width:30, height:30, borderRadius:"50%", background:T.primary, color:"#fff", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800 }}>
+          <span style={{ width: 30, height: 30, borderRadius: "50%", background: T.primary, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>
             {getInitials(user.name)}
           </span>
-          <span style={{ fontSize:13, fontWeight:700, color:T.text }}>{shortName}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{shortName}</span>
         </button>
       ) : (
         <button onClick={onLogin} style={{ ...pl(false), padding:"8px 14px", fontSize:12, display:"flex", alignItems:"center", gap:6 }}>
