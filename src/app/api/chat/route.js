@@ -97,23 +97,79 @@ function formatHousingLine(item) {
   return `- ${item.title || item.address || "Жильё"} (${type}, ${area}) — ${price} | Адрес: ${item.address || "не указан"} | Контакт: ${contact} | link: app://housing/${item.id}`;
 }
 
+const CATEGORY_ALIASES = {
+  restaurants: ["ресторан", "поесть", "еда", "restaurant", "food"],
+  bars: ["бар", "bar", "drink", "выпить"],
+  coffee: ["кофе", "кофейня", "coffee", "cafe", "кафе"],
+  hiking: ["хайк", "hiking", "trail", "природа", "погулять"],
+  interesting: ["интересн", "interesting", "достопримечательн", "посмотреть"],
+  music: ["музык", "concert", "концерт", "music"],
+};
+
+function detectCategoriesFromQuery(query) {
+  const q = normalizeText(query);
+  return Object.entries(CATEGORY_ALIASES)
+    .filter(([, aliases]) => aliases.some((a) => q.includes(a)))
+    .map(([id]) => id);
+}
+
 async function fetchSupabaseDataFallback(query) {
   try {
     const q = normalizeText(query);
     const words = q.split(" ").filter((w) => w.length >= 3).slice(0, 4);
-    if (!words.length) return { places: [], tips: [], events: [], housing: [] };
+    const districtId = detectDistrictFromQuery(query);
+    const categoryIds = detectCategoriesFromQuery(query);
 
-    const placeCond = words.map((w) => `name.ilike.%${w}%,tip.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,category.ilike.%${w}%`).join(",");
-    const tipCond = words.map((w) => `title.ilike.%${w}%,text.ilike.%${w}%,category.ilike.%${w}%`).join(",");
-    const eventCond = words.map((w) => `title.ilike.%${w}%,description.ilike.%${w}%,location.ilike.%${w}%,category.ilike.%${w}%`).join(",");
-    const housingCond = words.map((w) => `title.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,type.ilike.%${w}%`).join(",");
+    const placeCond = words.length
+      ? words.map((w) => `name.ilike.%${w}%,tip.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,category.ilike.%${w}%`).join(",")
+      : null;
+    const tipCond = words.length
+      ? words.map((w) => `title.ilike.%${w}%,text.ilike.%${w}%,category.ilike.%${w}%`).join(",")
+      : null;
+    const eventCond = words.length
+      ? words.map((w) => `title.ilike.%${w}%,description.ilike.%${w}%,location.ilike.%${w}%,category.ilike.%${w}%`).join(",")
+      : null;
+    const housingCond = words.length
+      ? words.map((w) => `title.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,type.ilike.%${w}%`).join(",")
+      : null;
 
-    const [{ data: places }, { data: tips }, { data: events }, { data: housing }] = await Promise.all([
-      supabase.from("places").select("*").or(placeCond).limit(30),
-      supabase.from("tips").select("*").or(tipCond).limit(20),
-      supabase.from("events").select("*").or(eventCond).limit(20),
-      supabase.from("housing").select("*").or(housingCond).limit(20),
+    // Base text-search query
+    const textPlacesQuery = placeCond
+      ? supabase.from("places").select("*").or(placeCond).limit(30)
+      : Promise.resolve({ data: [] });
+
+    // District-specific query (English district id, bypasses translation issue)
+    const districtPlacesQuery = districtId
+      ? supabase.from("places").select("*").eq("district", districtId).limit(30)
+      : Promise.resolve({ data: [] });
+
+    // Category-specific query
+    const categoryPlacesQuery = categoryIds.length
+      ? supabase.from("places").select("*").in("category", categoryIds).limit(30)
+      : Promise.resolve({ data: [] });
+
+    const [
+      { data: textPlaces },
+      { data: districtPlaces },
+      { data: categoryPlaces },
+      { data: tips },
+      { data: events },
+      { data: housing },
+    ] = await Promise.all([
+      textPlacesQuery,
+      districtPlacesQuery,
+      categoryPlacesQuery,
+      tipCond ? supabase.from("tips").select("*").or(tipCond).limit(20) : Promise.resolve({ data: [] }),
+      eventCond ? supabase.from("events").select("*").or(eventCond).limit(20) : Promise.resolve({ data: [] }),
+      housingCond ? supabase.from("housing").select("*").or(housingCond).limit(20) : Promise.resolve({ data: [] }),
     ]);
+
+    // Merge places, deduplicate by id
+    const seenIds = new Set();
+    const places = [];
+    for (const p of [...(textPlaces || []), ...(districtPlaces || []), ...(categoryPlaces || [])]) {
+      if (!seenIds.has(p.id)) { seenIds.add(p.id); places.push(p); }
+    }
 
     return {
       places: (places || []).map((p) => ({
@@ -239,19 +295,18 @@ export async function POST(request) {
       ? `\n\nДАННЫЕ ПРИЛОЖЕНИЯ (используй только их для рекомендаций):\n${localContext.context}`
       : "\n\nДАННЫЕ ПРИЛОЖЕНИЯ: подходящих записей не найдено.";
 
-    const systemPrompt = `Ты — AI-помощник приложения "Мы в LA".
+    const systemPrompt = `Ты — AI-помощник приложения "Мы в LA" для мигрантов в Лос-Анджелесе.
 
 Правила:
 1. Никогда не используй слово "русскоязычные" или его формы.
 2. Отвечай только по темам: USCIS/иммиграция, места в LA, события, советы, жильё, работа.
-3. Если вопрос про места/события/советы, отвечай строго на основе данных приложения ниже.
+3. Если вопрос про места/события/советы — отвечай СТРОГО на основе данных приложения ниже. Перечисли ВСЕ подходящие записи, не выбирай только одну.
 4. Если данных недостаточно, честно скажи об этом и предложи добавить запись в соответствующий раздел.
-5. Отвечай кратко, по делу, на русском.
+5. Отвечай на русском языке. Понимай запросы на русском — "голивуд" = Hollywood, "рестораны" = restaurants, "бары" = bars и т.д.
 6. Для USCIS добавляй дисклеймер: "Это информационная помощь, не юридическая консультация. Проверяйте актуальные правила на uscis.gov".
-7. Use formal Russian style. No emojis.
-8. Do not use markdown formatting. Do not use asterisks (*) in replies.
-9. For each found record from app data, include a direct card link as plain text:
-   app://place/<id>, app://tip/<id>, app://event/<id>, app://housing/<id>.${localDataBlock}`;
+7. Пиши кратко и по делу. Без эмодзи. Без markdown-форматирования. Без звёздочек (*).
+8. Для каждой записи из данных приложения обязательно добавляй ссылку: app://place/<id>, app://tip/<id>, app://event/<id>, app://housing/<id>.
+9. Если найдено несколько мест — перечисли все, не ограничивайся одним.${localDataBlock}`;
 
     const messages = [
       ...history
