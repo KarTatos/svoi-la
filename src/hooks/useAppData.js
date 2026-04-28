@@ -181,8 +181,9 @@ export function useAppData({ user, authReady }) {
     if (!housingError) setHousing(mappedHousing);
     else setHousing(INIT_HOUSING);
     if (!jobsError) setJobs((dbJobs || []).map((j) => ({
-      id: j.id, title: j.title, district: j.district,
-      price: j.price, schedule: j.schedule, english_lvl: j.english_lvl,
+      id: j.id, type: j.type, title: j.title, district: j.district,
+      price: j.price, price_type: j.price_type || "",
+      schedule: j.schedule, english_lvl: j.english_lvl,
       work_auth: j.work_auth, description: j.description,
       telegram: j.telegram, phone: j.phone,
       author: j.author, user_id: j.user_id,

@@ -16,7 +16,7 @@ export const DISTRICTS = [
 ];
 
 export const PLACE_CATS = [
-  { id:"restaurants", icon:"🍽️", title:"Рестораны", color:"#E74C3C" },
+  { id:"restaurants", icon:"🍽️", title:"Еда", color:"#E74C3C" },
   { id:"bars", icon:"🍸", title:"Бары", color:"#8E44AD" },
   { id:"coffee", icon:"☕", title:"Кофе", color:"#F47B20" },
   { id:"hiking", icon:"🥾", title:"Хайкинг", color:"#27AE60" },
@@ -377,7 +377,7 @@ export const SECTIONS = [
   { id:"places", icon:"📍", title:"Места", desc:"От своих" },
   { id:"tips", icon:"💡", title:"Советы", desc:"Лайфхаки" },
   { id:"events", icon:"🎉", title:"События", desc:"Мероприятия" },
-  { id:"jobs", icon:"💼", title:"Работа", desc:"Вакансии" },
+  { id:"jobs", icon:"💼", title:"Работа", desc:"Работа / Услуги" },
   { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
   { id:"chat-sec", icon:"💬", title:"AI", desc:"Помощник", accent:true },
   { id:"sell", icon:"🏷️", title:"Продам", desc:"Объявления", soon:true },

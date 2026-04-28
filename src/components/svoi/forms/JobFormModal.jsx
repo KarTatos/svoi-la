@@ -19,6 +19,7 @@ function Chips({ options, value, onChange, T, pl }) {
 
 export default function JobFormModal({
   open,
+  type,
   editing,
   form,
   setForm,
@@ -35,23 +36,37 @@ export default function JobFormModal({
 }) {
   if (!open) return null;
 
+  const isService = type === "service";
   const field = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-
   const valid = String(form.title || "").trim() && String(form.description || "").trim();
+
+  const modalTitle = editing
+    ? "Редактировать"
+    : isService ? "Новая услуга" : "Новая вакансия";
+
+  const titlePlaceholder = isService
+    ? "Ремонт, переводы, уборка..."
+    : "Нужен бариста, ищем нянечку...";
+
+  const descPlaceholder = isService
+    ? "Что вы предлагаете, опыт, цены..."
+    : "Что нужно делать, требования, условия...";
+
+  const deleteLabel = isService ? "🗑 Удалить услугу" : "🗑 Удалить вакансию";
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
       <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: T.card, borderRadius: "20px 20px 0 0", maxHeight: "92vh", overflowY: "auto", padding: "20px 16px 40px" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <div style={{ fontSize: 17, fontWeight: 700 }}>{editing ? "Редактировать" : "Новая вакансия"}</div>
+          <div style={{ fontSize: 17, fontWeight: 700 }}>{modalTitle}</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: T.mid, fontFamily: "inherit", lineHeight: 1, padding: 0 }}>×</button>
         </div>
 
         {/* Title */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Название *</div>
-          <input value={form.title} onChange={field("title")} placeholder="Нужен бариста, ищем нянечку..." style={{ ...iS, marginBottom: 0 }} />
+          <input value={form.title} onChange={field("title")} placeholder={titlePlaceholder} style={{ ...iS, marginBottom: 0 }} />
         </div>
 
         {/* District */}
@@ -69,15 +84,36 @@ export default function JobFormModal({
 
         {/* Price */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Зарплата / оплата</div>
-          <input value={form.price} onChange={field("price")} placeholder="$22/час, от $3000/мес, договорная" style={{ ...iS, marginBottom: 0 }} />
+          <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>
+            {isService ? "Стоимость" : "Зарплата"}
+          </div>
+          <input
+            value={form.price}
+            onChange={field("price")}
+            placeholder={isService ? "$50, от $200, договорная" : "$22, от $3000, договорная"}
+            style={{ ...iS, marginBottom: 8 }}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            {["", "час", "разово"].map((pt) => (
+              <button
+                key={pt || "none"}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, price_type: pt }))}
+                style={{ ...pl(form.price_type === pt), padding: "7px 16px", fontSize: 13 }}
+              >
+                {pt === "" ? "не указано" : `/ ${pt}`}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Schedule */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>График</div>
-          <Chips options={JOB_SCHEDULES} value={form.schedule} onChange={(v) => setForm((f) => ({ ...f, schedule: v }))} T={T} pl={pl} />
-        </div>
+        {/* Schedule — vacancies only */}
+        {!isService && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>График</div>
+            <Chips options={JOB_SCHEDULES} value={form.schedule} onChange={(v) => setForm((f) => ({ ...f, schedule: v }))} T={T} pl={pl} />
+          </div>
+        )}
 
         {/* English */}
         <div style={{ marginBottom: 16 }}>
@@ -85,7 +121,7 @@ export default function JobFormModal({
           <Chips options={JOB_ENGLISH} value={form.english_lvl} onChange={(v) => setForm((f) => ({ ...f, english_lvl: v }))} T={T} pl={pl} />
         </div>
 
-        {/* Work auth — shown as emoji only, no explicit label */}
+        {/* Work auth */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Документы</div>
           <Chips options={JOB_WORK_AUTH} value={form.work_auth} onChange={(v) => setForm((f) => ({ ...f, work_auth: v }))} T={T} pl={pl} />
@@ -97,7 +133,7 @@ export default function JobFormModal({
           <textarea
             value={form.description}
             onChange={field("description")}
-            placeholder="Что нужно делать, требования, условия..."
+            placeholder={descPlaceholder}
             rows={4}
             style={{ ...iS, marginBottom: 0, resize: "vertical", minHeight: 90 }}
           />
@@ -127,7 +163,7 @@ export default function JobFormModal({
             onClick={onDelete}
             style={{ ...pl(false), width: "100%", marginTop: 10, padding: 14, fontSize: 14, border: "1.5px solid #fecaca", color: "#E74C3C", background: "#FFF5F5" }}
           >
-            🗑 Удалить вакансию
+            {deleteLabel}
           </button>
         )}
       </div>

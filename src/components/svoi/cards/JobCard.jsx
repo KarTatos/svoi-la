@@ -52,7 +52,9 @@ export default function JobCard({
         </div>
 
         {job.price && (
-          <div style={{ fontSize: 16, fontWeight: 700, color: T.primary, marginTop: 6 }}>{job.price}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.primary, marginTop: 6 }}>
+            {job.price}{job.price_type ? <span style={{ fontSize: 13, fontWeight: 500, color: T.mid }}> / {job.price_type}</span> : null}
+          </div>
         )}
 
         {meta ? (
@@ -60,8 +62,7 @@ export default function JobCard({
         ) : null}
 
         {/* bottom row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-          <span style={{ fontSize: 11, color: T.light }}>от {job.author || "Аноним"}</span>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 10 }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: T.mid, display: "inline-flex", alignItems: "center", gap: 3 }}>
               <ViewIcon size={13} /> {job.views || 0}
@@ -86,17 +87,8 @@ export default function JobCard({
           {/* action bar */}
           <div style={{ padding: "14px 16px", display: "flex", gap: 12, alignItems: "center" }}>
             <button
-              onClick={(e) => { e.stopPropagation(); onToggleLike(); }}
-              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: isLiked ? "#E74C3C" : T.mid, padding: 0, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 18 }}
-            >
-              <HeartIcon active={!!isLiked} /> <span style={{ fontSize: 13 }}>{job.likes || 0}</span>
-            </button>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: T.mid }}>
-              <ViewIcon size={16} /> {job.views || 0}
-            </span>
-            <button
               onClick={(e) => { e.stopPropagation(); onShare(); }}
-              style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: T.mid, padding: 0, display: "inline-flex", alignItems: "center" }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: T.mid, padding: 0, display: "inline-flex", alignItems: "center" }}
             >
               <ShareIcon size={18} />
             </button>
@@ -117,19 +109,19 @@ export default function JobCard({
               {job.phone && (
                 <a
                   href={`tel:${job.phone}`}
-                  style={{ ...pl(false), padding: "10px 16px", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+                  style={{ ...pl(false), padding: "10px 14px", fontSize: 18, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                   onClick={(e) => e.stopPropagation()}
+                  title={job.phone}
                 >
-                  📞 {job.phone}
+                  📞
                 </a>
               )}
             </div>
           )}
 
           {canEdit && (
-            <div style={{ padding: "0 16px 16px", display: "flex", gap: 8 }}>
-              <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ ...pl(false), flex: 1, padding: 10, fontSize: 12 }}>✏️ Редактировать</button>
-              <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ ...pl(false), flex: 1, padding: 10, fontSize: 12, border: "1.5px solid #fecaca", color: "#E74C3C", background: "#FFF5F5" }}>🗑 Удалить</button>
+            <div style={{ padding: "0 16px 16px" }}>
+              <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ ...pl(false), width: "100%", padding: 10, fontSize: 12 }}>✏️ Редактировать</button>
             </div>
           )}
         </div>
