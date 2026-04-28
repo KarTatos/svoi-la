@@ -35,9 +35,15 @@ export default function MarketDetailModal({
         {/* Главное фото */}
         <div style={{ position: "relative", width: "100%", paddingTop: "75%", background: T.bg, borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
           {photos.length > 0 ? (
-            <img src={photos[photoIdx]} alt={item.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            <img
+              src={photos[photoIdx]}
+              alt={item.title}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
           ) : (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }}>🏷️</div>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }}>
+              🏷️
+            </div>
           )}
 
           <button
@@ -109,7 +115,11 @@ export default function MarketDetailModal({
               </a>
             )}
             {item.phone && (
-              <a href={`tel:${item.phone}`} style={{ ...pl(false), padding: "11px 14px", fontSize: 18, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title={item.phone}>📞</a>
+              <a
+                href={`sms:${item.phone}`}
+                style={{ ...pl(false), padding: "11px 14px", fontSize: 18, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                title={item.phone}
+              >📞</a>
             )}
           </div>
         )}
@@ -117,7 +127,9 @@ export default function MarketDetailModal({
         {/* Редактирование */}
         {canEdit && (
           <div style={{ padding: "0 16px calc(env(safe-area-inset-bottom) + 20px)" }}>
-            <button onClick={onEdit} style={{ ...pl(false), width: "100%", padding: 12, fontSize: 13 }}>✏️ Редактировать</button>
+            <button onClick={onEdit} style={{ ...pl(false), width: "100%", padding: 12, fontSize: 13 }}>
+              ✏️ Редактировать
+            </button>
           </div>
         )}
         {!canEdit && <div style={{ height: "calc(env(safe-area-inset-bottom) + 20px)" }} />}

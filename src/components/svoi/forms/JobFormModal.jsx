@@ -47,6 +47,8 @@ export default function JobFormModal({
 
   const isService = type === "service";
   const field = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const numField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d]/g, "") }));
+  const priceField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d.,$ ]/g, "") }));
   const valid = String(form.title || "").trim() && String(form.description || "").trim();
 
   const modalTitle = editing
@@ -98,8 +100,9 @@ export default function JobFormModal({
           </div>
           <input
             value={form.price}
-            onChange={field("price")}
-            placeholder={isService ? "$50, от $200, договорная" : "$22, от $3000, договорная"}
+            onChange={priceField("price")}
+            inputMode="decimal"
+            placeholder={isService ? "200" : "3000"}
             style={{ ...iS, marginBottom: 8 }}
           />
           <div style={{ display: "flex", gap: 8 }}>
@@ -155,7 +158,7 @@ export default function JobFormModal({
         </div>
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 12, color: T.mid, marginBottom: 6 }}>Телефон (необязательно)</div>
-          <input value={form.phone} onChange={field("phone")} placeholder="+1 (323) 555-0100" style={{ ...iS, marginBottom: 0 }} />
+          <input value={form.phone} onChange={numField("phone")} type="tel" inputMode="numeric" placeholder="13235550100" style={{ ...iS, marginBottom: 0 }} />
         </div>
 
         {/* Actions */}

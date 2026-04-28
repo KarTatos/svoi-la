@@ -120,6 +120,15 @@ export default function App() {
     selHousing,
     housing,
   });
+  // Трекинг просмотренных событий на этом устройстве (должен быть ДО trackView)
+  const seenEventIds = useRef(
+    new Set(JSON.parse(typeof window !== "undefined" ? (localStorage.getItem("seenEventIds") || "[]") : "[]"))
+  );
+  const markEventSeen = useCallback((id) => {
+    seenEventIds.current.add(String(id));
+    try { localStorage.setItem("seenEventIds", JSON.stringify([...seenEventIds.current])); } catch {}
+  }, []);
+
   const trackView = useCallback(
     async (itemType, item) => {
       if (!item?.id) return;
@@ -133,12 +142,13 @@ export default function App() {
         setTips((prev) => prev.map(updater));
       } else if (itemType === "event") {
         setEvents((prev) => prev.map(updater));
+        markEventSeen(id);
       } else if (itemType === "housing") {
         setHousing((prev) => prev.map(updater));
         setSelHousing((prev) => (prev?.id === id ? { ...prev, views: newViews } : prev));
       }
     },
-    [user?.id, setPlaces, setTips, setEvents, setHousing]
+    [user?.id, setPlaces, setTips, setEvents, setHousing, markEventSeen]
   );
   const [uscisPdfViewer, setUscisPdfViewer] = useState(null);
   const civicsTest = useCivicsTest({ questions: CIVICS_RAW, shuffleFn: shuffleTest });
@@ -255,6 +265,7 @@ export default function App() {
   const chatEnd = useRef(null);
   const inpRef = useRef(null);
   const fileRef = useRef(null);
+
   const tipFileRef = useRef(null);
   const housingFileRef = useRef(null);
   const mapContainerRef = useRef(null);
@@ -2102,15 +2113,30 @@ export default function App() {
           <h2 style={{ fontSize:20, fontWeight:700, margin:"4px 0 4px" }}>🎉 События и мероприятия</h2>
           <p style={{ fontSize:13, color:T.mid, margin:"0 0 16px" }}>Концерты, праздники, встречи комьюнити</p>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {EVENT_CATS.map((c, i) => { const cnt = events.filter(e=>e.cat===c.id).length; return (
-              <button key={c.id} onClick={() => setSelEC(c)}
-                style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
-                <div style={{ width:48, height:48, borderRadius:T.rs, background:`${c.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{c.icon}</div>
-                <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div></div>
-                {cnt>0 && <span style={{ fontSize:13, fontWeight:700, color:T.primary }}>{cnt}</span>}
-              </button>
-            ); })}
+            {EVENT_CATS.map((c) => {
+              const today = new Date().toISOString().slice(0, 10);
+              const catEvents = events.filter((e) => e.cat === c.id);
+              const upcoming = catEvents.filter((e) => !e.date || e.date >= today);
+              const hasNew = catEvents.some((e) =>
+                !seenEventIds.current.has(String(e.id)) &&
+                e.created_at &&
+                (Date.now() - new Date(e.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000
+              );
+              return (
+                <button key={c.id} onClick={() => setSelEC(c)}
+                  style={{ ...cd, display:"flex", alignItems:"center", gap:14, padding:"16px", cursor:"pointer", fontFamily:"inherit", color:T.text, textAlign:"left" }}
+                  onMouseEnter={e=>{e.currentTarget.style.boxShadow=T.shH}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=T.sh}}>
+                  <div style={{ width:48, height:48, borderRadius:T.rs, background:`${c.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{c.icon}</div>
+                  <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15 }}>{c.title}</div></div>
+                  {hasNew && (
+                    <span style={{ fontSize:11, fontWeight:800, color:"#fff", background:T.primary, borderRadius:8, padding:"3px 8px", letterSpacing:0.3 }}>NEW</span>
+                  )}
+                  {!hasNew && upcoming.length > 0 && (
+                    <span style={{ fontSize:13, fontWeight:700, color:T.primary }}>{upcoming.length}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>)}
 
@@ -2314,20 +2340,20 @@ export default function App() {
             onShare={(item) => handleNativeShare({ title: item.title, text: item.description || "", url: window.location.href })}
             onRequireAuth={handleLogin}
             trackView={trackView}
-            uploadPhoto={uploadPhoto}
             onAdd={async (payload) => {
               const { data } = await dbAddMarket(payload);
               if (data?.[0]) setMarket((prev) => [{ ...data[0], likes: 0, views: 0, photos: data[0].photos || [] }, ...prev]);
             }}
             onUpdate={async (id, payload) => {
               const { data } = await dbUpdateMarket(id, payload);
-              if (data?.[0]) setMarket((prev) => prev.map((m) => m.id === id ? { ...m, ...data[0], photos: data[0].photos || [] } : m));
+              if (data?.[0]) setMarket((prev) => prev.map((m) => m.id === id ? { ...m, ...data[0] } : m));
             }}
             onDelete={async (id) => {
               await dbDeleteMarket(id);
               setMarket((prev) => prev.filter((m) => m.id !== id));
             }}
             canManage={(item) => canManageByOwnership(item?.user_id, item?.author)}
+            uploadPhoto={uploadPhoto}
           />
         )}
 

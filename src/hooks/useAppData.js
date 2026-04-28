@@ -195,12 +195,17 @@ export function useAppData({ user, authReady }) {
       created_at: j.created_at,
     })));
     if (!marketError) setMarket((dbMarket || []).map((m) => ({
-      id: m.id, title: m.title, price: m.price,
-      description: m.description,
+      id: m.id,
+      title: m.title || "",
+      price: m.price || "",
+      description: m.description || "",
       photos: Array.isArray(m.photos) ? m.photos : [],
-      telegram: m.telegram, phone: m.phone,
-      author: m.author, user_id: m.user_id,
-      likes: m.likes_count || 0, views: Number(m.views || 0),
+      telegram: m.telegram || "",
+      phone: m.phone || "",
+      author: m.author || "",
+      user_id: m.user_id,
+      likes: m.likes_count || 0,
+      views: Number(m.views || 0),
       created_at: m.created_at,
     })));
 

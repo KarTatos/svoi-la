@@ -238,7 +238,7 @@ export async function deleteJob(id) {
   return { error };
 }
 
-// ── Marketplace ──────────────────────────────────────────────────────────────
+// ═══ MARKETPLACE ═══
 export async function getMarket() {
   const { data, error } = await supabase.from('marketplace').select('*').order('created_at', { ascending: false });
   return { data: data || [], error };
@@ -256,5 +256,7 @@ export async function updateMarketItem(id, updates) {
 
 export async function deleteMarketItem(id) {
   const { error } = await supabase.from('marketplace').delete().eq('id', id);
-  return { error };
+  if (error) return { error };
+  await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'market');
+  return { error: null };
 }

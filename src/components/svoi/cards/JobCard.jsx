@@ -108,7 +108,7 @@ export default function JobCard({
               )}
               {job.phone && (
                 <a
-                  href={`tel:${job.phone}`}
+                  href={`sms:${job.phone}`}
                   style={{ ...pl(false), padding: "10px 14px", fontSize: 18, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                   onClick={(e) => e.stopPropagation()}
                   title={job.phone}
