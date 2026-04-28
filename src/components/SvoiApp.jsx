@@ -1,9 +1,10 @@
 ﻿'use client';
 import { useCallback, useState, useEffect, useRef } from "react";
-import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto, addJob as dbAddJob, updateJob as dbUpdateJob, deleteJob as dbDeleteJob } from "../lib/supabase";
+import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto, addJob as dbAddJob, updateJob as dbUpdateJob, deleteJob as dbDeleteJob, addMarketItem as dbAddMarket, updateMarketItem as dbUpdateMarket, deleteMarketItem as dbDeleteMarket } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import JobsScreen from "./svoi/screens/JobsScreen";
+import MarketScreen from "./svoi/screens/MarketScreen";
 import { useAuth } from "../hooks/useAuth";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useProfileWeather } from "../hooks/useProfileWeather";
@@ -79,6 +80,7 @@ export default function App() {
     events, setEvents,
     housing, setHousing,
     jobs, setJobs,
+    market, setMarket,
     liked, setLiked,
   } = useAppData({ user, authReady });
   const [newComment, setNewComment] = useState("");
@@ -2323,6 +2325,35 @@ export default function App() {
               setJobs((prev) => prev.filter((j) => j.id !== id));
             }}
             canManage={(job) => canManageByOwnership(job?.user_id, job?.author)}
+          />
+        )}
+
+        {/* SELL / MARKETPLACE */}
+        {scr === "sell" && (
+          <MarketScreen
+            T={T} cd={cd} bk={bk} pl={pl} iS={iS}
+            user={user}
+            items={market}
+            liked={liked}
+            onGoHome={goHome}
+            onToggleLike={(id, type) => handleToggleLike(id, type)}
+            onShare={(item) => handleNativeShare({ title: item.title, text: item.description || "", url: window.location.href })}
+            onRequireAuth={handleLogin}
+            trackView={trackView}
+            onAdd={async (payload) => {
+              const { data } = await dbAddMarket(payload);
+              if (data?.[0]) setMarket((prev) => [{ ...data[0], likes: 0, views: 0, photos: data[0].photos || [] }, ...prev]);
+            }}
+            onUpdate={async (id, payload) => {
+              const { data } = await dbUpdateMarket(id, payload);
+              if (data?.[0]) setMarket((prev) => prev.map((m) => m.id === id ? { ...m, ...data[0] } : m));
+            }}
+            onDelete={async (id) => {
+              await dbDeleteMarket(id);
+              setMarket((prev) => prev.filter((m) => m.id !== id));
+            }}
+            canManage={(item) => canManageByOwnership(item?.user_id, item?.author)}
+            uploadPhoto={uploadPhoto}
           />
         )}
 
