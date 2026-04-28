@@ -3,10 +3,15 @@ import JobCard from "../cards/JobCard";
 import JobFormModal from "../forms/JobFormModal";
 
 const EMPTY_FORM = {
-  title: "", district: "", price: "",
+  title: "", district: "", price: "", price_type: "",
   schedule: "full-time", english_lvl: "basic", work_auth: "ask",
   description: "", telegram: "", phone: "",
 };
+
+const TABS = [
+  { id: "vacancy", label: "💼 Вакансии" },
+  { id: "service", label: "🛠️ Услуги" },
+];
 
 export default function JobsScreen({
   T, cd, bk, pl, iS,
@@ -23,6 +28,7 @@ export default function JobsScreen({
   onDelete,
   canManage,
 }) {
+  const [tab, setTab] = useState("vacancy");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -31,14 +37,16 @@ export default function JobsScreen({
   const [saving, setSaving] = useState(false);
 
   const query = search.trim().toLowerCase();
-  const filtered = jobs.filter((j) => {
-    if (!query) return true;
-    return (
-      j.title?.toLowerCase().includes(query) ||
-      j.description?.toLowerCase().includes(query) ||
-      j.district?.toLowerCase().includes(query)
-    );
-  });
+  const filtered = jobs
+    .filter((j) => j.type === tab)
+    .filter((j) => {
+      if (!query) return true;
+      return (
+        j.title?.toLowerCase().includes(query) ||
+        j.description?.toLowerCase().includes(query) ||
+        j.district?.toLowerCase().includes(query)
+      );
+    });
 
   const openAdd = () => {
     if (!user) { onRequireAuth(); return; }
@@ -53,6 +61,7 @@ export default function JobsScreen({
       title: job.title || "",
       district: job.district || "",
       price: job.price || "",
+      price_type: job.price_type || "",
       schedule: job.schedule || "full-time",
       english_lvl: job.english_lvl || "basic",
       work_auth: job.work_auth || "ask",
@@ -69,10 +78,12 @@ export default function JobsScreen({
     if (!title || !description) return;
     setSaving(true);
     const payload = {
+      type: tab,
       title,
       district: form.district || null,
       price: form.price.trim() || null,
-      schedule: form.schedule || null,
+      price_type: form.price_type || null,
+      schedule: tab === "vacancy" ? (form.schedule || null) : null,
       english_lvl: form.english_lvl || null,
       work_auth: form.work_auth || "ask",
       description,
@@ -100,31 +111,59 @@ export default function JobsScreen({
     setEditing(null);
   };
 
+  const emptyText = tab === "vacancy"
+    ? "Вакансий пока нет. Будьте первым!"
+    : "Услуг пока нет. Предложите свои!";
+
   return (
     <div>
       <button onClick={onGoHome} style={bk}>← Главная</button>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 14px" }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>💼 Вакансии</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Работа / Услуги</h2>
         <button
           onClick={openAdd}
           style={{ width: 38, height: 38, borderRadius: 12, border: `1.5px solid ${T.primary}55`, background: T.primaryLight, color: T.primary, fontSize: 28, lineHeight: 1, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
-          title="Добавить вакансию"
+          title="Добавить"
         >+</button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => { setTab(t.id); setExpanded(null); setSearch(""); }}
+            style={{
+              ...cd,
+              padding: "12px 10px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 14,
+              fontWeight: 700,
+              color: tab === t.id ? T.primary : T.mid,
+              background: tab === t.id ? T.primaryLight : T.card,
+              border: `1.5px solid ${tab === t.id ? T.primary + "55" : T.borderL}`,
+              boxShadow: tab === t.id ? T.shH : "none",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Search */}
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Поиск вакансий..."
+        placeholder={tab === "vacancy" ? "Поиск вакансий..." : "Поиск услуг..."}
         style={{ ...iS, marginBottom: 14 }}
       />
 
       {/* List */}
       {filtered.length === 0 && (
         <div style={{ ...cd, padding: 20, textAlign: "center", fontSize: 13, color: T.mid }}>
-          {query ? `Ничего не найдено по запросу «${search}»` : "Вакансий пока нет. Будьте первым!"}
+          {query ? `Ничего не найдено по запросу «${search}»` : emptyText}
         </div>
       )}
 
@@ -154,6 +193,7 @@ export default function JobsScreen({
 
       <JobFormModal
         open={showForm}
+        type={tab}
         editing={editing}
         form={form}
         setForm={setForm}

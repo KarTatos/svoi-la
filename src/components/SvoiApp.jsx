@@ -1613,7 +1613,7 @@ export default function App() {
   const iS = { width:"100%", padding:"14px 16px", background:T.card, border:`1px solid ${T.border}`, borderRadius:T.rs, color:T.text, fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
 
   return (
-    <div style={{ minHeight:"100vh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
+    <div style={{ minHeight:"100dvh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
       <AppHeader
         T={T}
         mt={mt}
@@ -1625,7 +1625,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main style={{ padding:"16px 16px 40px" }}>
+      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + 24px)" }}>
 
         {scr==="home" && (
           <HomeScreen
