@@ -159,7 +159,7 @@ export default function EventsScreen({
                 <div>
                   <div style={{
                     fontWeight:    700,
-                    fontSize:      22,
+                    fontSize:      "4vw",
                     lineHeight:    1.2,
                     letterSpacing: "-0.3px",
                     color:         D.ink,
