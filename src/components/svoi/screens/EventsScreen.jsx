@@ -75,12 +75,28 @@ export default function EventsScreen({
 
   // ─── Category list ──────────────────────────────────────────────────────────
   if (!selEC) {
+    const FONT  = '"Inter", system-ui, sans-serif';
+    const SH    = '0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)';
+    const MONO  = '"JetBrains Mono", ui-monospace, monospace';
+    const INK   = '#0E0E0E';
+    const LIME  = '#D4F84A';
+
     return (
-      <div>
+      <div style={{ fontFamily: FONT }}>
         <button onClick={onGoHome} style={bk}>← Главная</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "4px 0 4px" }}>🎉 События и мероприятия</h2>
-        <p style={{ fontSize: 13, color: T.mid, margin: "0 0 16px" }}>Концерты, праздники, встречи комьюнити</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+        {/* Header */}
+        <div style={{ margin: "4px 0 16px" }}>
+          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px", color: INK, lineHeight: 1.1 }}>
+            События
+          </div>
+          <div style={{ fontSize: 13, color: "#8A8680", marginTop: 3, fontWeight: 500 }}>
+            Концерты, праздники, встречи комьюнити
+          </div>
+        </div>
+
+        {/* 2-column grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {EVENT_CATS.map((c) => {
             const today      = new Date().toISOString().slice(0, 10);
             const catEventsC = events.filter((e) => e.cat === c.id);
@@ -95,22 +111,91 @@ export default function EventsScreen({
               <button
                 key={c.id}
                 onClick={() => setSelEC(c)}
-                style={{ ...cd, display: "flex", alignItems: "center", gap: 14, padding: "16px", cursor: "pointer", fontFamily: "inherit", color: T.text, textAlign: "left" }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = T.shH; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = T.sh; }}
+                style={{
+                  background:    "#FFFFFF",
+                  border:        "none",
+                  borderRadius:  24,
+                  boxShadow:     SH,
+                  padding:       0,
+                  cursor:        "pointer",
+                  display:       "flex",
+                  flexDirection: "column",
+                  alignItems:    "flex-start",
+                  textAlign:     "left",
+                  fontFamily:    FONT,
+                  overflow:      "hidden",
+                  position:      "relative",
+                  minHeight:     130,
+                }}
               >
-                <div style={{ width: 48, height: 48, borderRadius: T.rs, background: `${c.color}12`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
+                {/* NEW badge */}
+                {hasNew && (
+                  <div style={{
+                    position:      "absolute",
+                    top:           10,
+                    right:         10,
+                    fontSize:      8,
+                    fontWeight:    700,
+                    color:         LIME,
+                    background:    INK,
+                    padding:       "3px 7px",
+                    borderRadius:  10,
+                    fontFamily:    MONO,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    zIndex:        1,
+                  }}>
+                    new
+                  </div>
+                )}
+
+                {/* Colored icon area */}
+                <div style={{
+                  width:           "100%",
+                  background:      c.color + "22",
+                  display:         "flex",
+                  alignItems:      "center",
+                  justifyContent:  "center",
+                  padding:         "18px 0 14px",
+                  fontSize:        34,
+                  lineHeight:      1,
+                }}>
                   {c.icon}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{c.title}</div>
+
+                {/* Title + count */}
+                <div style={{ padding: "10px 12px 12px", flex: 1, width: "100%", boxSizing: "border-box" }}>
+                  <div style={{
+                    fontWeight:    700,
+                    fontSize:      15,
+                    lineHeight:    1.2,
+                    letterSpacing: "-0.2px",
+                    color:         INK,
+                  }}>
+                    {c.title}
+                  </div>
+                  {!hasNew && upcoming.length > 0 && (
+                    <div style={{
+                      marginTop:  5,
+                      fontSize:   11,
+                      fontWeight: 600,
+                      color:      c.color,
+                      fontFamily: MONO,
+                    }}>
+                      {upcoming.length} предстоящих
+                    </div>
+                  )}
+                  {!hasNew && upcoming.length === 0 && (
+                    <div style={{
+                      marginTop:  5,
+                      fontSize:   11,
+                      color:      "#8A8680",
+                      fontFamily: MONO,
+                    }}>
+                      скоро
+                    </div>
+                  )}
                 </div>
-                {hasNew && (
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: T.primary, borderRadius: 8, padding: "3px 8px", letterSpacing: 0.3 }}>NEW</span>
-                )}
-                {!hasNew && upcoming.length > 0 && (
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>{upcoming.length}</span>
-                )}
               </button>
             );
           })}
