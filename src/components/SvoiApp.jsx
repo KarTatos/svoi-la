@@ -1436,7 +1436,11 @@ export default function App() {
       || (housingBedsFilter === "room" && item.type === "room");
     return byQuery && byBeds;
   });
-  const housingSorted = housingFiltered;
+  const housingSorted = [...housingFiltered].sort((a, b) => {
+    const aFav = favorites[`housing-${a.id}`] ? 1 : 0;
+    const bFav = favorites[`housing-${b.id}`] ? 1 : 0;
+    return bFav - aFav;
+  });
   const formatHousingPrice = (value) => {
     try { return Number(value || 0).toLocaleString("en-US"); } catch { return String(value || 0); }
   };

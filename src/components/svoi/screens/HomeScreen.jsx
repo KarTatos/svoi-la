@@ -271,7 +271,7 @@ export default function HomeScreen({
               fontWeight: 500,
               fontFamily: D.font,
             }}>
-              Помощник · спросите про что угодно
+              Помощник
             </div>
           </div>
 

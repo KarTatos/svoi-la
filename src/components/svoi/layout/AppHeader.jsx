@@ -20,9 +20,7 @@
     <header style={{ padding:"calc(env(safe-area-inset-top) + 12px) 16px 12px", background:T.card, borderBottom:`1px solid ${T.borderL}`, display:"flex", alignItems:"center", justifyContent:"space-between", opacity:mt?1:0, transition:"opacity 0.4s" }}>
       <div onClick={onGoHome} style={{ cursor:"pointer" }}>
         <h1 style={{ fontSize:24, fontWeight:800, margin:0, letterSpacing:"-1px", fontFamily:'"Inter", system-ui, sans-serif', lineHeight:1 }}>
-          <span style={{ background:"linear-gradient(90deg,#FF8A3D,#FF6B4A)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>МЫ</span>
-          <span style={{ color:"#8A8680", fontWeight:600, WebkitTextFillColor:"#8A8680" }}> в </span>
-          <span style={{ color:"#0E0E0E", WebkitTextFillColor:"#0E0E0E" }}>LA</span>
+          <span style={{ background:"linear-gradient(90deg,#FF8A3D,#FF6B4A)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>LA</span>
         </h1>
         <p style={{ margin:"2px 0 0", fontSize:11, color:"#8A8680", fontFamily:'"Inter", system-ui, sans-serif', fontWeight:500 }}>путеводитель</p>
       </div>
