@@ -1,3 +1,7 @@
+const INTER = '"Inter", system-ui, sans-serif';
+const MONO  = '"JetBrains Mono", ui-monospace, monospace';
+const SH    = '0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)';
+
 function normalizeWeatherText(rawText = "") {
   const text = String(rawText || "").toLowerCase();
   if (!text) return "погода";
@@ -17,55 +21,55 @@ function formatWeatherTemp(raw = "") {
   const match = value.match(/(-?\d+(?:\.\d+)?)\s*°?\s*([CF])?/i);
   if (!match) return "--°";
   const n = Number(match[1]);
-  const unit = String(match[2] || "").toUpperCase();
   if (!Number.isFinite(n)) return "--°";
-  if (unit === "F") return `${Math.round(n)}°`;
-  if (unit === "C") return `${Math.round(n)}°`;
   return `${Math.round(n)}°`;
 }
 
 export default function WeatherCard({ T, cd, profileLocation, profileWeather }) {
-  const place = (profileLocation || "Los Angeles").split(",")[0].trim().toUpperCase();
   const weatherText = normalizeWeatherText(String(profileWeather?.text || ""));
   const weatherTemp = formatWeatherTemp(profileWeather?.temp || "");
 
   return (
     <div style={{
-      borderRadius: 18,
-      background: `linear-gradient(135deg, ${T.primary} 0%, #E8630A 100%)`,
-      padding: "16px 18px",
-      marginBottom: 14,
+      borderRadius: 24,
+      background: '#FF6B4A',
+      padding: "14px 18px",
+      marginBottom: 10,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      boxShadow: "0 4px 20px rgba(244,123,32,0.35)",
+      boxShadow: SH,
       overflow: "hidden",
       position: "relative",
     }}>
       {/* Decorative circle */}
       <div style={{
-        position: "absolute", right: -20, top: -20,
-        width: 110, height: 110, borderRadius: "50%",
-        background: "rgba(255,255,255,0.08)",
+        position: "absolute", right: -28, top: -28,
+        width: 130, height: 130, borderRadius: "50%",
+        background: "rgba(255,255,255,0.1)",
+        pointerEvents: "none",
       }} />
       <div style={{ zIndex: 1 }}>
         <div style={{
-          fontSize: 10, fontWeight: 800, letterSpacing: "0.1em",
-          color: "rgba(255,255,255,0.75)", marginBottom: 4,
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+          color: "rgba(255,255,255,0.8)", marginBottom: 5,
+          fontFamily: MONO,
           textTransform: "uppercase",
         }}>
           Сегодня в LA
         </div>
         <div style={{
-          fontSize: 15, fontWeight: 600, color: "#fff",
-          lineHeight: 1.3, maxWidth: 200,
+          fontSize: 14, fontWeight: 600, color: "#fff",
+          lineHeight: 1.3, maxWidth: 195, letterSpacing: "-0.2px",
+          fontFamily: INTER,
         }}>
           {weatherText}
         </div>
       </div>
       <div style={{
-        fontSize: 52, fontWeight: 800, color: "#fff",
-        lineHeight: 1, letterSpacing: -2, zIndex: 1, flexShrink: 0,
+        fontSize: 42, fontWeight: 700, color: "#fff",
+        lineHeight: 1, letterSpacing: "-2px", zIndex: 1, flexShrink: 0,
+        fontFamily: INTER,
       }}>
         {weatherTemp}
       </div>
