@@ -183,7 +183,7 @@ export default function HomeScreen({
             <div style={{ opacity: s.soon ? 0.4 : 1 }}>
               <div style={{
                 fontWeight:    700,
-                fontSize:      15,
+                fontSize:      22,
                 lineHeight:    1.2,
                 letterSpacing: "-0.3px",
                 color:         D.ink,
@@ -253,7 +253,7 @@ export default function HomeScreen({
                 color:         "#fff",
                 letterSpacing: "-0.4px",
                 fontFamily:    D.font,
-              }}>AI Чат</span>
+              }}>AI</span>
               <span style={{
                 width:        6,
                 height:       6,
