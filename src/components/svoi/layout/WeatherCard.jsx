@@ -1,3 +1,7 @@
+const INTER = '"Inter", system-ui, sans-serif';
+const MONO  = '"JetBrains Mono", ui-monospace, monospace';
+const SH    = '0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)';
+
 function normalizeWeatherText(rawText = "") {
   const text = String(rawText || "").toLowerCase();
   if (!text) return "погода";
@@ -7,110 +11,67 @@ function normalizeWeatherText(rawText = "") {
   if (text.includes("fog") || text.includes("mist") || text.includes("haze") || text.includes("smoke")) return "туман";
   if (text.includes("cloudy") || text.includes("overcast")) return "облачно";
   if (text.includes("partly")) return "переменная облачность";
-  if (text.includes("clear") || text.includes("sunny")) return "ясно";
+  if (text.includes("clear") || text.includes("sunny")) return "ясно · идеально для прогулки";
   if (text.includes("wind")) return "ветрено";
   return "погода";
-}
-
-function selectWeatherIcon(rawText = "") {
-  const text = String(rawText || "").toLowerCase();
-  if (text.includes("thunder") || text.includes("storm")) return "⛈️";
-  if (text.includes("snow") || text.includes("sleet") || text.includes("blizzard")) return "🌨️";
-  if (text.includes("rain") || text.includes("shower") || text.includes("drizzle")) return "🌧️";
-  if (text.includes("fog") || text.includes("mist") || text.includes("haze") || text.includes("smoke")) return "🌫️";
-  if (text.includes("cloudy") || text.includes("overcast")) return "☁️";
-  if (text.includes("partly")) return "⛅";
-  if (text.includes("clear") || text.includes("sunny")) return "☀️";
-  if (text.includes("wind")) return "💨";
-  return "☀️";
 }
 
 function formatWeatherTemp(raw = "") {
   const value = String(raw || "").trim();
   const match = value.match(/(-?\d+(?:\.\d+)?)\s*°?\s*([CF])?/i);
-  if (!match) return value || "--°";
-
+  if (!match) return "--°";
   const n = Number(match[1]);
-  const unit = String(match[2] || "").toUpperCase();
-  if (!Number.isFinite(n)) return value || "--°";
-
-  if (unit === "F") {
-    const c = Math.round((n - 32) * 5 / 9);
-    return `${Math.round(n)}°F (${c}°C)`;
-  }
-  if (unit === "C") return `${Math.round(n)}°C`;
+  if (!Number.isFinite(n)) return "--°";
   return `${Math.round(n)}°`;
 }
 
 export default function WeatherCard({ T, cd, profileLocation, profileWeather }) {
-  const place = (profileLocation || "Локация").split(",")[0].trim().toUpperCase();
-  const weatherRaw = String(profileWeather?.text || "");
-  const weatherText = normalizeWeatherText(weatherRaw);
-  const weatherIcon = selectWeatherIcon(weatherRaw);
+  const weatherText = normalizeWeatherText(String(profileWeather?.text || ""));
   const weatherTemp = formatWeatherTemp(profileWeather?.temp || "");
 
   return (
-    <div
-      style={{
-        ...cd,
-        marginBottom: 14,
-        padding: "12px 14px",
-        background: "#FDF0E0",
-        borderColor: "#F4E1CC",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-      }}
-    >
-      <div
-        aria-label="Погода"
-        role="img"
-        style={{
-          width: 58,
-          height: 58,
-          borderRadius: 16,
-          background: "#FFFFFF",
-          border: "1px solid #F3E6D7",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
-          flexShrink: 0,
-          fontSize: 30,
-          lineHeight: 1,
-        }}
-      >
-        <span>{weatherIcon}</span>
+    <div style={{
+      borderRadius: 24,
+      background: '#FF6B4A',
+      padding: "14px 18px",
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      boxShadow: SH,
+      overflow: "hidden",
+      position: "relative",
+    }}>
+      {/* Decorative circle */}
+      <div style={{
+        position: "absolute", right: -28, top: -28,
+        width: 130, height: 130, borderRadius: "50%",
+        background: "rgba(255,255,255,0.1)",
+        pointerEvents: "none",
+      }} />
+      <div style={{ zIndex: 1 }}>
+        <div style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+          color: "rgba(255,255,255,0.8)", marginBottom: 5,
+          fontFamily: MONO,
+          textTransform: "uppercase",
+        }}>
+          Сегодня в LA
+        </div>
+        <div style={{
+          fontSize: 14, fontWeight: 600, color: "#fff",
+          lineHeight: 1.3, maxWidth: 195, letterSpacing: "-0.2px",
+          fontFamily: INTER,
+        }}>
+          {weatherText}
+        </div>
       </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div
-          style={{
-            fontSize: 11,
-            letterSpacing: "0.06em",
-            fontWeight: 800,
-            color: "#4B5563",
-            marginBottom: 2,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {place}
-        </div>
-        <div
-          style={{
-            fontSize: 19,
-            lineHeight: 1.1,
-            fontWeight: 700,
-            color: "#111827",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {weatherTemp}{" "}
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>• {weatherText}</span>
-        </div>
+      <div style={{
+        fontSize: 42, fontWeight: 700, color: "#fff",
+        lineHeight: 1, letterSpacing: "-2px", zIndex: 1, flexShrink: 0,
+        fontFamily: INTER,
+      }}>
+        {weatherTemp}
       </div>
     </div>
   );
