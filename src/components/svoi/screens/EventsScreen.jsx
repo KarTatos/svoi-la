@@ -74,30 +74,26 @@ export default function EventsScreen({
   const datePickerRef = useRef(null);
 
   // ─── Category list ──────────────────────────────────────────────────────────
-  if (!selEC) {
-    const FONT  = '"Inter", system-ui, sans-serif';
-    const SH    = '0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)';
-    const MONO  = '"JetBrains Mono", ui-monospace, monospace';
-    const INK   = '#0E0E0E';
-    const LIME  = '#D4F84A';
+  // Design tokens — точное совпадение с HomeScreen
+  const D = {
+    card:  '#FFFFFF',
+    ink:   '#0E0E0E',
+    sub:   '#8A8680',
+    lime:  '#D4F84A',
+    font:  '"Inter", system-ui, sans-serif',
+    mono:  '"JetBrains Mono", ui-monospace, monospace',
+    sh:    '0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)',
+    r:     24,
+  };
 
+  if (!selEC) {
     return (
-      <div style={{ fontFamily: FONT }}>
+      <div style={{ fontFamily: D.font }}>
         <button onClick={onGoHome} style={bk}>← Главная</button>
 
-        {/* Header */}
-        <div style={{ margin: "4px 0 16px" }}>
-          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px", color: INK, lineHeight: 1.1 }}>
-            События
-          </div>
-          <div style={{ fontSize: 13, color: "#8A8680", marginTop: 3, fontWeight: 500 }}>
-            Концерты, праздники, встречи комьюнити
-          </div>
-        </div>
-
-        {/* 2-column grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {EVENT_CATS.map((c) => {
+        {/* 3-column grid — как на HomeScreen */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+          {EVENT_CATS.map((c, i) => {
             const today      = new Date().toISOString().slice(0, 10);
             const catEventsC = events.filter((e) => e.cat === c.id);
             const upcoming   = catEventsC.filter((e) => !e.date || e.date >= today);
@@ -107,94 +103,79 @@ export default function EventsScreen({
                 e.created_at &&
                 Date.now() - new Date(e.created_at).getTime() < 14 * 24 * 60 * 60 * 1000
             );
+            const desc = upcoming.length > 0
+              ? `${upcoming.length} ${upcoming.length === 1 ? "событие" : upcoming.length < 5 ? "события" : "событий"}`
+              : "мероприятия";
+
             return (
               <button
                 key={c.id}
                 onClick={() => setSelEC(c)}
                 style={{
-                  background:    "#FFFFFF",
-                  border:        "none",
-                  borderRadius:  24,
-                  boxShadow:     SH,
-                  padding:       0,
-                  cursor:        "pointer",
-                  display:       "flex",
-                  flexDirection: "column",
-                  alignItems:    "flex-start",
-                  textAlign:     "left",
-                  fontFamily:    FONT,
-                  overflow:      "hidden",
-                  position:      "relative",
-                  minHeight:     130,
+                  background:     D.card,
+                  border:         "none",
+                  borderRadius:   D.r,
+                  boxShadow:      D.sh,
+                  padding:        "14px 14px 16px",
+                  cursor:         "pointer",
+                  display:        "flex",
+                  flexDirection:  "column",
+                  justifyContent: "space-between",
+                  alignItems:     "flex-start",
+                  textAlign:      "left",
+                  fontFamily:     D.font,
+                  color:          D.ink,
+                  position:       "relative",
+                  minHeight:      120,
+                  overflow:       "hidden",
                 }}
               >
                 {/* NEW badge */}
                 {hasNew && (
                   <div style={{
                     position:      "absolute",
-                    top:           10,
-                    right:         10,
+                    top:           9,
+                    right:         9,
                     fontSize:      8,
                     fontWeight:    700,
-                    color:         LIME,
-                    background:    INK,
+                    color:         D.lime,
+                    background:    D.ink,
                     padding:       "3px 7px",
                     borderRadius:  10,
-                    fontFamily:    MONO,
+                    fontFamily:    D.mono,
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
-                    zIndex:        1,
                   }}>
                     new
                   </div>
                 )}
 
-                {/* Colored icon area */}
-                <div style={{
-                  width:           "100%",
-                  background:      c.color + "22",
-                  display:         "flex",
-                  alignItems:      "center",
-                  justifyContent:  "center",
-                  padding:         "18px 0 14px",
-                  fontSize:        34,
-                  lineHeight:      1,
-                }}>
+                {/* Icon */}
+                <div style={{ fontSize: 30, lineHeight: 1 }}>
                   {c.icon}
                 </div>
 
-                {/* Title + count */}
-                <div style={{ padding: "10px 12px 12px", flex: 1, width: "100%", boxSizing: "border-box" }}>
+                {/* Title + desc */}
+                <div>
                   <div style={{
                     fontWeight:    700,
-                    fontSize:      15,
+                    fontSize:      22,
                     lineHeight:    1.2,
-                    letterSpacing: "-0.2px",
-                    color:         INK,
+                    letterSpacing: "-0.3px",
+                    color:         D.ink,
+                    fontFamily:    D.font,
                   }}>
                     {c.title}
                   </div>
-                  {!hasNew && upcoming.length > 0 && (
-                    <div style={{
-                      marginTop:  5,
-                      fontSize:   11,
-                      fontWeight: 600,
-                      color:      c.color,
-                      fontFamily: MONO,
-                    }}>
-                      {upcoming.length} предстоящих
-                    </div>
-                  )}
-                  {!hasNew && upcoming.length === 0 && (
-                    <div style={{
-                      marginTop:  5,
-                      fontSize:   11,
-                      color:      "#8A8680",
-                      fontFamily: MONO,
-                    }}>
-                      скоро
-                    </div>
-                  )}
+                  <div style={{
+                    fontSize:   10.5,
+                    color:      D.sub,
+                    marginTop:  3,
+                    lineHeight: 1.3,
+                    fontFamily: D.font,
+                  }}>
+                    {desc}
+                  </div>
                 </div>
               </button>
             );
