@@ -8,18 +8,36 @@ export default function MarketDetailModal({
   const [photoIdx, setPhotoIdx] = useState(0);
   const photos = item.photos?.length ? item.photos : [];
 
-  // Блокируем прокрутку фона пока модал открыт
+  // Блокируем прокрутку фона пока модал открыт (iOS-safe)
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    const prevOverflow     = document.body.style.overflow;
+    const prevOverscroll   = document.body.style.overscrollBehavior;
+    const prevPosition     = document.body.style.position;
+    const prevTop          = document.body.style.top;
+    const prevWidth        = document.body.style.width;
+    const prevTouchAction  = document.body.style.touchAction;
+    const scrollY          = window.scrollY || 0;
+    document.body.style.overflow          = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.body.style.position          = "fixed";
+    document.body.style.top               = `-${scrollY}px`;
+    document.body.style.width             = "100%";
+    document.body.style.touchAction       = "none";
+    return () => {
+      document.body.style.overflow          = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
+      document.body.style.position          = prevPosition;
+      document.body.style.top               = prevTop;
+      document.body.style.width             = prevWidth;
+      document.body.style.touchAction       = prevTouchAction;
+      window.scrollTo(0, scrollY);
+    };
   }, []);
 
   return (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end" }}
       onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
     >
       <div
         style={{
@@ -30,7 +48,6 @@ export default function MarketDetailModal({
           WebkitOverflowScrolling: "touch",
         }}
         onClick={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Главное фото */}
         <div style={{ position: "relative", width: "100%", paddingTop: "75%", background: T.bg, borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
