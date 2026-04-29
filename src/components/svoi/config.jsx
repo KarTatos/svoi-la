@@ -1,6 +1,6 @@
 ﻿// Extracted from SvoiApp.jsx for modularity
 
-export const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#F2F2F7", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
+export const T = { primary: "#F47B20", primaryLight: "#FFF3E8", bg: "#EFECE6", card: "#FFFFFF", text: "#1A1A1A", mid: "#6B6B6B", light: "#999", border: "#E5E5E5", borderL: "#F0F0F0", sh: "0 2px 12px rgba(0,0,0,0.06)", shH: "0 4px 20px rgba(0,0,0,0.1)", r: 16, rs: 12 };
 
 export const DISTRICTS = [
   { id:"weho", name:"West Hollywood", emoji:"🌴", desc:"Restaurants, nightlife", lat:34.0900, lng:-118.3617 },
