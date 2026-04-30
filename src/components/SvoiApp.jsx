@@ -30,6 +30,7 @@ import SupportScreen from "./svoi/screens/SupportScreen";
 import PlacesDistrictsScreen from "./svoi/screens/PlacesDistrictsScreen";
 import DistrictCategoriesScreen from "./svoi/screens/DistrictCategoriesScreen";
 import AppHeader from "./svoi/layout/AppHeader";
+import BottomNav from "./svoi/layout/BottomNav";
 import PlaceFormModal from "./svoi/forms/PlaceFormModal";
 import TipFormModal from "./svoi/forms/TipFormModal";
 import EventCreateModal from "./svoi/forms/EventCreateModal";
@@ -1607,7 +1608,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + 24px)" }}>
+      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + 90px)" }}>
 
         {scr==="home" && (
           <HomeScreen
@@ -2477,6 +2478,13 @@ export default function App() {
         onTouchStart={onPhotoTouchStart}
         onTouchMove={onPhotoTouchMove}
         onTouchEnd={onPhotoTouchEnd}
+      />
+
+      <BottomNav
+        scr={scr}
+        setScr={setScr}
+        user={user}
+        onLogin={handleLogin}
       />
 
       <style>{`
