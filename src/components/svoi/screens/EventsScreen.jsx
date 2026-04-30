@@ -159,7 +159,7 @@ export default function EventsScreen({
                 <div>
                   <div style={{
                     fontWeight:    700,
-                    fontSize:      "4vw",
+                    fontSize:      "clamp(11px, 4vw, 15px)",
                     lineHeight:    1.2,
                     letterSpacing: "-0.3px",
                     color:         D.ink,

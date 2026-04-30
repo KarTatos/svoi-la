@@ -6,7 +6,39 @@ function formatNewsDate(iso) {
 }
 
 function UscisNewsBlock({ news, T }) {
-  if (!news || news.length === 0) return null;
+  // Skeleton shown while DB is empty / not yet populated
+  if (!news || news.length === 0) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>📰 Новости USCIS</div>
+          <a href="https://www.uscis.gov/news" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 12, color: T.primary, textDecoration: "none", fontWeight: 600 }}>
+            Все →
+          </a>
+        </div>
+        <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6,
+          marginLeft: -16, paddingLeft: 16, marginRight: -16, paddingRight: 16 }}>
+          {[1, 2, 3].map((k) => (
+            <div key={k} style={{
+              flexShrink: 0, width: 220, minHeight: 120,
+              background: T.card, border: `1px solid ${T.borderL}`,
+              borderRadius: 16, padding: "12px 14px", boxShadow: T.sh,
+              display: "flex", flexDirection: "column", gap: 8,
+            }}>
+              <div style={{ width: 60, height: 9, borderRadius: 6, background: T.borderL }} />
+              <div style={{ width: "90%", height: 12, borderRadius: 6, background: T.borderL }} />
+              <div style={{ width: "70%", height: 12, borderRadius: 6, background: T.borderL }} />
+              <div style={{ width: "80%", height: 9, borderRadius: 6, background: T.borderL }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: T.light, marginTop: 6, textAlign: "center" }}>
+          Новости загружаются раз в день. Запустите первое обновление вручную.
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
