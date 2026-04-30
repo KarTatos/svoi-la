@@ -15,7 +15,7 @@ select { cursor: pointer; }
 
 /* Desktop-only phone viewport preview for local development */
 .dev-phone-preview-frame { min-height: 100dvh; }
-@media (min-width: 600px) {
+@media (hover: hover) and (pointer: fine) {
   body[data-dev-phone-preview="1"] {
     display: flex;
     align-items: center;
@@ -36,13 +36,14 @@ select { cursor: pointer; }
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
     background: #f2f2f7;
 
-    --bottom-nav-position: absolute;
+    --bottom-nav-position: fixed;
     --bottom-nav-bottom: 0px;
-    --bottom-nav-left: 0px;
-    --bottom-nav-right: 0px;
-    --bottom-nav-width: 100%;
-    --bottom-nav-max-width: none;
+    --bottom-nav-left: 50%;
+    --bottom-nav-right: auto;
+    --bottom-nav-width: 402px;
+    --bottom-nav-max-width: calc(100vw - 24px);
     --bottom-nav-margin: 0;
+    --bottom-nav-transform: translateX(-50%);
     --app-min-height: 100%;
     --app-vh: 100%;
   }
