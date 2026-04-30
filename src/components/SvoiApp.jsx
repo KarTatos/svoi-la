@@ -278,6 +278,7 @@ export default function App() {
   const googleMapRef = useRef(null);
   const miniGoogleMapRef = useRef(null);
   const googleMarkersRef = useRef([]);
+  const googleUserMarkerRef = useRef(null);
   const miniGoogleMarkersRef = useRef([]);
   const miniGoogleUserMarkerRef = useRef(null);
   const googleDirectionsRendererRef = useRef(null);
@@ -637,6 +638,10 @@ export default function App() {
         maps.event.trigger(map, "resize");
         googleMarkersRef.current.forEach((m) => m.setMap(null));
         googleMarkersRef.current = [];
+        if (googleUserMarkerRef.current) {
+          googleUserMarkerRef.current.setMap(null);
+          googleUserMarkerRef.current = null;
+        }
 
         const bounds = new maps.LatLngBounds();
         mapPlaces.forEach((p, idx) => {
@@ -655,6 +660,31 @@ export default function App() {
           googleMarkersRef.current.push(marker);
           bounds.extend(marker.getPosition());
         });
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              if (disposed) return;
+              const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              googleUserMarkerRef.current = new maps.Marker({
+                position: coords,
+                map,
+                title: "Вы",
+                icon: {
+                  path: maps.SymbolPath.CIRCLE,
+                  scale: 7,
+                  fillColor: "#1F7AE0",
+                  fillOpacity: 1,
+                  strokeColor: "#fff",
+                  strokeWeight: 2,
+                },
+              });
+              bounds.extend(coords);
+            },
+            () => {},
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 120000 },
+          );
+        }
 
         const hasBounds = !bounds.isEmpty();
         if (hasBounds) {
@@ -689,6 +719,10 @@ export default function App() {
     if (showMapModal) return;
     googleMarkersRef.current.forEach((m) => m.setMap(null));
     googleMarkersRef.current = [];
+    if (googleUserMarkerRef.current) {
+      googleUserMarkerRef.current.setMap(null);
+      googleUserMarkerRef.current = null;
+    }
     if (googleDirectionsRendererRef.current) {
       googleDirectionsRendererRef.current.setMap(null);
       googleDirectionsRendererRef.current = null;
@@ -738,7 +772,7 @@ export default function App() {
 
     build();
     return () => { canceled = true; };
-  }, [showMapModal, selectedMapPlace]);
+  }, [showMapModal, selectedMapPlace, mapLoading, mapPlaces]);
 
   useEffect(() => {
     if (scr !== "places-cat" || !selPC || !selD) {

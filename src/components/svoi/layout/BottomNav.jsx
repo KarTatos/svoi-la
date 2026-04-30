@@ -88,6 +88,7 @@ export default function BottomNav({ scr, setScr, user, onLogin }) {
       width:           "var(--bottom-nav-width, auto)",
       maxWidth:        "var(--bottom-nav-max-width, 480px)",
       margin:          "var(--bottom-nav-margin, 0 auto)",
+      transform:       "var(--bottom-nav-transform, none)",
       padding:         "0 14px",
       paddingBottom:   "calc(14px + env(safe-area-inset-bottom))",
       display:         "flex",

@@ -10,17 +10,21 @@ export function useSessionState(key, initialValue, options = {}) {
     typeof initialValue === "function" ? initialValue() : initialValue
   );
 
-  const [value, setValue] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem(key);
-      if (raw === null || raw === "") return resolveInitial();
-      return deserialize(raw);
-    } catch {
-      return resolveInitial();
-    }
-  });
+  const [value, setValue] = useState(resolveInitial);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (raw !== null && raw !== "") {
+        setValue(deserialize(raw));
+      }
+    } catch {}
+    setHydrated(true);
+  }, [key]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     try {
       if (value === null || value === undefined || value === "") {
         sessionStorage.setItem(key, "");
@@ -28,7 +32,7 @@ export function useSessionState(key, initialValue, options = {}) {
       }
       sessionStorage.setItem(key, serialize(value));
     } catch {}
-  }, [key, value, serialize]);
+  }, [key, value, hydrated]);
 
   return [value, setValue];
 }
