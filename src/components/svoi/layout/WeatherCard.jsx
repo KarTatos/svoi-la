@@ -108,10 +108,10 @@ export default function WeatherCard({ T, cd, profileLocation, profileWeather }) 
     <div style={{
       borderRadius: 24,
       background: '#FF6B4A',
-      padding: "14px 18px",
+      padding: "10px 16px",
       marginBottom: 10,
       display: "flex",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       boxShadow: SH,
       overflow: "hidden",
@@ -124,7 +124,7 @@ export default function WeatherCard({ T, cd, profileLocation, profileWeather }) 
         background: "rgba(255,255,255,0.1)",
         pointerEvents: "none",
       }} />
-      <div style={{ zIndex: 1, flex: 1, minWidth: 0 }}>
+      <div style={{ zIndex: 1, minWidth: 0, width: "100%" }}>
         <div style={{
           fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
           color: "rgba(255,255,255,0.8)", marginBottom: 4,
@@ -142,17 +142,17 @@ export default function WeatherCard({ T, cd, profileLocation, profileWeather }) 
         </div>
         <div style={{
           fontSize: 11, color: "rgba(255,255,255,0.78)",
-          marginTop: 5, lineHeight: 1.35,
+          marginTop: 4, lineHeight: 1.25,
           fontFamily: INTER, fontStyle: "italic",
-          maxWidth: 190,
         }}>
           {tip}
         </div>
       </div>
       <div style={{
         fontSize: 34, fontWeight: 700, color: "#fff",
-        lineHeight: 1, letterSpacing: "-1.5px", zIndex: 1, flexShrink: 0,
-        fontFamily: INTER, marginLeft: 10, textAlign: "right",
+        lineHeight: 1, letterSpacing: "-1.5px", zIndex: 2,
+        fontFamily: INTER, textAlign: "right",
+        position: "absolute", right: 16, top: 10,
       }}>
         {weatherTemp}
       </div>

@@ -81,12 +81,13 @@ export default function BottomNav({ scr, setScr, user, onLogin }) {
 
   return (
     <div style={{
-      position:        "fixed",
-      bottom:          0,
-      left:            0,
-      right:           0,
-      maxWidth:        480,
-      margin:          "0 auto",
+      position:        "var(--bottom-nav-position, fixed)",
+      bottom:          "var(--bottom-nav-bottom, 0px)",
+      left:            "var(--bottom-nav-left, 0px)",
+      right:           "var(--bottom-nav-right, 0px)",
+      width:           "var(--bottom-nav-width, auto)",
+      maxWidth:        "var(--bottom-nav-max-width, 480px)",
+      margin:          "var(--bottom-nav-margin, 0 auto)",
       padding:         "0 14px",
       paddingBottom:   "calc(14px + env(safe-area-inset-bottom))",
       display:         "flex",
