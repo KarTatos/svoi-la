@@ -9,6 +9,7 @@ import EventsScreen from "./svoi/screens/EventsScreen";
 import { useAuth } from "../hooks/useAuth";
 import { useSupportRequests } from "../hooks/useSupportRequests";
 import { useProfileWeather } from "../hooks/useProfileWeather";
+import { useUscisNews } from "../hooks/useUscisNews";
 import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
 import { useSessionState } from "../hooks/useSessionState";
@@ -112,6 +113,7 @@ export default function App() {
   const [typing, setTyping] = useState(false);
   const [mt, setMt] = useState(false);
   const { profileLocation, profileWeather, userCoords: geoCoords } = useProfileWeather();
+  const { news: uscisNews } = useUscisNews();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
   const { scr, setScr } = useSvoiRouter({
@@ -1680,6 +1682,7 @@ export default function App() {
             uscisCategories={USCIS_CATS}
             onOpenCategory={(category) => { setSelU(category); setScr("uscis-cat"); setExpF(null); }}
             onGoHome={goHome}
+            news={uscisNews}
           />
         )}
 
