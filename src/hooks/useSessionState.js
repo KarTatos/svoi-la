@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useSessionState(key, initialValue, options = {}) {
   const {
@@ -12,12 +12,19 @@ export function useSessionState(key, initialValue, options = {}) {
 
   const [value, setValue] = useState(resolveInitial);
   const [hydrated, setHydrated] = useState(false);
+  const serializeRef = useRef(serialize);
+  const deserializeRef = useRef(deserialize);
+
+  useEffect(() => {
+    serializeRef.current = serialize;
+    deserializeRef.current = deserialize;
+  }, [serialize, deserialize]);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(key);
       if (raw !== null && raw !== "") {
-        setValue(deserialize(raw));
+        setValue(deserializeRef.current(raw));
       }
     } catch {}
     setHydrated(true);
@@ -30,7 +37,7 @@ export function useSessionState(key, initialValue, options = {}) {
         sessionStorage.setItem(key, "");
         return;
       }
-      sessionStorage.setItem(key, serialize(value));
+      sessionStorage.setItem(key, serializeRef.current(value));
     } catch {}
   }, [key, value, hydrated]);
 
