@@ -53,6 +53,7 @@ export default function App() {
   const [tipsSearchInput, setTipsSearchInput] = useState("");
   const [tipsSearchApplied, setTipsSearchApplied] = useState("");
   const [housingBedsFilter, setHousingBedsFilter] = useState("all");
+  const [housingSortByFavorites, setHousingSortByFavorites] = useState(false);
   const [exp, setExp] = useState(null);
   const [expF, setExpF] = useState(null);
   const [expTip, setExpTip] = useState(null);
@@ -312,7 +313,7 @@ export default function App() {
   }, [setSelD, setSelPC]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setTDone(false); setEditingPlace(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1439,11 +1440,13 @@ export default function App() {
       || (housingBedsFilter === "room" && item.type === "room");
     return byQuery && byBeds;
   });
-  const housingSorted = [...housingFiltered].sort((a, b) => {
-    const aFav = favorites[`housing-${a.id}`] ? 1 : 0;
-    const bFav = favorites[`housing-${b.id}`] ? 1 : 0;
-    return bFav - aFav;
-  });
+  const housingSorted = housingSortByFavorites
+    ? [...housingFiltered].sort((a, b) => {
+        const aFav = favorites[`housing-${a.id}`] ? 1 : 0;
+        const bFav = favorites[`housing-${b.id}`] ? 1 : 0;
+        return bFav - aFav;
+      })
+    : housingFiltered;
   const formatHousingPrice = (value) => {
     try { return Number(value || 0).toLocaleString("en-US"); } catch { return String(value || 0); }
   };
@@ -1596,7 +1599,7 @@ export default function App() {
   const iS = { width:"100%", padding:"14px 16px", background:T.card, border:`1px solid ${T.border}`, borderRadius:T.rs, color:T.text, fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
 
   return (
-    <div style={{ minHeight:"100dvh", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
+    <div style={{ minHeight:"var(--app-min-height, 100dvh)", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
       <AppHeader
         T={T}
         mt={mt}
@@ -2194,22 +2197,45 @@ export default function App() {
           </div>
           <div style={{ ...cd, padding:12, marginBottom:10, boxShadow:"none", border:`1px solid ${T.border}` }}>
             <div style={{ fontSize:12, color:T.mid, marginBottom:8 }}>Фильтр по спальням</div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {[
-                { id:"all", label:"Все" },
-                { id:"studio", label:"Studio" },
-                { id:"1", label:"1+ bd" },
-                { id:"2", label:"2+ bds" },
-                { id:"room", label:"Комната" },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={()=>setHousingBedsFilter(opt.id)}
-                  style={{ ...pl(housingBedsFilter===opt.id), padding:"8px 12px", fontSize:12 }}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6, flex:1 }}>
+                {[
+                  { id:"all", label:"Все" },
+                  { id:"studio", label:"Studio" },
+                  { id:"1", label:"1+ bd" },
+                  { id:"2", label:"2+ bds" },
+                  { id:"room", label:"Комната" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={()=>setHousingBedsFilter(opt.id)}
+                    style={{ ...pl(housingBedsFilter===opt.id), padding:"7px 10px", fontSize:11 }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setHousingSortByFavorites((v) => !v)}
+                title="Сортировка по избранным"
+                style={{
+                  width: 34,
+                  height: 34,
+                  marginLeft: 2,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: housingSortByFavorites ? "#FFF6E8" : "#FFFFFF",
+                  color: housingSortByFavorites ? "#D68910" : "#1E4D97",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                }}
+              >
+                <StarIcon active={housingSortByFavorites} size={15} />
+              </button>
             </div>
           </div>
 
@@ -2266,7 +2292,7 @@ export default function App() {
             : (activeHousing.photo ? [activeHousing.photo] : []);
           return (
             <div>
-              <div style={{ position:"relative", height:"calc(100vh - 122px)", overflowY:"auto", borderRadius:18, border:`1px solid ${T.border}`, background:"transparent", boxShadow:T.sh }}>
+              <div style={{ position:"relative", height:"calc(var(--app-vh, 100vh) - 122px)", overflowY:"auto", borderRadius:18, border:`1px solid ${T.border}`, background:"transparent", boxShadow:T.sh }}>
                 <button onClick={() => setScr("housing")} style={{ position:"sticky", top:10, left:10, zIndex:4, margin:10, width:44, height:44, borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.92)", color:"#222", fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit" }} title="Закрыть">×</button>
                 {galleryPhotos.length ? (
                   <div style={{ marginTop:-64 }}>

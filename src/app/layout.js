@@ -22,6 +22,7 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
+  const isDev = process.env.NODE_ENV === "development";
   return (
     <html lang="ru" className={roboto.variable}>
       <head>
@@ -35,7 +36,9 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className={roboto.className}>{children}</body>
+      <body className={roboto.className} data-dev-phone-preview={isDev ? "1" : "0"}>
+        <div className="dev-phone-preview-frame">{children}</div>
+      </body>
     </html>
   );
 }
