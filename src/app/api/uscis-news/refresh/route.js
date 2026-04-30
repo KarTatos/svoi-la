@@ -4,13 +4,18 @@ import { createClient } from "@supabase/supabase-js";
 const RSS_URL = "https://www.uscis.gov/news/news-releases.xml";
 const MAX_ITEMS = 10;
 
-// Service role key bypasses RLS — needed for server-side inserts
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
+// Lazy-init: clients created on first request, not at module load time
+// (avoids build-time crash when env vars aren't available)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+  );
+}
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -48,7 +53,7 @@ async function translateItems(items) {
     `${i + 1}. TITLE: ${it.title_en}\nSUMMARY: ${it.summary_en || "(no description)"}`
   ).join("\n\n");
 
-  const msg = await anthropic.messages.create({
+  const msg = await getAnthropic().messages.create({
     model:      "claude-haiku-4-5-20251001",
     max_tokens: 2048,
     messages: [{
@@ -80,6 +85,7 @@ ${payload}`,
 // ─── Core logic (shared by GET cron + POST manual) ──────────────────────────
 
 async function runRefresh() {
+  const supabase = getSupabase();
 
   try {
     // 1. Fetch RSS
