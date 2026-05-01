@@ -227,7 +227,7 @@ export const INIT_TIPS = [
 // ─── EVENTS ───
 export const EVENT_CATS = [
   { id:"concerts", icon:"🎵", title:"Концерты", color:"#E91E8C" },
-  { id:"holidays", icon:"🎄", title:"Праздники", color:"#E74C3C" },
+  { id:"holidays", icon:"/art-icon.png", title:"Арт", color:"#E74C3C" },
   { id:"sports", icon:"⚽", title:"Спорт", color:"#27AE60" },
   { id:"community", icon:"🤝", title:"Комьюнити", color:"#F47B20" },
   { id:"markets", icon:"🛍️", title:"Маркеты / Распродажи", color:"#8E44AD" },
