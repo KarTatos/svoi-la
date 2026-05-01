@@ -1,7 +1,7 @@
-import { useRef } from "react";
+﻿import { useRef } from "react";
 import { EVENT_CATS, CalendarIcon, StarIcon, HeartIcon, ShareIcon, limitCardText } from "../config";
 
-// ─── Pure helpers (events-only) ─────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ Pure helpers (events-only) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 function fmtDate(d) {
   try {
@@ -17,12 +17,12 @@ function fmtDate(d) {
 function getEventDateBadge(value) {
   try {
     const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return { dow: "—", day: "--", month: "—" };
+    if (Number.isNaN(dt.getTime())) return { dow: "вЂ”", day: "--", month: "вЂ”" };
     const dow   = dt.toLocaleDateString("ru-RU", { weekday: "short" }).replace(".", "");
     const month = dt.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "");
     return { dow: dow.toUpperCase(), day: String(dt.getDate()), month };
   } catch {
-    return { dow: "—", day: "--", month: "—" };
+    return { dow: "вЂ”", day: "--", month: "вЂ”" };
   }
 }
 
@@ -41,7 +41,7 @@ const EVENT_CARD_PALETTES = [
   { bg: "#FCEAEA", text: "#17324D" },
 ];
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ Main component в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 export default function EventsScreen({
   T, cd, bk, pl,
@@ -72,9 +72,31 @@ export default function EventsScreen({
   normalizeExternalUrl,
 }) {
   const datePickerRef = useRef(null);
+  const eventsTopBarStyle = {
+    display: "grid",
+    gridTemplateColumns: "48px 48px 48px",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  };
 
-  // ─── Category list ──────────────────────────────────────────────────────────
-  // Design tokens — точное совпадение с HomeScreen
+  const eventsTopBtnBase = {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+    flexShrink: 0,
+  };
+
+  // в”Ђв”Ђв”Ђ Category list в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // Design tokens вЂ” С‚РѕС‡РЅРѕРµ СЃРѕРІРїР°РґРµРЅРёРµ СЃ HomeScreen
   const D = {
     card:  '#FFFFFF',
     ink:   '#0E0E0E',
@@ -89,9 +111,32 @@ export default function EventsScreen({
   if (!selEC) {
     return (
       <div style={{ fontFamily: D.font }}>
-        <button onClick={onGoHome} style={bk}>← Главная</button>
+        <div style={eventsTopBarStyle}>
+          <button
+            onClick={onGoHome}
+            style={{ ...eventsTopBtnBase, background: "#FFFFFF", color: "#8A8680", fontSize: 22 }}
+            title="Назад"
+          >
+            ‹
+          </button>
 
-        {/* 3-column grid — как на HomeScreen */}
+          <div
+            style={{ ...eventsTopBtnBase, background: "#F2EADF", color: "#4D4337", fontSize: 18, cursor: "default" }}
+            aria-hidden="true"
+          >
+            <CalendarIcon size={16} />
+          </div>
+
+          <button
+            onClick={() => { if (!user) { onRequireAuth(); return; } onAddEvent(); }}
+            style={{ ...eventsTopBtnBase, border: `1.5px solid ${T.primary}55`, background: T.primaryLight, color: T.primary, fontSize: 28, lineHeight: 1 }}
+            title="Добавить событие"
+          >
+            +
+          </button>
+        </div>
+
+        {/* 3-column grid вЂ” РєР°Рє РЅР° HomeScreen */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
           {EVENT_CATS.map((c, i) => {
             const today      = new Date().toISOString().slice(0, 10);
@@ -185,7 +230,7 @@ export default function EventsScreen({
     );
   }
 
-  // ─── Event list in category ─────────────────────────────────────────────────
+  // в”Ђв”Ђв”Ђ Event list in category в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   const dayNames = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
   return (
@@ -229,7 +274,7 @@ export default function EventsScreen({
                 onClick={() => setFilterDate(isActive ? null : d.toISOString())}
                 style={{ padding: "5px 4px", borderRadius: 12, border: `1.5px solid ${isActive ? T.primary : (todayAccent ? "#E74C3C" : T.border)}`, background: isActive ? T.primary : (todayAccent ? "#FFF5F5" : T.card), color: isActive ? "#fff" : (todayAccent ? "#C0392B" : T.text), fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", minWidth: 0, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, justifyContent: "center" }}
               >
-                <span style={{ fontSize: 9, color: isActive ? "#fff" : (todayAccent ? "#C0392B" : T.light), fontWeight: 400, lineHeight: 1 }}>{isToday ? "Сег" : dayNames[d.getDay()]}</span>
+                <span style={{ fontSize: 9, color: isActive ? "#fff" : (todayAccent ? "#C0392B" : T.light), fontWeight: 400, lineHeight: 1 }}>{isToday ? "Сегодня" : dayNames[d.getDay()]}</span>
                 <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1 }}>{d.getDate()}</span>
               </button>
             );
@@ -250,7 +295,7 @@ export default function EventsScreen({
         {filterDate && (
           <div style={{ fontSize: 12, color: T.mid, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
             <CalendarIcon size={14} /> {fmtDate(filterDate).split(",").slice(0, 2).join(",")}
-            <button onClick={() => setFilterDate(null)} style={{ background: "none", border: "none", color: T.primary, cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 600, padding: 0 }}>✕ сбросить</button>
+            <button onClick={() => setFilterDate(null)} style={{ background: "none", border: "none", color: T.primary, cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 600, padding: 0 }}>✕ Сбросить</button>
           </div>
         )}
       </div>
@@ -286,7 +331,7 @@ export default function EventsScreen({
                       <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1.22, color: T.text, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
                       <div style={{ fontSize: 13, color: "#8D97AC", display: "flex", alignItems: "center", gap: 6, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         <span style={{ color: "#F26AA0", fontSize: 12, lineHeight: 1 }}>📍</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{ev.location || "Локация уточняется"}{eventTime ? ` · ${eventTime}` : ""}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{ev.location || "Локация уточняется"}{eventTime ? ` В· ${eventTime}` : ""}</span>
                       </div>
                     </div>
                   </div>
@@ -338,7 +383,7 @@ export default function EventsScreen({
                   {ev.photos?.length > 1 && <div style={{ fontSize: 11, color: T.light, marginTop: -6, marginBottom: 8 }}>Листайте фото →</div>}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: T.light }}>от {ev.author}</span>
-                    <span style={{ fontSize: 10, color: isEvExp ? T.primary : T.light, transform: isEvExp ? "rotate(180deg)" : "", transition: "0.3s" }}>▼</span>
+                    <span style={{ fontSize: 10, color: isEvExp ? T.primary : T.light, transform: isEvExp ? "rotate(180deg)" : "", transition: "0.3s" }}>▾</span>
                   </div>
                 </div>
               )}
@@ -385,3 +430,5 @@ export default function EventsScreen({
     </div>
   );
 }
+
+
