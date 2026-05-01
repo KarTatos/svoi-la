@@ -1826,11 +1826,36 @@ export default function App() {
         />
         {/* PLACES IN CATEGORY */}
         {scr==="places-cat" && selPC && selD && (<div>
-          <button onClick={() => { setScr("district"); setSelPC(null); setSelPlace(null); }} style={bk}>← {selD.name}</button>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, margin:"4px 0 12px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:44, height:44, borderRadius:12, background:`${selPC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{selPC.icon}</div>
-              <div><h2 style={{ fontSize:20, fontWeight:700, margin:0 }}>{selPC.title}</h2><p style={{ fontSize:13, color:T.mid, margin:0 }}>{selD.name} · {cPlaces.length} мест</p></div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
+            <button
+              onClick={() => { setScr("district"); setSelPC(null); setSelPlace(null); }}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 13,
+                border: "none",
+                background: "#FFFFFF",
+                color: "#8E8E93",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                flexShrink: 0,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              }}
+              title="Назад"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+                <div style={{ width:38, height:38, borderRadius:11, background:`${selPC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, flexShrink:0 }}>{selPC.icon}</div>
+                <h2 style={{ fontSize:19, fontWeight:700, margin:0, lineHeight:1.2 }}>{selPC.title}</h2>
+              </div>
+              <p style={{ fontSize:13, color:T.mid, margin:"2px 0 0" }}>{selD.name} · {cPlaces.length} мест</p>
             </div>
             <button
               onClick={() => { openAddForm(); }}
@@ -2218,9 +2243,35 @@ export default function App() {
 
         {/* HOUSING */}
         {scr==="housing" && (<div>
-          <button onClick={goHome} style={bk}>← Главная</button>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:0, display:"inline-flex", alignItems:"center", gap:8 }}><HomeIcon size={18} /> Жильё в LA</h2>
+            <button
+              onClick={goHome}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 13,
+                border: "none",
+                background: "#FFFFFF",
+                color: "#8E8E93",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                flexShrink: 0,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              }}
+              title="Назад"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, flex:1, minWidth:0 }}>
+              <div style={{ width:38, height:38, borderRadius:11, background:`${T.primary}14`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <HomeIcon size={18} />
+              </div>
+            </div>
             <button
               onClick={() => { if (!user) { handleLogin(); return; } setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setShowAddHousing(true); }}
               style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
