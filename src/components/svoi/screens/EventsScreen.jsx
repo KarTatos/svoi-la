@@ -34,6 +34,13 @@ function getEventTimeLabel(value) {
   } catch { return ""; }
 }
 
+function renderEventIcon(icon, size = 30) {
+  if (typeof icon === "string" && icon.startsWith("/")) {
+    return <img src={icon} alt="" style={{ width: size, height: size, objectFit: "contain", display: "block" }} />;
+  }
+  return icon;
+}
+
 const EVENT_CARD_PALETTES = [
   { bg: "#FDF1DB", text: "#17324D" },
   { bg: "#EAF6EE", text: "#17324D" },
@@ -197,7 +204,7 @@ export default function EventsScreen({
 
                 {/* Icon */}
                 <div style={{ fontSize: 30, lineHeight: 1 }}>
-                  {c.icon}
+                  {renderEventIcon(c.icon, 30)}
                 </div>
 
                 {/* Title + desc */}
@@ -241,7 +248,7 @@ export default function EventsScreen({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "4px 0 12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 48, height: 48, borderRadius: 14, background: `${selEC.color}12`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>
-            {selEC.icon}
+            {renderEventIcon(selEC.icon, 26)}
           </div>
           <div><h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{selEC.title}</h2></div>
         </div>

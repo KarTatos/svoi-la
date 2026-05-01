@@ -20,6 +20,33 @@ function wmoText(code) {
   return "Unknown";
 }
 
+function normalizeWeatherLocation(address = {}, lat, lng) {
+  const a = address || {};
+  const city = a.city || a.town || a.village || a.municipality || "";
+  const neighbourhood = a.neighbourhood || a.suburb || a.quarter || "";
+  const district = a.city_district || a.borough || "";
+  const county = a.county || "";
+  const isAdministrativeDistrict = (value) => {
+    const s = String(value || "").trim().toLowerCase();
+    if (!s) return true;
+    return (
+      /^district\s*\d+$/i.test(s) ||
+      /^dist\.?\s*\d+$/i.test(s) ||
+      /^ward\s*\d+$/i.test(s) ||
+      /^zone\s*\d+$/i.test(s) ||
+      s.includes("council district") ||
+      s.includes("administrative") ||
+      s.includes("municipal district")
+    );
+  };
+
+  if (neighbourhood && !isAdministrativeDistrict(neighbourhood)) return neighbourhood;
+  if (district && !isAdministrativeDistrict(district)) return district;
+  if (city) return city;
+  if (county) return county;
+  return `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+}
+
 export function useProfileWeather() {
   const [profileLocation, setProfileLocation] = useState("Определяем локацию...");
   const [profileWeather, setProfileWeather] = useState({ temp: "--°", text: "Погода загружается..." });
@@ -62,13 +89,12 @@ export function useProfileWeather() {
           if (geoRes.status === "fulfilled" && geoRes.value.ok) {
             const geo = await geoRes.value.json();
             const a = geo?.address || {};
-            const label = a.neighbourhood || a.suburb || a.city_district || a.city || "";
-            setProfileLocation(label || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            setProfileLocation(normalizeWeatherLocation(a, lat, lng));
           } else {
-            setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            setProfileLocation(`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
           }
         } catch {
-          if (!canceled) setProfileLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+          if (!canceled) setProfileLocation(`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
         }
 
         // — Weather —
