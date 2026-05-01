@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
-const RSS_URL = "https://www.uscis.gov/news/news-releases.xml";
+const RSS_URL = "https://www.uscis.gov/news/rss-feed/23269";
 const MAX_ITEMS = 10;
 
 // Lazy-init: clients created on first request, not at module load time
