@@ -15,6 +15,7 @@ select { cursor: pointer; }
 
 /* Desktop-only phone viewport preview for local development */
 .dev-phone-preview-frame { min-height: 100dvh; }
+:root { --bottom-nav-reserve: 90px; }
 @media (hover: hover) and (pointer: fine) {
   body[data-dev-phone-preview="1"] {
     display: flex;
@@ -44,6 +45,7 @@ select { cursor: pointer; }
     --bottom-nav-max-width: calc(100vw - 24px);
     --bottom-nav-margin: 0;
     --bottom-nav-transform: translateX(-50%);
+    --bottom-nav-reserve: 90px;
     --app-min-height: 100%;
     --app-vh: 100%;
   }

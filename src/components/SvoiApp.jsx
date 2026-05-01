@@ -1645,7 +1645,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + 90px)" }}>
+      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))" }}>
 
         {scr==="home" && (
           <HomeScreen

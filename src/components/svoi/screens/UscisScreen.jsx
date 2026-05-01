@@ -7,21 +7,23 @@
   }
 }
 
-function UscisNewsBlock({ news, T }) {
+function UscisNewsBlock({ news, T, showHeader = true }) {
   if (!news || news.length === 0) {
     return (
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>📰 Новости USCIS</div>
-          <a
-            href="https://www.uscis.gov/news"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 12, color: T.primary, textDecoration: "none", fontWeight: 600 }}
-          >
-            Все →
-          </a>
-        </div>
+        {showHeader && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>📰 Новости USCIS</div>
+            <a
+              href="https://www.uscis.gov/news"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 12, color: T.primary, textDecoration: "none", fontWeight: 600 }}
+            >
+              Все →
+            </a>
+          </div>
+        )}
         <div
           style={{
             display: "flex",
@@ -40,21 +42,20 @@ function UscisNewsBlock({ news, T }) {
               style={{
                 flexShrink: 0,
                 width: 198,
-                minHeight: 116,
+                minHeight: 92,
                 background: T.card,
                 border: `1px solid ${T.borderL}`,
                 borderRadius: 16,
-                padding: "12px 14px",
+                padding: "10px 12px",
                 boxShadow: T.sh,
                 display: "flex",
                 flexDirection: "column",
-                gap: 8,
+                justifyContent: "center",
+                gap: 6,
               }}
             >
-              <div style={{ width: 60, height: 9, borderRadius: 6, background: T.borderL }} />
-              <div style={{ width: "90%", height: 12, borderRadius: 6, background: T.borderL }} />
-              <div style={{ width: "70%", height: 12, borderRadius: 6, background: T.borderL }} />
-              <div style={{ width: "80%", height: 9, borderRadius: 6, background: T.borderL }} />
+              <div style={{ width: "92%", height: 12, borderRadius: 6, background: T.borderL }} />
+              <div style={{ width: "74%", height: 12, borderRadius: 6, background: T.borderL }} />
             </div>
           ))}
         </div>
@@ -64,17 +65,19 @@ function UscisNewsBlock({ news, T }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>📰 Новости USCIS</div>
-        <a
-          href="https://www.uscis.gov/news"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: 12, color: T.primary, textDecoration: "none", fontWeight: 600 }}
-        >
-          Все →
-        </a>
-      </div>
+      {showHeader && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>📰 Новости USCIS</div>
+          <a
+            href="https://www.uscis.gov/news"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 12, color: T.primary, textDecoration: "none", fontWeight: 600 }}
+          >
+            Все →
+          </a>
+        </div>
+      )}
       <div
         style={{
           display: "flex",
@@ -105,44 +108,25 @@ function UscisNewsBlock({ news, T }) {
               background: T.card,
               border: `1px solid ${T.borderL}`,
               borderRadius: 16,
-              padding: "12px 14px",
+              padding: "10px 12px",
               textDecoration: "none",
               color: T.text,
               boxShadow: T.sh,
-              minHeight: 116,
+              minHeight: 92,
             }}
           >
-            <div>
-              {item.published_at && (
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: T.light,
-                    fontWeight: 600,
-                    marginBottom: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {formatNewsDate(item.published_at)}
-                </div>
-              )}
-              <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35, color: T.text, marginBottom: 6 }}>{item.title_ru}</div>
-              <div
-                style={{
-                  fontSize: 11.5,
-                  color: T.mid,
-                  lineHeight: 1.45,
-                  display: "-webkit-box",
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {item.summary_ru}
-              </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                lineHeight: 1.35,
+                color: T.text,
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+              }}
+            >
+              {item.title_ru}
             </div>
-            <div style={{ fontSize: 11, color: T.primary, fontWeight: 700, marginTop: 10 }}>Читать на сайте →</div>
           </a>
         ))}
       </div>
@@ -188,7 +172,28 @@ export default function UscisScreen({
         </div>
       </div>
 
-      <UscisNewsBlock news={news} T={T} />
+      <details style={{ ...cd, marginBottom: 12, overflow: "hidden" }}>
+        <summary
+          style={{
+            listStyle: "none",
+            cursor: "pointer",
+            padding: "11px 12px",
+            fontSize: 14,
+            fontWeight: 700,
+            color: T.text,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            userSelect: "none",
+          }}
+        >
+          <span>📰 Новости USCIS</span>
+          <span style={{ fontSize: 14, color: T.mid, lineHeight: 1 }}>▾</span>
+        </summary>
+        <div style={{ padding: "0 12px 8px" }}>
+          <UscisNewsBlock news={news} T={T} showHeader={false} />
+        </div>
+      </details>
 
       <div style={{ position: "relative", marginBottom: 14 }}>
         <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: T.light, pointerEvents: "none" }}>🔎</div>
