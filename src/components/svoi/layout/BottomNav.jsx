@@ -80,7 +80,9 @@ export default function BottomNav({ scr, setScr, user, onLogin }) {
   }
 
   return (
-    <div style={{
+    <nav
+      aria-label="Основная навигация"
+      style={{
       position:        "var(--bottom-nav-position, fixed)",
       bottom:          "var(--bottom-nav-bottom, 0px)",
       left:            "var(--bottom-nav-left, 0px)",
@@ -96,7 +98,8 @@ export default function BottomNav({ scr, setScr, user, onLogin }) {
       gap:             10,
       zIndex:          200,
       pointerEvents:   "none",   // clicks fall through the gap between pill and FAB
-    }}>
+    }}
+    >
 
       {/* ── Dark pill ── */}
       <div style={{
@@ -172,6 +175,6 @@ export default function BottomNav({ scr, setScr, user, onLogin }) {
       >
         <IconSparkle />
       </button>
-    </div>
+    </nav>
   );
 }
