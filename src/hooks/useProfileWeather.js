@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-// WMO weather code → short description
 function wmoText(code) {
   if (code === 0) return "Clear sky";
   if (code === 1) return "Mainly clear";
@@ -26,6 +25,7 @@ function normalizeWeatherLocation(address = {}, lat, lng) {
   const neighbourhood = a.neighbourhood || a.suburb || a.quarter || "";
   const district = a.city_district || a.borough || "";
   const county = a.county || "";
+
   const isAdministrativeDistrict = (value) => {
     const s = String(value || "").trim().toLowerCase();
     if (!s) return true;
@@ -84,7 +84,6 @@ export function useProfileWeather() {
 
         if (canceled) return;
 
-        // — Location name via Nominatim reverse geocoding —
         try {
           if (geoRes.status === "fulfilled" && geoRes.value.ok) {
             const geo = await geoRes.value.json();
@@ -97,7 +96,6 @@ export function useProfileWeather() {
           if (!canceled) setProfileLocation(`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
         }
 
-        // — Weather —
         try {
           if (weatherRes.status === "fulfilled" && weatherRes.value.ok) {
             const data = await weatherRes.value.json();

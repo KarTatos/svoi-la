@@ -1,47 +1,8 @@
 import { useMemo } from "react";
 
 const INTER = '"Inter", system-ui, sans-serif';
-const MONO  = '"JetBrains Mono", ui-monospace, monospace';
-const SH    = '0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)';
-
-const LA_TIPS = {
-  sunny: [
-    "Runyon Canyon снова забит блогерами с матчами",
-    "Надень шарф — местные уже в пуховиках при +20",
-    "Солнце, авокадо-тост и пробки на 405 — обычный вторник",
-    "Не забудь SPF 50, иначе выйдешь как Долина Смерти",
-    "Отличный день делать вид, что пишешь сценарий в кафе",
-    "Все едут в Малибу. Ты тоже. PCH уже стоит",
-    "Сегодня можно ехать в Долину — если хочешь почувствовать Дубай",
-  ],
-  cloudy: [
-    "Облачно в LA — жители в панике, туристы в восторге",
-    "June Gloom пришёл не в июне. LA живёт по своим правилам",
-    "Серое небо — наконец-то повод надеть свой дождевик",
-    "Прохладно? Местные уже достали пуховики",
-  ],
-  rain: [
-    "Дождь в LA — все забыли, как ездить по мокрой дороге",
-    "Первый дождь за месяц. Город парализован, паника в Trader Joe's",
-    "Зонтик? В LA? Серьёзно, где ты его найдёшь?",
-    "Uber Surge уже x4. Рассмотри вариант с каноэ",
-  ],
-  hot: [
-    "Выше 38° — идеальное время для пробежки в полдень",
-    "В Долине сейчас как в духовке. Все едут к пляжу",
-    "Все включили AC. Биллы за электричество будут грустными",
-    "Асфальт плавится. Авокадо созревает прямо на дереве",
-  ],
-  wind: [
-    "Santa Ana дует — красивые волны и нервные жители Малибу",
-    "Ветер: причина пожаров, плохих причёсок и хорошего серфинга",
-    "Ветрено — все авокадо с деревьев уже на тротуаре",
-  ],
-  fog: [
-    "Туман в LA. Голливуд выглядит как в фильме ужасов",
-    "Marine layer: пляж накрыт, Долина +10°C и солнце",
-  ],
-};
+const MONO = '"JetBrains Mono", ui-monospace, monospace';
+const SH = "0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 40px -20px rgba(14,14,14,0.18), 0 2px 8px -2px rgba(14,14,14,0.08)";
 
 function getWeatherKey(rawText = "") {
   const text = String(rawText || "").toLowerCase();
@@ -77,26 +38,11 @@ function formatWeatherTemp(raw = "") {
   if (!Number.isFinite(n)) return "--°";
   const unit = (match[2] || "F").toUpperCase();
   if (unit === "C") {
-    const f = Math.round(n * 9 / 5 + 32);
+    const f = Math.round((n * 9) / 5 + 32);
     return `${f}° (${Math.round(n)}°C)`;
   }
-  const c = Math.round((n - 32) * 5 / 9);
+  const c = Math.round(((n - 32) * 5) / 9);
   return `${Math.round(n)}° (${c}°C)`;
-}
-
-function getDailyTip(key, rawTemp) {
-  const match = String(rawTemp || "").match(/(-?\d+(?:\.\d+)?)/);
-  if (match) {
-    const n = Number(match[1]);
-    const isF = !/c/i.test(String(rawTemp).replace(/\d/g, ""));
-    const fahrenheit = isF ? n : (n * 9 / 5 + 32);
-    if (fahrenheit >= 95) {
-      const tips = LA_TIPS.hot;
-      return tips[Math.floor(Date.now() / 86400000) % tips.length];
-    }
-  }
-  const tips = LA_TIPS[key] || LA_TIPS.sunny;
-  return tips[Math.floor(Date.now() / 86400000) % tips.length];
 }
 
 const DISTRICT_JOKES = {
@@ -105,7 +51,7 @@ const DISTRICT_JOKES = {
     "Если в Даунтауне тихо, значит просто ещё не начался час пик.",
     "В Даунтауне можно пройти 2 квартала и сменить три вайба.",
     "План на день: метро, тако, и снова метро.",
-    "Даунтаун проверяет характер пробками и лифтами в небоскребах.",
+    "Даунтаун проверяет характер пробками и лифтами в небоскрёбах.",
   ],
   koreatown: [
     "Koreatown не спит. Он просто делает паузу на бибимбап.",
@@ -115,7 +61,7 @@ const DISTRICT_JOKES = {
     "В K-Town сначала поешь, потом решай все остальные вопросы.",
   ],
   hollywood: [
-    "Голливуд: шанс встретить актера выше, чем найти парковку.",
+    "Голливуд: шанс встретить актёра выше, чем найти парковку.",
     "Сегодня отличный день выглядеть так, будто ты на кастинг.",
     "В Голливуде даже кофе подается с амбициями.",
     "Тут каждый второй либо пишет сценарий, либо говорит, что пишет.",
@@ -125,13 +71,13 @@ const DISTRICT_JOKES = {
     "Пасадена — когда хочется спокойствия и красивых улиц.",
     "В Пасадене всё выглядит так, будто уже готово к открытке.",
     "Пасадена: аккуратно, можно влюбиться в район и остаться.",
-    "Тут время идет медленнее, особенно за бранчем на веранде.",
+    "Тут время идёт медленнее, особенно за бранчем на веранде.",
     "Пасадена знает, как быть уютной и без суеты.",
   ],
   santa_monica: [
     "Санта-Моника: океан рядом, дедлайны где-то далеко.",
     "Если ветер с океана, значит день официально стал лучше.",
-    "Санта-Моника: сначала пирс, потом все остальное.",
+    "Санта-Моника: сначала пирс, потом всё остальное.",
     "Тут закат — это отдельный пункт в расписании.",
     "Санта-Моника напоминает, что можно жить чуть медленнее.",
   ],
@@ -161,7 +107,7 @@ const DISTRICT_JOKES = {
     "В Echo Park всегда найдется дворик с хорошей атмосферой.",
     "Echo Park: немного арт, немного хаос, много характера.",
     "Тут легко свернуть не туда и найти любимое место.",
-    "Echo Park живет в своем ритме — и это кайф.",
+    "Echo Park живёт в своём ритме — и это кайф.",
   ],
   silver_lake: [
     "Silver Lake: тут даже утро выглядит креативно.",
@@ -173,7 +119,7 @@ const DISTRICT_JOKES = {
   generic: [
     "Лос-Анджелес: один город, десять разных настроений за день.",
     "Погода в LA меняется редко, а планы — постоянно.",
-    "В этом городе всегда найдется район под ваше настроение.",
+    "В этом городе всегда найдётся район под ваше настроение.",
     "LA: где маршрут в 15 минут легко превращается в 45.",
     "Сегодня хороший день для кофе и маленького приключения.",
   ],
@@ -199,69 +145,99 @@ function randomFrom(list = []) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-export default function WeatherCard({ T, cd, profileLocation, profileWeather }) {
-  const weatherText    = normalizeWeatherText(String(profileWeather?.text || ""));
-  const weatherTemp    = formatWeatherTemp(profileWeather?.temp || "");
-  const locationLabel  = profileLocation || "Los Angeles";
-  const weatherKey     = getWeatherKey(String(profileWeather?.text || ""));
+export default function WeatherCard({ profileLocation, profileWeather }) {
+  const weatherText = normalizeWeatherText(String(profileWeather?.text || ""));
+  const weatherTemp = formatWeatherTemp(profileWeather?.temp || "");
+  const locationLabel = profileLocation || "Los Angeles";
+  const weatherKey = getWeatherKey(String(profileWeather?.text || ""));
   const tip = useMemo(() => {
     const districtKey = getDistrictKey(locationLabel);
     const districtJoke = randomFrom(DISTRICT_JOKES[districtKey]);
     if (districtJoke) return districtJoke;
-    const fallback = DISTRICT_JOKES.generic;
-    return randomFrom(fallback) || getDailyTip(weatherKey, profileWeather?.temp || "");
-  }, [locationLabel, weatherKey, profileWeather?.temp]);
+    return randomFrom(DISTRICT_JOKES.generic) || weatherKey;
+  }, [locationLabel, weatherKey]);
 
   return (
-    <div style={{
-      borderRadius: 24,
-      background: '#FF6B4A',
-      padding: "10px 16px",
-      marginBottom: 10,
-      display: "flex",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      boxShadow: SH,
-      overflow: "hidden",
-      position: "relative",
-    }}>
-      {/* Decorative circle */}
-      <div style={{
-        position: "absolute", right: -28, top: -28,
-        width: 130, height: 130, borderRadius: "50%",
-        background: "rgba(255,255,255,0.1)",
-        pointerEvents: "none",
-      }} />
+    <div
+      style={{
+        borderRadius: 24,
+        background: "#FF6B4A",
+        padding: "10px 16px",
+        marginBottom: 10,
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        boxShadow: SH,
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          right: -28,
+          top: -28,
+          width: 130,
+          height: 130,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.1)",
+          pointerEvents: "none",
+        }}
+      />
       <div style={{ zIndex: 1, minWidth: 0, width: "100%" }}>
-        <div style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
-          color: "rgba(255,255,255,0.8)", marginBottom: 4,
-          fontFamily: MONO,
-          textTransform: "uppercase",
-        }}>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            color: "rgba(255,255,255,0.8)",
+            marginBottom: 4,
+            fontFamily: MONO,
+            textTransform: "uppercase",
+          }}
+        >
           {locationLabel}
         </div>
-        <div style={{
-          fontSize: 14, fontWeight: 600, color: "#fff",
-          lineHeight: 1.3, letterSpacing: "-0.2px",
-          fontFamily: INTER,
-        }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#fff",
+            lineHeight: 1.3,
+            letterSpacing: "-0.2px",
+            fontFamily: INTER,
+          }}
+        >
           {weatherText}
         </div>
-        <div style={{
-          fontSize: 11, color: "rgba(255,255,255,0.78)",
-          marginTop: 4, lineHeight: 1.25,
-          fontFamily: INTER, fontStyle: "italic",
-        }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.78)",
+            marginTop: 4,
+            lineHeight: 1.25,
+            fontFamily: INTER,
+            fontStyle: "italic",
+          }}
+        >
           {tip}
         </div>
       </div>
-      <div style={{
-        fontSize: 34, fontWeight: 700, color: "#fff",
-        lineHeight: 1, letterSpacing: "-1.5px", zIndex: 2,
-        fontFamily: INTER, textAlign: "right",
-        position: "absolute", right: 16, top: 10,
-      }}>
+      <div
+        style={{
+          fontSize: 34,
+          fontWeight: 700,
+          color: "#fff",
+          lineHeight: 1,
+          letterSpacing: "-1.5px",
+          zIndex: 2,
+          fontFamily: INTER,
+          textAlign: "right",
+          position: "absolute",
+          right: 16,
+          top: 10,
+        }}
+      >
         {weatherTemp}
       </div>
     </div>
