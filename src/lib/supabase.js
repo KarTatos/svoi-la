@@ -196,14 +196,61 @@ export async function searchPlaces(query) {
 }
 
 // ═══ PHOTO UPLOAD ═══
+async function optimizeImageForApp(file, { maxSide = 1600, quality = 0.82 } = {}) {
+  if (typeof window === "undefined" || !(file instanceof File) || !String(file.type || "").startsWith("image/")) {
+    return file;
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = objectUrl;
+    });
+
+    const srcW = Number(img.naturalWidth || img.width || 0);
+    const srcH = Number(img.naturalHeight || img.height || 0);
+    if (!srcW || !srcH) return file;
+
+    const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+    const targetW = Math.max(1, Math.round(srcW * scale));
+    const targetH = Math.max(1, Math.round(srcH * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), "image/webp", quality);
+    });
+    if (!blob) return file;
+
+    const safeBaseName = String(file.name || "photo").replace(/\.[^.]+$/, "") || "photo";
+    return new File([blob], `${safeBaseName}.webp`, {
+      type: "image/webp",
+      lastModified: Date.now(),
+    });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export async function uploadPhoto(file) {
-  const ext = file.name.split('.').pop();
+  const prepared = await optimizeImageForApp(file);
+  const ext = String(prepared.name || "photo.webp").split('.').pop() || "webp";
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
   const filePath = `photos/${fileName}`;
 
   const { error } = await supabase.storage
     .from('LAHELPBOT')
-    .upload(filePath, file, { cacheControl: '3600', upsert: false });
+    .upload(filePath, prepared, { cacheControl: '3600', upsert: false });
 
   if (error) {
     console.error('Upload error:', error);
