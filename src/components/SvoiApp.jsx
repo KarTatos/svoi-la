@@ -102,7 +102,7 @@ export default function App() {
   const setFavorites = useUiStore((s) => s.setFavorites);
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
-  const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth(ADMIN_EMAILS);
+  const { user, authReady, signIn, signOut: authSignOut, isAdmin, updateDisplayName } = useAuth(ADMIN_EMAILS);
   const {
     places, setPlaces,
     tips, setTips,
@@ -1732,6 +1732,7 @@ export default function App() {
             onOpenMyReviews={() => setScr("tips")}
             onOpenHelp={() => setScr("support")}
             onLogout={handleLogout}
+            onUpdateDisplayName={updateDisplayName}
           />
         )}
 
