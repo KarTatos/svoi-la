@@ -1,4 +1,5 @@
 ﻿import { getMarket } from "../../lib/supabase";
+import { normalizePhotoList } from "../../components/svoi/config";
 
 export function mapMarketItem(m) {
   return {
@@ -6,7 +7,7 @@ export function mapMarketItem(m) {
     title: m.title || "",
     price: m.price || "",
     description: m.description || "",
-    photos: Array.isArray(m.photos) ? m.photos : [],
+    photos: normalizePhotoList(m.photos),
     telegram: m.telegram || "",
     phone: m.phone || "",
     author: m.author || "",

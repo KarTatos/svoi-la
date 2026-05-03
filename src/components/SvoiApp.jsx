@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto, syncUserDisplayName } from "../lib/supabase";
 
-import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
+import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel, normalizePhotoList } from "./svoi/config";
 import JobsScreen from "./svoi/screens/JobsScreen";
 import MarketScreen from "./svoi/screens/MarketScreen";
 import EventsScreen from "./svoi/screens/EventsScreen";
@@ -559,17 +559,21 @@ export default function App() {
   };
   const goPrevPhoto = () => {
     setPhotoViewer((prev) => {
-      if (!prev || prev.photos.length < 2) return prev;
-      const nextIndex = (prev.index - 1 + prev.photos.length) % prev.photos.length;
-      return { ...prev, index: nextIndex };
+      const photos = Array.isArray(prev?.photos) ? prev.photos : [];
+      if (!prev || photos.length < 2) return prev;
+      const currentIndex = Number.isInteger(prev.index) ? prev.index : 0;
+      const nextIndex = (currentIndex - 1 + photos.length) % photos.length;
+      return { ...prev, index: nextIndex, photos };
     });
     setPhotoZoom(1);
   };
   const goNextPhoto = () => {
     setPhotoViewer((prev) => {
-      if (!prev || prev.photos.length < 2) return prev;
-      const nextIndex = (prev.index + 1) % prev.photos.length;
-      return { ...prev, index: nextIndex };
+      const photos = Array.isArray(prev?.photos) ? prev.photos : [];
+      if (!prev || photos.length < 2) return prev;
+      const currentIndex = Number.isInteger(prev.index) ? prev.index : 0;
+      const nextIndex = (currentIndex + 1) % photos.length;
+      return { ...prev, index: nextIndex, photos };
     });
     setPhotoZoom(1);
   };
@@ -1083,6 +1087,14 @@ export default function App() {
       if (!baseDistance || !distance) return;
       const nextZoom = Math.max(1, Math.min(4, (photoPinchRef.current.baseZoom || 1) * (distance / baseDistance)));
       setPhotoZoom(nextZoom);
+      return;
+    }
+    if (e.touches.length === 1 && photoSwipeRef.current.active && photoZoom <= 1.02) {
+      const dx = e.touches[0].clientX - photoSwipeRef.current.startX;
+      const dy = e.touches[0].clientY - photoSwipeRef.current.startY;
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        e.preventDefault();
+      }
     }
   };
   const onPhotoTouchEnd = (e) => {
@@ -1104,6 +1116,9 @@ export default function App() {
     if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
     if (dx < 0) goNextPhoto();
     else goPrevPhoto();
+  };
+  const onPhotoTouchCancel = () => {
+    photoSwipeRef.current.active = false;
   };
 
   const handleSend = async (t) => {
@@ -1264,7 +1279,7 @@ export default function App() {
       location: row.location || "",
       desc: rich.text || "",
       website: rich.website || "",
-      photos: Array.isArray(rich.photos) ? rich.photos : [],
+      photos: normalizePhotoList(rich.photos),
       author: row.author || fallback.author || "Пользователь",
       userId: row.user_id || fallback.userId || null,
       likes: Number(row.likes_count ?? fallback.likes ?? 0),
@@ -1284,7 +1299,7 @@ export default function App() {
     const date = String(payload?.date || "").trim();
     const location = normalizeAddressText(String(payload?.location || "").trim());
     const desc = limitCardText(String(payload?.desc || ""));
-    const photos = Array.isArray(payload?.photos) ? payload.photos.filter((x) => typeof x === "string" && x.startsWith("http")) : [];
+    const photos = normalizePhotoList(payload?.photos);
     if (!title || !date || !location || !desc) return;
 
     setEventSaving(true);
@@ -1682,7 +1697,7 @@ export default function App() {
     };
   }, [showAdd, showAddTip, showAddEvent, showAddHousing]);
 
-  const renderComments = (item, type, addFn) => (
+  const renderComments = (item, type, addFn, options = {}) => (
     <CommentsBlock
       item={item}
       type={type}
@@ -1694,6 +1709,8 @@ export default function App() {
       onAddComment={addFn}
       onEditComment={saveEditComment}
       onDeleteComment={deleteCommentFn}
+      isOpen={options.isOpen}
+      showHeader={options.showHeader ?? true}
     />
   );
 
@@ -2061,7 +2078,27 @@ export default function App() {
 
         {/* PLACE ITEM PAGE */}
         {scr==="place-item" && activePlace && selPC && selD && (<div>
-          <button onClick={() => { setScr("places-cat"); setExp(null); }} style={bk}>← {selPC.title}</button>
+          <button
+            onClick={() => { setScr("places-cat"); setExp(null); }}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              border: `1px solid ${T.border}`,
+              background: T.card,
+              color: T.mid,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 12,
+            }}
+            title="Назад"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
           <div style={{ ...cd, overflow:"hidden", borderColor:T.borderL }}>
             <div style={{ padding:16 }}>
               <div style={{ display:"flex", gap:14, marginBottom:12, alignItems:"flex-start" }}>
@@ -2092,13 +2129,18 @@ export default function App() {
                   ))}
                 </div>
               )}
-              {activePlace.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginBottom:10 }}>Листайте фото →</div>}
-
               <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
+                <button
+                  onClick={() => setShowComments((prev) => (prev === `place-${activePlace.id}` ? null : `place-${activePlace.id}`))}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: T.mid, padding: "4px 0", display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  Мнения ({(activePlace.comments || []).length})
+                  <span style={{ fontSize: 10, color: T.light, transition: "0.3s", transform: showComments === `place-${activePlace.id}` ? "rotate(180deg)" : "" }}>▼</span>
+                </button>
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
               </div>
 
-              {renderComments(activePlace, "place", addPlaceComment)}
+              {renderComments(activePlace, "place", addPlaceComment, { isOpen: showComments === `place-${activePlace.id}`, showHeader: false })}
 
               {canManagePlace(activePlace) && (
                 <div style={{ paddingTop:4, display:"flex", gap:8 }}>
@@ -2487,6 +2529,7 @@ export default function App() {
         onTouchStart={onPhotoTouchStart}
         onTouchMove={onPhotoTouchMove}
         onTouchEnd={onPhotoTouchEnd}
+        onTouchCancel={onPhotoTouchCancel}
       />
 
       <BottomNav

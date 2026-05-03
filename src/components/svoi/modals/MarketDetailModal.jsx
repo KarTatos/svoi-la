@@ -53,7 +53,15 @@ export default function MarketDetailModal({
         {/* Главное фото */}
         <div style={{ position: "relative", width: "100%", paddingTop: "75%", background: T.bg, borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
           {photos.length > 0 ? (
-            <Image src={photos[photoIdx]} alt={item.title} fill sizes="(max-width: 480px) 100vw, 480px" style={{ objectFit: "cover" }} />
+            <Image
+              src={photos[photoIdx]}
+              alt={item.title}
+              fill
+              sizes="(max-width: 480px) 100vw, 480px"
+              unoptimized
+              loading="eager"
+              style={{ objectFit: "cover" }}
+            />
           ) : (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }}>
               🏷️
@@ -82,7 +90,7 @@ export default function MarketDetailModal({
                 onClick={() => setPhotoIdx(i)}
                 style={{ position: "relative", width: 52, height: 52, flexShrink: 0, borderRadius: 8, overflow: "hidden", border: `2px solid ${i === photoIdx ? T.primary : "transparent"}`, cursor: "pointer" }}
               >
-                <Image src={p} alt="" fill sizes="52px" style={{ objectFit: "cover" }} />
+                <Image src={p} alt="" fill sizes="52px" unoptimized style={{ objectFit: "cover" }} />
               </div>
             ))}
           </div>

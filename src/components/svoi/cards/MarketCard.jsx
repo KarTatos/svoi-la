@@ -12,7 +12,15 @@ export default function MarketCard({ item, isLiked, T, cd, pl, onClick, onToggle
       {/* Square photo */}
       <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: T.bg, flexShrink: 0 }}>
         {photo ? (
-          <Image src={photo} alt={item.title} fill sizes="(max-width: 480px) 50vw, 240px" style={{ objectFit: "cover" }} />
+          <Image
+            src={photo}
+            alt={item.title}
+            fill
+            sizes="(max-width: 480px) 50vw, 240px"
+            unoptimized
+            loading="eager"
+            style={{ objectFit: "cover" }}
+          />
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>
             🏷️

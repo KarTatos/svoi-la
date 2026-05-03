@@ -413,12 +413,20 @@ export function decodeRichText(raw) {
     const parsed = JSON.parse(raw.slice(RICH_PREFIX.length));
     return {
       text: parsed?.text || "",
-      photos: Array.isArray(parsed?.photos) ? parsed.photos : [],
+      photos: normalizePhotoList(parsed?.photos),
       website: parsed?.website || "",
     };
   } catch {
     return { text: raw, photos: [], website: "" };
   }
+}
+
+export function normalizePhotoList(input) {
+  const list = Array.isArray(input) ? input : [];
+  return list
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean)
+    .filter((v) => /^(https?:\/\/|blob:|data:image\/)/i.test(v));
 }
 
 export function getUscisPdfUrl(doc) {
@@ -557,20 +565,20 @@ export function ShareIcon({ size = 18 }) {
 }
 
 export function decodeHousingPhotos(raw) {
-  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (Array.isArray(raw)) return normalizePhotoList(raw);
   if (typeof raw !== "string" || !raw.trim()) return [];
   const trimmed = raw.trim();
   if (trimmed.startsWith("[")) {
     try {
       const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) return parsed.filter((x) => typeof x === "string" && x);
+      if (Array.isArray(parsed)) return normalizePhotoList(parsed);
     } catch {}
   }
-  return [trimmed];
+  return /^(https?:\/\/|blob:|data:image\/)/i.test(trimmed) ? [trimmed] : [];
 }
 
 export function encodeHousingPhotos(urls = []) {
-  const clean = (urls || []).filter((x) => typeof x === "string" && x);
+  const clean = normalizePhotoList(urls || []);
   if (!clean.length) return "";
   if (clean.length === 1) return clean[0];
   return JSON.stringify(clean);
