@@ -6,6 +6,10 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" })
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
 
 const RICH_PREFIX = "__LA_RICH_V1__";
+const CHAT_RATE_LIMIT = 10;
+const CHAT_RATE_WINDOW_MS = 60_000;
+const CHAT_RL_PREFIX = "chat:rl:";
+const memoryRateBuckets = new Map();
 
 const DISTRICT_ALIASES = {
   weho: ["weho", "west hollywood", "вест голливуд", "уэст голливуд"],
@@ -111,6 +115,96 @@ function detectCategoriesFromQuery(query) {
   return Object.entries(CATEGORY_ALIASES)
     .filter(([, aliases]) => aliases.some((a) => q.includes(a)))
     .map(([id]) => id);
+}
+
+function getClientIp(request) {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) return String(xff.split(",")[0] || "").trim();
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return String(realIp).trim();
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) return String(cfIp).trim();
+  return "unknown";
+}
+
+async function runUpstashPipeline(commands) {
+  const baseUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "";
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "";
+  if (!baseUrl || !token) return null;
+
+  const res = await fetch(`${baseUrl}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commands),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`upstash_pipeline_http_${res.status}`);
+  return res.json();
+}
+
+function parsePipelineResult(rows, index, fallback = 0) {
+  const row = rows?.[index];
+  if (!row) return fallback;
+  const value = row?.result;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+async function checkRateLimitUpstash(key) {
+  const pipeline = await runUpstashPipeline([
+    ["INCR", key],
+    ["PEXPIRE", key, CHAT_RATE_WINDOW_MS, "NX"],
+    ["PTTL", key],
+  ]);
+  if (!Array.isArray(pipeline)) throw new Error("upstash_bad_pipeline");
+  const count = parsePipelineResult(pipeline, 0, 0);
+  const ttlMs = parsePipelineResult(pipeline, 2, CHAT_RATE_WINDOW_MS);
+  return {
+    allowed: count <= CHAT_RATE_LIMIT,
+    count,
+    remaining: Math.max(0, CHAT_RATE_LIMIT - count),
+    resetMs: Math.max(0, ttlMs),
+    backend: "upstash",
+  };
+}
+
+function checkRateLimitMemory(key) {
+  const now = Date.now();
+  const bucket = memoryRateBuckets.get(key);
+  if (!bucket || now >= bucket.resetAt) {
+    memoryRateBuckets.set(key, { count: 1, resetAt: now + CHAT_RATE_WINDOW_MS });
+    return {
+      allowed: true,
+      count: 1,
+      remaining: CHAT_RATE_LIMIT - 1,
+      resetMs: CHAT_RATE_WINDOW_MS,
+      backend: "memory",
+    };
+  }
+
+  bucket.count += 1;
+  return {
+    allowed: bucket.count <= CHAT_RATE_LIMIT,
+    count: bucket.count,
+    remaining: Math.max(0, CHAT_RATE_LIMIT - bucket.count),
+    resetMs: Math.max(0, bucket.resetAt - now),
+    backend: "memory",
+  };
+}
+
+async function checkChatRateLimit(request) {
+  const ip = getClientIp(request);
+  const key = `${CHAT_RL_PREFIX}${ip}`;
+  try {
+    const upstash = await checkRateLimitUpstash(key);
+    return { ...upstash, ip };
+  } catch {
+    const fallback = checkRateLimitMemory(key);
+    return { ...fallback, ip };
+  }
 }
 
 async function fetchSupabaseDataFallback(query) {
@@ -280,6 +374,23 @@ function buildLocalContext(message, data) {
 export async function POST(request) {
   const meta = requestMeta(request);
   try {
+    const rl = await checkChatRateLimit(request);
+    if (!rl.allowed) {
+      logInfo("chat.rate_limit.hit", { ...meta, ip: rl.ip, backend: rl.backend, count: rl.count });
+      return Response.json(
+        { error: "Слишком много запросов. Попробуйте через минуту." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(rl.resetMs / 1000)),
+            "X-RateLimit-Limit": String(CHAT_RATE_LIMIT),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(Math.ceil((Date.now() + rl.resetMs) / 1000)),
+          },
+        },
+      );
+    }
+
     const { message, history = [] } = await request.json();
     if (!message || typeof message !== "string") {
       logInfo("chat.bad_request", meta);
