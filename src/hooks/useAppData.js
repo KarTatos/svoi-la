@@ -150,7 +150,7 @@ function needsHousing(screen) {
   return screen === "housing" || screen === "housing-item";
 }
 
-export function useAppData({ user, authReady, screen }) {
+export function useAppData({ user, authReady, screen, enablePlacesTipsData = true }) {
   const [places, setPlaces] = useState([]);
   const [tips, setTips] = useState([]);
   const [events, setEvents] = useState([]);
@@ -218,8 +218,8 @@ export function useAppData({ user, authReady, screen }) {
   const reload = useCallback(async (authUser = null, force = false) => {
     await loadLikes(authUser);
 
-    const shouldLoadPlaces = needsPlaces(screen) && (force || !loadedRef.current.places);
-    const shouldLoadTips = needsTips(screen) && (force || !loadedRef.current.tips);
+    const shouldLoadPlaces = enablePlacesTipsData && needsPlaces(screen) && (force || !loadedRef.current.places);
+    const shouldLoadTips = enablePlacesTipsData && needsTips(screen) && (force || !loadedRef.current.tips);
     const shouldLoadEvents = needsEvents(screen) && (force || !loadedRef.current.events);
     const shouldLoadHousing = needsHousing(screen) && (force || !loadedRef.current.housing);
 
@@ -232,7 +232,7 @@ export function useAppData({ user, authReady, screen }) {
     if (tasks.length > 0) {
       await Promise.all(tasks);
     }
-  }, [loadEvents, loadHousing, loadLikes, loadPlaces, loadTips, screen]);
+  }, [enablePlacesTipsData, loadEvents, loadHousing, loadLikes, loadPlaces, loadTips, screen]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -250,9 +250,11 @@ export function useAppData({ user, authReady, screen }) {
     const channel = supabase
       .channel("svoi_la_realtime_sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "places" }, () => {
+        if (!enablePlacesTipsData) return;
         if (needsPlaces(screen) || loadedRef.current.places) scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "tips" }, () => {
+        if (!enablePlacesTipsData) return;
         if (needsTips(screen) || loadedRef.current.tips) scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => {
@@ -262,7 +264,7 @@ export function useAppData({ user, authReady, screen }) {
         if (needsHousing(screen) || loadedRef.current.housing) scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => {
-        if (needsPlaces(screen) || needsTips(screen) || needsEvents(screen)) scheduleReload();
+        if (needsEvents(screen) || (enablePlacesTipsData && (needsPlaces(screen) || needsTips(screen)))) scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, () => {
         scheduleReload();
@@ -273,7 +275,7 @@ export function useAppData({ user, authReady, screen }) {
       if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [screen, user, reload]);
+  }, [screen, user, reload, enablePlacesTipsData]);
 
   return {
     places,

@@ -51,6 +51,8 @@ import { useMarketMutations } from "../hooks/queries/useMarketMutations";
 import { usePostsQuery } from "../hooks/queries/usePostsQuery";
 import { usePostMutations } from "../hooks/queries/usePostMutations";
 import CommunityScreen from "./svoi/screens/CommunityScreen";
+import { usePlacesQuery } from "../hooks/queries/usePlacesQuery";
+import { useTipsQuery } from "../hooks/queries/useTipsQuery";
 
 const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .split(",")
@@ -104,12 +106,20 @@ export default function App() {
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn, signOut: authSignOut, isAdmin, updateDisplayName } = useAuth(ADMIN_EMAILS);
   const {
-    places, setPlaces,
-    tips, setTips,
     events, setEvents,
     housing, setHousing,
     liked, setLiked,
-  } = useAppData({ user, authReady, screen: scr });
+  } = useAppData({ user, authReady, screen: scr, enablePlacesTipsData: false });
+  const placesEnabled = authReady && ["district", "places-cat", "place-item", "my-places"].includes(scr);
+  const tipsEnabled = authReady && scr === "tips";
+  const { data: places = [] } = usePlacesQuery(placesEnabled);
+  const { data: tips = [] } = useTipsQuery(tipsEnabled);
+  const setPlaces = useCallback((updater) => {
+    queryClient.setQueryData(["places"], updater);
+  }, [queryClient]);
+  const setTips = useCallback((updater) => {
+    queryClient.setQueryData(["tips"], updater);
+  }, [queryClient]);
   const { data: jobs = [] } = useJobsQuery(authReady);
   const { data: market = [] } = useMarketQuery(authReady);
   const { data: posts = [], error: postsError } = usePostsQuery(authReady && scr === "community-chat");
