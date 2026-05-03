@@ -2061,7 +2061,6 @@ export default function App() {
                         width={180}
                         height={105}
                         sizes="(max-width: 480px) 31vw, 180px"
-                        unoptimized
                         style={{ width:"100%", height:105, objectFit:"cover", borderRadius:10, border:`1px solid ${T.borderL}`, display:"block" }}
                       />
                     ))}
@@ -2125,7 +2124,7 @@ export default function App() {
               {activePlace.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                   {activePlace.photos.map((ph, pi) => (
-                    <Image key={pi} src={ph} alt="" width={120} height={120} sizes="120px" unoptimized style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => openPhotoViewer(activePlace.photos, pi)} />
+                    <Image key={pi} src={ph} alt="" width={120} height={120} sizes="120px" style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => openPhotoViewer(activePlace.photos, pi)} />
                   ))}
                 </div>
               )}
