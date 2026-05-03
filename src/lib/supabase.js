@@ -284,3 +284,23 @@ export async function deletePost(id) {
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'post');
   return { error: null };
 }
+
+// Sync display name across user-generated content
+export async function syncUserDisplayName(userId, nextName) {
+  const uid = String(userId || "").trim();
+  const name = String(nextName || "").trim();
+  if (!uid || !name) return { error: null };
+
+  const results = await Promise.all([
+    supabase.from('places').update({ added_by: name }).eq('user_id', uid),
+    supabase.from('tips').update({ author: name }).eq('user_id', uid),
+    supabase.from('events').update({ author: name }).eq('user_id', uid),
+    supabase.from('comments').update({ author: name }).eq('user_id', uid),
+    supabase.from('jobs').update({ author: name }).eq('user_id', uid),
+    supabase.from('marketplace').update({ author: name }).eq('user_id', uid),
+    supabase.from('posts').update({ author: name }).eq('user_id', uid),
+  ]);
+
+  const firstError = results.find((r) => r?.error)?.error || null;
+  return { error: firstError };
+}

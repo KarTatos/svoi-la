@@ -2,7 +2,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
-import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto } from "../lib/supabase";
+import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto, syncUserDisplayName } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import JobsScreen from "./svoi/screens/JobsScreen";
@@ -1126,6 +1126,38 @@ export default function App() {
     if (error) console.error("Login error:", error);
   };
   const handleLogout = async () => { await authSignOut(); setLiked({}); setFavorites({}); };
+  const handleUpdateDisplayName = async (nextName) => {
+    await updateDisplayName(nextName);
+    if (!user?.id || user.id === "local-owner") return;
+    await syncUserDisplayName(user.id, nextName);
+
+    const renameComments = (comments = []) =>
+      comments.map((c) => (String(c.userId || "") === String(user.id) ? { ...c, author: nextName } : c));
+    setPlaces((prev) => prev.map((p) => (
+      String(p.userId || "") === String(user.id)
+        ? { ...p, addedBy: nextName, comments: renameComments(p.comments) }
+        : { ...p, comments: renameComments(p.comments) }
+    )));
+    setTips((prev) => prev.map((t) => (
+      String(t.userId || "") === String(user.id)
+        ? { ...t, author: nextName, comments: renameComments(t.comments) }
+        : { ...t, comments: renameComments(t.comments) }
+    )));
+    setEvents((prev) => prev.map((e) => (
+      String(e.userId || "") === String(user.id)
+        ? { ...e, author: nextName, comments: renameComments(e.comments) }
+        : { ...e, comments: renameComments(e.comments) }
+    )));
+    queryClient.setQueryData(["jobs"], (prev = []) => prev.map((j) => (String(j.user_id || "") === String(user.id) ? { ...j, author: nextName } : j)));
+    queryClient.setQueryData(["market"], (prev = []) => prev.map((m) => (String(m.user_id || "") === String(user.id) ? { ...m, author: nextName } : m)));
+    queryClient.setQueryData(["posts"], (prev = []) =>
+      prev.map((p) => (
+        String(p.userId || p.user_id || "") === String(user.id)
+          ? { ...p, author: nextName, comments: renameComments(p.comments) }
+          : { ...p, comments: renameComments(p.comments) }
+      ))
+    );
+  };
   const handleAddComment = async (tipId, text) => {
     const trimmed = String(text || "").trim();
     if (!trimmed || !user) return;
@@ -1679,6 +1711,20 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const bodyPrev = document.body.style.background;
+    const htmlPrev = document.documentElement.style.background;
+    if (scr === "community-chat") {
+      document.body.style.background = "#000000";
+      document.documentElement.style.background = "#000000";
+    }
+    return () => {
+      document.body.style.background = bodyPrev;
+      document.documentElement.style.background = htmlPrev;
+    };
+  }, [scr]);
+
   const cd = { background:T.card, borderRadius:T.r, boxShadow:T.sh, border:`1px solid ${T.borderL}`, transition:"all 0.25s ease" };
   const bk = { background:"none", border:"none", color:T.primary, fontSize:14, fontWeight:500, cursor:"pointer", padding:"12px 0 8px", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 };
   const pl = (a) => ({ padding:"10px 20px", borderRadius:24, border:"none", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", background:a?T.primary:T.primaryLight, color:a?"#fff":T.primary });
@@ -1732,7 +1778,7 @@ export default function App() {
             onOpenMyReviews={() => setScr("tips")}
             onOpenHelp={() => setScr("support")}
             onLogout={handleLogout}
-            onUpdateDisplayName={updateDisplayName}
+            onUpdateDisplayName={handleUpdateDisplayName}
           />
         )}
 

@@ -84,13 +84,13 @@ export default function CommunityScreen({
       style={{
         background: "#000000",
         margin: "-16px -16px 0",
-        padding: "0 0 calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))",
+        padding: 0,
         minHeight: "calc(var(--app-min-height, 100dvh) - 32px)",
         boxSizing: "border-box",
       }}
     >
-      <div style={{ background: "#111315", overflow: "hidden" }}>
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 44, margin: 0, padding: "10px 12px", borderBottom: "1px solid #2a2d32" }}>
+      <div style={{ background: "#111315", overflow: "hidden", minHeight: "calc(var(--app-min-height, 100dvh) - 32px)", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#111315", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 44, margin: 0, padding: "10px 12px", borderBottom: "1px solid #2a2d32", flexShrink: 0 }}>
         <button
           onClick={onGoHome}
           style={{ width: 36, height: 36, borderRadius: 11, border: "1px solid #2a2d32", background: "#1a1d22", color: "#d3d4d6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
@@ -117,7 +117,7 @@ export default function CommunityScreen({
       </div>
 
       {composerOpen && (
-        <div style={{ padding: 12, borderBottom: "1px solid #2a2d32", background: "#16191d" }}>
+        <div style={{ padding: 12, borderBottom: "1px solid #2a2d32", background: "#16191d", flexShrink: 0 }}>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, 500))}
@@ -135,7 +135,7 @@ export default function CommunityScreen({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", paddingBottom: 80, background: "#111315" }}>
+      <div style={{ display: "flex", flexDirection: "column", paddingBottom: "calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))", background: "#111315", overflowY: "auto", flex: 1, minHeight: 0 }}>
         {postsError && (
           <div style={{ padding: 12, fontSize: 12, color: "#f87171", whiteSpace: "pre-wrap", borderBottom: "1px solid #2a2d32" }}>
             Ошибка загрузки постов: {postsError?.message || "неизвестная ошибка"}
