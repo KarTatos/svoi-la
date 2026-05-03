@@ -50,6 +50,8 @@ export default function CommunityScreen({
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [expandedPostId, setExpandedPostId] = useState(null);
+  const [replyInputPostId, setReplyInputPostId] = useState(null);
 
   const submitPost = async () => {
     const trimmed = text.trim();
@@ -78,8 +80,16 @@ export default function CommunityScreen({
   };
 
   return (
-    <div style={{ background: "#000000", margin: "-16px -16px 0", padding: "16px 16px 0", minHeight: "calc(100dvh - 110px)" }}>
-      <div style={{ background: "#111315", borderRadius: 14, overflow: "hidden", border: "1px solid #2a2d32" }}>
+    <div
+      style={{
+        background: "#000000",
+        margin: "-16px -16px 0",
+        padding: "0 0 calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))",
+        minHeight: "calc(var(--app-min-height, 100dvh) - 32px)",
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ background: "#111315", overflow: "hidden" }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 44, margin: 0, padding: "10px 12px", borderBottom: "1px solid #2a2d32" }}>
         <button
           onClick={onGoHome}
@@ -134,7 +144,10 @@ export default function CommunityScreen({
 
         {posts.map((post) => (
           <div key={post.id} style={{ borderBottom: "1px solid #2a2d32", background: "#111315" }}>
-            <div style={{ padding: "14px 14px 10px", position: "relative" }}>
+            <div
+              style={{ padding: "14px 14px 10px", position: "relative", cursor: "pointer" }}
+              onClick={() => setExpandedPostId((v) => (v === post.id ? null : post.id))}
+            >
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2f353d", color: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0, border: "1px solid #434a54" }}>
                   {avatarText(post.author)}
@@ -143,7 +156,7 @@ export default function CommunityScreen({
                   <div style={{ fontSize: 18, lineHeight: 0.2, color: "#fff", textAlign: "right", paddingRight: 2 }}>
                     {canManagePost(post) ? (
                       <button
-                        onClick={() => setOpenMenuId((v) => (v === post.id ? null : post.id))}
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId((v) => (v === post.id ? null : post.id)); }}
                         style={{ background: "none", border: "none", color: "#d8d8d8", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
                         title="Меню"
                       >
@@ -155,6 +168,7 @@ export default function CommunityScreen({
                     <div style={{ position: "absolute", right: 14, top: 34, background: "#1a1e24", border: "1px solid #353b45", borderRadius: 10, minWidth: 140, zIndex: 5, overflow: "hidden" }}>
                       <button
                         onClick={() => {
+                          setExpandedPostId(post.id);
                           setComposerOpen(true);
                           setEditingId(post.id);
                           setText(post.text || "");
@@ -166,6 +180,7 @@ export default function CommunityScreen({
                       </button>
                       <button
                         onClick={() => {
+                          setExpandedPostId(post.id);
                           setOpenMenuId(null);
                           onDeletePost(post.id);
                         }}
@@ -183,19 +198,28 @@ export default function CommunityScreen({
 
                   <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 10 }}>
                     <button
-                      onClick={() => onToggleLike(post.id, "post")}
+                      onClick={(e) => { e.stopPropagation(); onToggleLike(post.id, "post"); }}
                       style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, color: "#d8d8d8", padding: 0, fontSize: 14 }}
                       title="Нравится"
                     >
                       <HeartOutline active={!!liked[`post-${post.id}`]} /> <span>{post.likes || 0}</span>
                     </button>
-                    <span style={{ fontSize: 14, color: "#d8d8d8", display: "inline-flex", alignItems: "center", gap: 6 }}><ReplyOutline /> {(post.comments || []).length}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedPostId(post.id);
+                        setReplyInputPostId((v) => (v === post.id ? null : post.id));
+                      }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, fontSize: 14, color: "#d8d8d8", display: "inline-flex", alignItems: "center", gap: 6 }}
+                    >
+                      <ReplyOutline /> {(post.comments || []).length}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ background: "#16191d", borderTop: "1px solid #2a2d32" }}>
+            <div style={{ background: "#16191d", borderTop: "1px solid #2a2d32", display: expandedPostId === post.id ? "block" : "none" }}>
               <CommentsBlock
                 item={post}
                 type="post"
@@ -207,6 +231,10 @@ export default function CommunityScreen({
                 onAddComment={onAddReply}
                 onEditComment={onEditReply}
                 onDeleteComment={onDeleteReply}
+                isOpen={expandedPostId === post.id}
+                showHeader={false}
+                showInput={replyInputPostId === post.id}
+                inputPlaceholder="Ответ..."
               />
             </div>
           </div>
