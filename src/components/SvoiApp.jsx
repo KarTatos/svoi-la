@@ -1951,8 +1951,7 @@ export default function App() {
               </svg>
             </button>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
-                <div style={{ width:38, height:38, borderRadius:11, background:`${selPC.color}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, flexShrink:0 }}>{selPC.icon}</div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <h2 style={{ fontSize:19, fontWeight:700, margin:0, lineHeight:1.2 }}>{selPC.title}</h2>
               </div>
               <p style={{ fontSize:13, color:T.mid, margin:"2px 0 0" }}>{selD.name} · {cPlaces.length} мест</p>
