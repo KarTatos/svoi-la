@@ -1697,7 +1697,7 @@ export default function App() {
     };
   }, [showAdd, showAddTip, showAddEvent, showAddHousing]);
 
-  const renderComments = (item, type, addFn) => (
+  const renderComments = (item, type, addFn, options = {}) => (
     <CommentsBlock
       item={item}
       type={type}
@@ -1709,6 +1709,8 @@ export default function App() {
       onAddComment={addFn}
       onEditComment={saveEditComment}
       onDeleteComment={deleteCommentFn}
+      isOpen={options.isOpen}
+      showHeader={options.showHeader ?? true}
     />
   );
 
@@ -2076,7 +2078,27 @@ export default function App() {
 
         {/* PLACE ITEM PAGE */}
         {scr==="place-item" && activePlace && selPC && selD && (<div>
-          <button onClick={() => { setScr("places-cat"); setExp(null); }} style={bk}>← {selPC.title}</button>
+          <button
+            onClick={() => { setScr("places-cat"); setExp(null); }}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              border: `1px solid ${T.border}`,
+              background: T.card,
+              color: T.mid,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 12,
+            }}
+            title="Назад"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
           <div style={{ ...cd, overflow:"hidden", borderColor:T.borderL }}>
             <div style={{ padding:16 }}>
               <div style={{ display:"flex", gap:14, marginBottom:12, alignItems:"flex-start" }}>
@@ -2107,13 +2129,18 @@ export default function App() {
                   ))}
                 </div>
               )}
-              {activePlace.photos?.length > 1 && <div style={{ fontSize:11, color:T.light, marginBottom:10 }}>Листайте фото →</div>}
-
               <div style={{ padding:"8px 0 10px", display:"flex", gap:14, alignItems:"center" }}>
+                <button
+                  onClick={() => setShowComments((prev) => (prev === `place-${activePlace.id}` ? null : `place-${activePlace.id}`))}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: T.mid, padding: "4px 0", display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  Мнения ({(activePlace.comments || []).length})
+                  <span style={{ fontSize: 10, color: T.light, transition: "0.3s", transform: showComments === `place-${activePlace.id}` ? "rotate(180deg)" : "" }}>▼</span>
+                </button>
                 <button onClick={()=> handleNativeShare({title:activePlace.name,text:activePlace.tip,url:window.location.href})} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", color:T.mid, padding:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }} title="Поделиться"><ShareIcon size={18} /></button>
               </div>
 
-              {renderComments(activePlace, "place", addPlaceComment)}
+              {renderComments(activePlace, "place", addPlaceComment, { isOpen: showComments === `place-${activePlace.id}`, showHeader: false })}
 
               {canManagePlace(activePlace) && (
                 <div style={{ paddingTop:4, display:"flex", gap:8 }}>
