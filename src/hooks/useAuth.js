@@ -3,6 +3,7 @@ import { getUser, signInWithGoogle, signOut as dbSignOut, supabase } from "../li
 
 const LOCAL_OWNER_KEY = "svoi_local_owner_mode";
 const LOCAL_OWNER_NAME_KEY = "svoi_local_owner_name";
+const LOCAL_OWNER_ID_KEY = "svoi_local_owner_id";
 
 function isLocalHost() {
   if (typeof window === "undefined") return false;
@@ -22,6 +23,14 @@ const mapAuthUser = (u) => {
     avatarUrl: u.user_metadata?.avatar_url,
   };
 };
+
+function makeLocalOwnerId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const rand = Math.random().toString(16).slice(2).padEnd(12, "0").slice(0, 12);
+  return `00000000-0000-4000-8000-${rand}`;
+}
 
 export function useAuth(adminEmails = []) {
   const [user, setUser] = useState(null);
@@ -74,12 +83,21 @@ export function useAuth(adminEmails = []) {
     if (user) return user;
     if (isLocalHost() && localOwnerEnabled) {
       let localOwnerName = "Local Owner";
+      let localOwnerId = "";
       try {
         const saved = localStorage.getItem(LOCAL_OWNER_NAME_KEY);
         if (saved && saved.trim()) localOwnerName = saved.trim();
+        const savedId = localStorage.getItem(LOCAL_OWNER_ID_KEY);
+        if (savedId && savedId.trim()) {
+          localOwnerId = savedId.trim();
+        } else {
+          localOwnerId = makeLocalOwnerId();
+          localStorage.setItem(LOCAL_OWNER_ID_KEY, localOwnerId);
+        }
       } catch {}
+      if (!localOwnerId) localOwnerId = makeLocalOwnerId();
       return {
-        id: "local-owner",
+        id: localOwnerId,
         name: localOwnerName,
         email: "local-owner@localhost",
         avatar: "👤",
