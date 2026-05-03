@@ -29,6 +29,12 @@ export default function PlacesDistrictsScreen({
   onSelectDistrict,
   onOpenAdd,
 }) {
+  const PlacesIcon = () => (
+    <svg width="22" height="22" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <path d="M20 6C15.6 6 11 10 11 15.5c0 7.5 9 18.5 9 18.5s9-11 9-18.5C29 10 24.4 6 20 6z" fill="#FF6B4A" stroke="#0E0E0E" strokeWidth="1.4"/>
+      <circle cx="20" cy="15.5" r="4" fill="#fff" stroke="#0E0E0E" strokeWidth="1.2"/>
+    </svg>
+  );
   const hasCoords = userCoords && Number.isFinite(userCoords.lat) && Number.isFinite(userCoords.lng);
 
   const districtsWithDist = districts.map((d) => {
@@ -86,7 +92,7 @@ export default function PlacesDistrictsScreen({
           style={{ ...placesTopBtnBase, background: "#F2EADF", color: "#4D4337", fontSize: 18, cursor: "default" }}
           aria-hidden="true"
         >
-          📍
+          <PlacesIcon />
         </div>
 
         <button

@@ -11,6 +11,8 @@ export default function PhotoViewerModal({
   onTouchEnd,
 }) {
   if (!photoViewer) return null;
+  const currentPhoto = photoViewer.photos?.[photoViewer.index];
+  if (!currentPhoto) return null;
 
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:16, touchAction:"none" }}>
@@ -34,11 +36,11 @@ export default function PhotoViewerModal({
         style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", touchAction:"none" }}
       >
         <Image
-          src={photoViewer.photos[photoViewer.index]}
+          src={currentPhoto}
           alt=""
           width={1200}
           height={900}
-          unoptimized
+          sizes="100vw"
           draggable={false}
           style={{ maxWidth:"100%", maxHeight:"88vh", borderRadius:12, boxShadow:"0 10px 36px rgba(0,0,0,0.4)", width:"auto", height:"auto", transform:`scale(${photoZoom})`, transformOrigin:"center center", transition:photoZoom === 1 ? "transform 0.2s ease" : "none", userSelect:"none", WebkitUserSelect:"none" }}
         />
