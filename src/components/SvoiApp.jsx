@@ -54,6 +54,10 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export default function App() {
+  const [scr, setScr] = useSessionState("scr", "home", {
+    serialize: (value) => String(value || ""),
+    deserialize: (raw) => String(raw || ""),
+  });
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useSessionState("selD", null);
   const [selPC, setSelPC] = useSessionState("selPC", null);
@@ -100,7 +104,7 @@ export default function App() {
     events, setEvents,
     housing, setHousing,
     liked, setLiked,
-  } = useAppData({ user, authReady });
+  } = useAppData({ user, authReady, screen: scr });
   const { data: jobs = [] } = useJobsQuery(authReady);
   const { data: market = [] } = useMarketQuery(authReady);
   const { addJobMutation, updateJobMutation, deleteJobMutation } = useJobMutations();
@@ -136,7 +140,9 @@ export default function App() {
   const { news: uscisNews } = useUscisNews();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
-  const { scr, setScr } = useSvoiRouter({
+  useSvoiRouter({
+    scr,
+    setScr,
     user,
     selPlace,
     places,
