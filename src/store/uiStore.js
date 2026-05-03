@@ -17,7 +17,9 @@ export const useUiStore = create((set) => ({
   setHousingSortByFavorites: (value) => set({ housingSortByFavorites: value }),
   setPlaceSortField: (value) => set({ placeSortField: value }),
   setPlaceSortDir: (value) => set({ placeSortDir: value }),
-  setPhotoViewer: (value) => set({ photoViewer: value }),
+  setPhotoViewer: (value) => set((state) => ({
+    photoViewer: typeof value === "function" ? value(state.photoViewer) : value,
+  })),
   setPhotoZoom: (value) => set({ photoZoom: value }),
   setFavorites: (value) => set((state) => ({ favorites: typeof value === "function" ? value(state.favorites) : value })),
   resetUi: () => set({
