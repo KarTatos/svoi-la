@@ -110,7 +110,7 @@ export default function App() {
     housing, setHousing,
     liked, setLiked,
   } = useAppData({ user, authReady, screen: scr, enablePlacesTipsData: false });
-  const placesEnabled = authReady && ["district", "places-cat", "place-item", "my-places"].includes(scr);
+  const placesEnabled = authReady && ["places", "district", "places-cat", "place-item", "my-places"].includes(scr);
   const tipsEnabled = authReady && scr === "tips";
   const { data: places = [] } = usePlacesQuery(placesEnabled);
   const { data: tips = [] } = useTipsQuery(tipsEnabled);
