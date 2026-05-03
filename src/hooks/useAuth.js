@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { getUser, signInWithGoogle, signOut as dbSignOut, supabase } from "../lib/supabase";
 
 const LOCAL_OWNER_KEY = "svoi_local_owner_mode";
+const LOCAL_OWNER_NAME_KEY = "svoi_local_owner_name";
 
 function isLocalHost() {
   if (typeof window === "undefined") return false;
@@ -11,9 +12,11 @@ function isLocalHost() {
 
 const mapAuthUser = (u) => {
   if (!u) return null;
+  const displayName = u.user_metadata?.display_name;
+  const fullName = u.user_metadata?.full_name;
   return {
     id: u.id,
-    name: u.user_metadata?.full_name || u.email || "Пользователь",
+    name: displayName || fullName || u.email || "Пользователь",
     email: u.email || "",
     avatar: "👤",
     avatarUrl: u.user_metadata?.avatar_url,
@@ -34,7 +37,6 @@ export function useAuth(adminEmails = []) {
     if (!isLocalHost()) return;
     try {
       const saved = localStorage.getItem(LOCAL_OWNER_KEY);
-      // Default ON locally so owner can use all controls without OAuth login.
       const enabled = saved == null ? true : saved === "1";
       setLocalOwnerEnabled(enabled);
       if (saved == null) localStorage.setItem(LOCAL_OWNER_KEY, enabled ? "1" : "0");
@@ -71,9 +73,14 @@ export function useAuth(adminEmails = []) {
   const effectiveUser = useMemo(() => {
     if (user) return user;
     if (isLocalHost() && localOwnerEnabled) {
+      let localOwnerName = "Local Owner";
+      try {
+        const saved = localStorage.getItem(LOCAL_OWNER_NAME_KEY);
+        if (saved && saved.trim()) localOwnerName = saved.trim();
+      } catch {}
       return {
         id: "local-owner",
-        name: "Local Owner",
+        name: localOwnerName,
         email: "local-owner@localhost",
         avatar: "👤",
         avatarUrl: null,
@@ -84,7 +91,9 @@ export function useAuth(adminEmails = []) {
 
   const signIn = useCallback(async () => {
     if (isLocalHost()) {
-      try { localStorage.setItem(LOCAL_OWNER_KEY, "1"); } catch {}
+      try {
+        localStorage.setItem(LOCAL_OWNER_KEY, "1");
+      } catch {}
       setLocalOwnerEnabled(true);
       return;
     }
@@ -93,15 +102,37 @@ export function useAuth(adminEmails = []) {
 
   const signOut = useCallback(async () => {
     if (isLocalHost()) {
-      try { localStorage.setItem(LOCAL_OWNER_KEY, "0"); } catch {}
+      try {
+        localStorage.setItem(LOCAL_OWNER_KEY, "0");
+      } catch {}
       setLocalOwnerEnabled(false);
     }
     await dbSignOut();
   }, []);
 
+  const updateDisplayName = useCallback(async (nextNameRaw) => {
+    const nextName = String(nextNameRaw || "").trim().slice(0, 40);
+    if (!nextName) throw new Error("Введите имя");
+
+    if (isLocalHost() && !user) {
+      try {
+        localStorage.setItem(LOCAL_OWNER_NAME_KEY, nextName);
+      } catch {}
+      setLocalOwnerEnabled(true);
+      return { ok: true };
+    }
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: { display_name: nextName },
+    });
+    if (error) throw error;
+    if (data?.user) setUser(mapAuthUser(data.user));
+    return { ok: true };
+  }, [user]);
+
   const isAdmin =
     (isLocalHost() && localOwnerEnabled) ||
     normalizedAdmins.includes(String(effectiveUser?.email || "").trim().toLowerCase());
 
-  return { user: effectiveUser, authReady, signIn, signOut, isAdmin };
+  return { user: effectiveUser, authReady, signIn, signOut, isAdmin, updateDisplayName };
 }

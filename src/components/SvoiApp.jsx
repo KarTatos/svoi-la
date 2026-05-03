@@ -102,7 +102,7 @@ export default function App() {
   const setFavorites = useUiStore((s) => s.setFavorites);
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
-  const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth(ADMIN_EMAILS);
+  const { user, authReady, signIn, signOut: authSignOut, isAdmin, updateDisplayName } = useAuth(ADMIN_EMAILS);
   const {
     places, setPlaces,
     tips, setTips,
@@ -1685,7 +1685,7 @@ export default function App() {
   const iS = { width:"100%", padding:"14px 16px", background:T.card, border:`1px solid ${T.border}`, borderRadius:T.rs, color:T.text, fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
 
   return (
-    <div style={{ minHeight:"var(--app-min-height, 100dvh)", background:T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
+    <div style={{ minHeight:"var(--app-min-height, 100dvh)", background:scr==="community-chat" ? "#000000" : T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
       <AppHeader
         T={T}
         mt={mt}
@@ -1697,7 +1697,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))" }}>
+      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))", background:scr==="community-chat" ? "#000000" : "transparent" }}>
 
         {scr==="home" && (
           <HomeScreen
@@ -1732,6 +1732,7 @@ export default function App() {
             onOpenMyReviews={() => setScr("tips")}
             onOpenHelp={() => setScr("support")}
             onLogout={handleLogout}
+            onUpdateDisplayName={updateDisplayName}
           />
         )}
 

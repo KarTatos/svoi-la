@@ -1,4 +1,6 @@
-﻿export default function ProfileScreen({
+﻿import { useState } from "react";
+
+export default function ProfileScreen({
   T,
   cd,
   bk,
@@ -14,13 +16,37 @@
   onOpenMyReviews,
   onOpenHelp,
   onLogout,
+  onUpdateDisplayName,
 }) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(user?.name || "");
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState("");
+
   const initials = (() => {
     const parts = String(user?.name || "").trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return "U";
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
   })();
+
+  const saveName = async () => {
+    const nextName = String(nameInput || "").trim();
+    if (!nextName) {
+      setNameError("Введите имя");
+      return;
+    }
+    setNameError("");
+    setSavingName(true);
+    try {
+      await onUpdateDisplayName(nextName);
+      setEditingName(false);
+    } catch (err) {
+      setNameError(err?.message || "Не удалось сохранить имя");
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const row = (icon, label, value, onClick) => (
     <button
@@ -62,10 +88,43 @@
             <div style={{ width: 74, height: 74, borderRadius: "50%", background: T.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 800, boxShadow: T.sh }}>
               {initials}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {user?.name || "Пользователь"}
-              </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              {!editingName ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {user?.name || "Пользователь"}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingName(true);
+                      setNameInput(user?.name || "");
+                      setNameError("");
+                    }}
+                    style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, padding: 0, cursor: "pointer", fontFamily: "inherit", marginBottom: 6 }}
+                  >
+                    Изменить имя
+                  </button>
+                </>
+              ) : (
+                <div style={{ marginBottom: 6 }}>
+                  <input
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value.slice(0, 40))}
+                    placeholder="Имя в приложении"
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 13, fontFamily: "inherit", marginBottom: 6 }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={saveName} disabled={savingName || !nameInput.trim()} style={{ border: "none", background: T.primary, color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", opacity: savingName || !nameInput.trim() ? 0.6 : 1 }}>
+                      Сохранить
+                    </button>
+                    <button onClick={() => { setEditingName(false); setNameError(""); }} style={{ border: `1px solid ${T.border}`, background: "#fff", color: T.mid, borderRadius: 999, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                      Отмена
+                    </button>
+                  </div>
+                  {nameError && <div style={{ marginTop: 6, fontSize: 12, color: "#dc2626" }}>{nameError}</div>}
+                </div>
+              )}
+
               <div style={{ fontSize: 12, color: T.mid, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {user?.email || ""}
               </div>
