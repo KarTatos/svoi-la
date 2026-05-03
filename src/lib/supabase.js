@@ -260,3 +260,27 @@ export async function deleteMarketItem(id) {
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'market');
   return { error: null };
 }
+
+// POSTS (community feed)
+export async function getPosts() {
+  const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+  return { data: data || [], error };
+}
+
+export async function addPost(post) {
+  const { data, error } = await supabase.from('posts').insert([post]).select();
+  return { data, error };
+}
+
+export async function updatePost(id, updates) {
+  const { data, error } = await supabase.from('posts').update(updates).eq('id', id).select();
+  return { data, error };
+}
+
+export async function deletePost(id) {
+  const { error } = await supabase.from('posts').delete().eq('id', id);
+  if (error) return { error };
+  await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'post');
+  await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'post');
+  return { error: null };
+}

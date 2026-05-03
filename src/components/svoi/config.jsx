@@ -381,7 +381,7 @@ export const SECTIONS = [
   { id:"housing", icon:"🏠", title:"Жильё", desc:"Аренда" },
   { id:"chat-sec", icon:"💬", title:"AI", desc:"Помощник", accent:true },
   { id:"sell", icon:"🏷️", title:"Продам", desc:"Объявления" },
-  { id:"community-chat", icon:"🗨️", title:"Чат", desc:"Общение", soon:true },
+  { id:"community-chat", icon:"🗨️", title:"Чат", desc:"Общение" },
 ];
 
 export const RICH_PREFIX = "__LA_RICH_V1__";

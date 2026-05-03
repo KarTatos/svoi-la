@@ -1,6 +1,7 @@
 ﻿'use client';
 import { useCallback, useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
@@ -47,6 +48,9 @@ import { useJobsQuery } from "../hooks/queries/useJobsQuery";
 import { useMarketQuery } from "../hooks/queries/useMarketQuery";
 import { useJobMutations } from "../hooks/queries/useJobMutations";
 import { useMarketMutations } from "../hooks/queries/useMarketMutations";
+import { usePostsQuery } from "../hooks/queries/usePostsQuery";
+import { usePostMutations } from "../hooks/queries/usePostMutations";
+import CommunityScreen from "./svoi/screens/CommunityScreen";
 
 const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .split(",")
@@ -54,6 +58,7 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export default function App() {
+  const queryClient = useQueryClient();
   const [scr, setScr] = useSessionState("scr", "home", {
     serialize: (value) => String(value || ""),
     deserialize: (raw) => String(raw || ""),
@@ -107,8 +112,10 @@ export default function App() {
   } = useAppData({ user, authReady, screen: scr });
   const { data: jobs = [] } = useJobsQuery(authReady);
   const { data: market = [] } = useMarketQuery(authReady);
+  const { data: posts = [], error: postsError } = usePostsQuery(authReady && scr === "community-chat");
   const { addJobMutation, updateJobMutation, deleteJobMutation } = useJobMutations();
   const { addMarketMutation, updateMarketMutation, deleteMarketMutation } = useMarketMutations();
+  const { addPostMutation, updatePostMutation, deletePostMutation } = usePostMutations();
   const [showComments, setShowComments] = useState(null);
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
@@ -193,6 +200,7 @@ export default function App() {
   const canManageTip = (item) => canManageByOwnership(item?.userId, item?.author);
   const canManageEvent = (item) => canManageByOwnership(item?.userId, item?.author);
   const canManageHousing = (item) => canManageByOwnership(item?.userId, null);
+  const canManagePost = (item) => canManageByOwnership(item?.userId, item?.author);
   const placeForm = usePlaceForm({
     user,
     selD,
@@ -1145,6 +1153,7 @@ export default function App() {
     if (type === "place") setPlaces(updater);
     else if (type === "tip") setTips(updater);
     else if (type === "event") setEvents(updater);
+    else if (type === "post") queryClient.setQueryData(["posts"], updater);
   };
   const saveEditComment = async (itemId, commentId, type, text) => {
     const trimmed = String(text || "").trim();
@@ -1154,6 +1163,55 @@ export default function App() {
     if (type === "place") setPlaces(updater);
     else if (type === "tip") setTips(updater);
     else if (type === "event") setEvents(updater);
+    else if (type === "post") {
+      queryClient.setQueryData(["posts"], (prev = []) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? { ...item, comments: (item.comments || []).map((c) => (c.id === commentId ? { ...c, text: trimmed } : c)) }
+            : item
+        )
+      );
+    }
+  };
+  const createPost = async (text) => {
+    if (!user) { handleLogin(); return; }
+    try {
+      await addPostMutation.mutateAsync({
+        text: String(text || "").trim(),
+        author: user.name || user.email?.split("@")[0] || "Пользователь",
+        user_id: user.id,
+      });
+    } catch (err) {
+      throw new Error(err?.message || "Не удалось создать пост. Проверьте миграцию posts.");
+    }
+  };
+  const updatePost = async (id, payload) => {
+    try {
+      await updatePostMutation.mutateAsync({ id, payload });
+    } catch (err) {
+      throw new Error(err?.message || "Не удалось обновить пост.");
+    }
+  };
+  const deletePost = async (id) => {
+    if (!window.confirm("Удалить пост?")) return;
+    try {
+      await deletePostMutation.mutateAsync(id);
+    } catch (err) {
+      alert(err?.message || "Не удалось удалить пост.");
+    }
+  };
+  const addPostReply = async (postId, text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed || !user) return;
+    const { data } = await dbAddComment({ item_id: postId, item_type: "post", author: user.name, user_id: user.id, text: trimmed });
+    const cId = data?.[0]?.id || Date.now();
+    queryClient.setQueryData(["posts"], (prev = []) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, comments: [...(post.comments || []), { id: cId, author: user.name, text: trimmed, userId: user.id }] }
+          : post
+      )
+    );
   };
   const startEditEvent = (eventItem) => {
     if (!eventItem) return;
@@ -1419,6 +1477,7 @@ export default function App() {
     else if (itemType === "tip") setTips(countUpdater);
     else if (itemType === "event") setEvents(countUpdater);
     else if (itemType === "housing") setHousing(countUpdater);
+    else if (itemType === "post") queryClient.setQueryData(["posts"], countUpdater);
     // Persist to DB
     await dbToggleLike(itemId, itemType, user.id);
   };
@@ -2325,6 +2384,29 @@ export default function App() {
             onGoHome={goHome}
             onLogin={handleLogin}
             onSend={handleSend}
+          />
+        )}
+
+        {scr==="community-chat" && (
+          <CommunityScreen
+            T={T}
+            cd={cd}
+            pl={pl}
+            iS={iS}
+            user={user}
+            posts={posts}
+            postsError={postsError}
+            liked={liked}
+            onGoHome={goHome}
+            onLogin={handleLogin}
+            onToggleLike={handleToggleLike}
+            onCreatePost={createPost}
+            onUpdatePost={updatePost}
+            onDeletePost={deletePost}
+            canManagePost={canManagePost}
+            onAddReply={addPostReply}
+            onEditReply={saveEditComment}
+            onDeleteReply={deleteCommentFn}
           />
         )}
       </main>
