@@ -140,9 +140,20 @@ function getDistrictKey(locationLabel = "") {
   return "generic";
 }
 
-function randomFrom(list = []) {
+function hashString(input = "") {
+  let h = 2166136261;
+  const s = String(input || "");
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  return Math.abs(h >>> 0);
+}
+
+function pickDeterministic(list = [], seed = "") {
   if (!Array.isArray(list) || list.length === 0) return "";
-  return list[Math.floor(Math.random() * list.length)];
+  const idx = hashString(seed) % list.length;
+  return list[idx];
 }
 
 export default function WeatherCard({ profileLocation, profileWeather }) {
@@ -152,10 +163,11 @@ export default function WeatherCard({ profileLocation, profileWeather }) {
   const weatherKey = getWeatherKey(String(profileWeather?.text || ""));
   const tip = useMemo(() => {
     const districtKey = getDistrictKey(locationLabel);
-    const districtJoke = randomFrom(DISTRICT_JOKES[districtKey]);
+    const seed = `${locationLabel}|${weatherText}|${weatherKey}`;
+    const districtJoke = pickDeterministic(DISTRICT_JOKES[districtKey], seed);
     if (districtJoke) return districtJoke;
-    return randomFrom(DISTRICT_JOKES.generic) || weatherKey;
-  }, [locationLabel, weatherKey]);
+    return pickDeterministic(DISTRICT_JOKES.generic, seed) || weatherKey;
+  }, [locationLabel, weatherKey, weatherText]);
 
   return (
     <div
