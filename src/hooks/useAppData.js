@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -6,8 +6,6 @@ import {
   getTips as fetchTips,
   getEvents as fetchEvents,
   getHousing as fetchHousing,
-  getJobs as fetchJobs,
-  getMarket as fetchMarket,
   getAllComments,
   getUserLikes,
   supabase,
@@ -121,7 +119,7 @@ function mapHousing(h) {
       (t) =>
         !String(t).startsWith("contact_tg:") &&
         !String(t).startsWith("contact_msg:") &&
-        !String(t).startsWith("comment:")
+        !String(t).startsWith("comment:"),
     ),
     comment: commentText,
     telegram: tgTag ? String(tgTag).replace("contact_tg:", "").trim() : "",
@@ -135,128 +133,158 @@ function mapHousing(h) {
   };
 }
 
-export function useAppData({ user, authReady }) {
+function needsPlaces(screen) {
+  return ["district", "places-cat", "place-item", "my-places"].includes(screen);
+}
+
+function needsTips(screen) {
+  return screen === "tips";
+}
+
+function needsEvents(screen) {
+  return screen === "events";
+}
+
+function needsHousing(screen) {
+  return screen === "housing" || screen === "housing-item";
+}
+
+export function useAppData({ user, authReady, screen }) {
   const [places, setPlaces] = useState([]);
   const [tips, setTips] = useState([]);
   const [events, setEvents] = useState([]);
   const [housing, setHousing] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [market, setMarket] = useState([]);
   const [liked, setLiked] = useState({});
+
   const reloadTimerRef = useRef(null);
+  const loadedRef = useRef({ places: false, tips: false, events: false, housing: false, likesForUserId: null });
 
-  const reload = useCallback(async (authUser = null) => {
-    const [
-      { data: dbPlaces, error: placesError },
-      { data: dbTips, error: tipsError },
-      { data: dbEvents, error: eventsError },
-      { data: dbHousing, error: housingError },
-      { data: dbJobs, error: jobsError },
-      { data: dbMarket, error: marketError },
-      { data: placeComments },
-      { data: tipComments },
-      { data: eventComments },
-    ] = await Promise.all([
-      fetchPlaces(),
-      fetchTips(),
-      fetchEvents(),
-      fetchHousing(),
-      fetchJobs(),
-      fetchMarket(),
-      getAllComments("place"),
-      getAllComments("tip"),
-      getAllComments("event"),
-    ]);
-
+  const loadPlaces = useCallback(async () => {
+    const [placesRes, commentsRes] = await Promise.all([fetchPlaces(), getAllComments("place")]);
+    const { data: dbPlaces, error } = placesRes;
+    const { data: placeComments } = commentsRes;
+    if (error) return;
     const placesByItem = groupComments(placeComments);
-    const tipsByItem = groupComments(tipComments);
-    const eventsByItem = groupComments(eventComments);
-
     const mappedPlaces = (dbPlaces || [])
       .map((p) => mapPlace(p, placesByItem))
       .filter((p) => PLACE_CAT_IDS.has(p.cat));
-    const mappedTips = (dbTips || []).map((t) => mapTip(t, tipsByItem));
-    const mappedEvents = (dbEvents || []).map((e) => mapEvent(e, eventsByItem));
-    const mappedHousing = (dbHousing || []).map((h) => mapHousing(h));
-
-    if (!placesError) setPlaces(mappedPlaces);
-    if (!tipsError) setTips(mappedTips);
-    if (!eventsError) setEvents(mappedEvents);
-    if (!housingError) setHousing(mappedHousing);
-    else setHousing(INIT_HOUSING);
-    if (!jobsError) setJobs((dbJobs || []).map((j) => ({
-      id: j.id, type: j.type, title: j.title, district: j.district,
-      price: j.price, price_type: j.price_type || "",
-      schedule: j.schedule, english_lvl: j.english_lvl,
-      work_auth: j.work_auth, description: j.description,
-      telegram: j.telegram, phone: j.phone,
-      author: j.author, user_id: j.user_id,
-      likes: j.likes_count || 0, views: Number(j.views || 0),
-      created_at: j.created_at,
-    })));
-    if (!marketError) setMarket((dbMarket || []).map((m) => ({
-      id: m.id,
-      title: m.title || "",
-      price: m.price || "",
-      description: m.description || "",
-      photos: Array.isArray(m.photos) ? m.photos : [],
-      telegram: m.telegram || "",
-      phone: m.phone || "",
-      author: m.author || "",
-      user_id: m.user_id,
-      likes: m.likes_count || 0,
-      views: Number(m.views || 0),
-      created_at: m.created_at,
-    })));
-
-    if (authUser?.id) {
-      const userLikes = await getUserLikes(authUser.id);
-      setLiked(userLikes || {});
-    }
+    setPlaces(mappedPlaces);
+    loadedRef.current.places = true;
   }, []);
 
-  // Initial load + reload on user change.
+  const loadTips = useCallback(async () => {
+    const [tipsRes, commentsRes] = await Promise.all([fetchTips(), getAllComments("tip")]);
+    const { data: dbTips, error } = tipsRes;
+    const { data: tipComments } = commentsRes;
+    if (error) return;
+    const tipsByItem = groupComments(tipComments);
+    setTips((dbTips || []).map((t) => mapTip(t, tipsByItem)));
+    loadedRef.current.tips = true;
+  }, []);
+
+  const loadEvents = useCallback(async () => {
+    const [eventsRes, commentsRes] = await Promise.all([fetchEvents(), getAllComments("event")]);
+    const { data: dbEvents, error } = eventsRes;
+    const { data: eventComments } = commentsRes;
+    if (error) return;
+    const eventsByItem = groupComments(eventComments);
+    setEvents((dbEvents || []).map((e) => mapEvent(e, eventsByItem)));
+    loadedRef.current.events = true;
+  }, []);
+
+  const loadHousing = useCallback(async () => {
+    const { data: dbHousing, error } = await fetchHousing();
+    if (error) {
+      setHousing(INIT_HOUSING);
+      return;
+    }
+    setHousing((dbHousing || []).map((h) => mapHousing(h)));
+    loadedRef.current.housing = true;
+  }, []);
+
+  const loadLikes = useCallback(async (authUser) => {
+    if (!authUser?.id) {
+      setLiked({});
+      loadedRef.current.likesForUserId = null;
+      return;
+    }
+    if (loadedRef.current.likesForUserId === authUser.id) return;
+    const userLikes = await getUserLikes(authUser.id);
+    setLiked(userLikes || {});
+    loadedRef.current.likesForUserId = authUser.id;
+  }, []);
+
+  const reload = useCallback(async (authUser = null, force = false) => {
+    await loadLikes(authUser);
+
+    const shouldLoadPlaces = needsPlaces(screen) && (force || !loadedRef.current.places);
+    const shouldLoadTips = needsTips(screen) && (force || !loadedRef.current.tips);
+    const shouldLoadEvents = needsEvents(screen) && (force || !loadedRef.current.events);
+    const shouldLoadHousing = needsHousing(screen) && (force || !loadedRef.current.housing);
+
+    const tasks = [];
+    if (shouldLoadPlaces) tasks.push(loadPlaces());
+    if (shouldLoadTips) tasks.push(loadTips());
+    if (shouldLoadEvents) tasks.push(loadEvents());
+    if (shouldLoadHousing) tasks.push(loadHousing());
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks);
+    }
+  }, [loadEvents, loadHousing, loadLikes, loadPlaces, loadTips, screen]);
+
   useEffect(() => {
     if (!authReady) return;
-    if (!user) setLiked({});
-    reload(user || null);
-  }, [authReady, user, reload]);
+    reload(user || null, false);
+  }, [authReady, user, screen, reload]);
 
-  // Realtime sync — debounced reload on any data table change.
   useEffect(() => {
     const scheduleReload = () => {
       if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
       reloadTimerRef.current = setTimeout(() => {
-        reload(user || null);
+        reload(user || null, true);
       }, 260);
     };
 
     const channel = supabase
       .channel("svoi_la_realtime_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "places" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tips" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "housing" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "places" }, () => {
+        if (needsPlaces(screen) || loadedRef.current.places) scheduleReload();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "tips" }, () => {
+        if (needsTips(screen) || loadedRef.current.tips) scheduleReload();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => {
+        if (needsEvents(screen) || loadedRef.current.events) scheduleReload();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "housing" }, () => {
+        if (needsHousing(screen) || loadedRef.current.housing) scheduleReload();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => {
+        if (needsPlaces(screen) || needsTips(screen) || needsEvents(screen)) scheduleReload();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, () => {
+        scheduleReload();
+      })
       .subscribe();
 
     return () => {
       if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user, reload]);
+  }, [screen, user, reload]);
 
   return {
-    places, setPlaces,
-    tips, setTips,
-    events, setEvents,
-    housing, setHousing,
-    jobs, setJobs,
-    market, setMarket,
-    liked, setLiked,
+    places,
+    setPlaces,
+    tips,
+    setTips,
+    events,
+    setEvents,
+    housing,
+    setHousing,
+    liked,
+    setLiked,
     reload,
   };
 }

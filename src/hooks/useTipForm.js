@@ -6,8 +6,6 @@ export function useTipForm({
   tips,
   canManageTip,
   setTips,
-  showComments,
-  setShowComments,
   exp,
   setExp,
   dbAddTip,
@@ -77,7 +75,6 @@ export function useTipForm({
     setTips((prev) => prev.filter((t) => t.id !== tipId));
     setShowAddTip(false);
     setEditingTip(null);
-    if (showComments === `tip-${tipId}`) setShowComments(null);
     if (exp === `tip-${tipId}`) setExp(null);
   };
 

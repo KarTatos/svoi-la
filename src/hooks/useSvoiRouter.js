@@ -1,12 +1,6 @@
 import { useEffect } from "react";
-import { useSessionState } from "./useSessionState";
 
-export function useSvoiRouter({ user, selPlace, places, selHousing, housing }) {
-  const [scr, setScr] = useSessionState("scr", "home", {
-    serialize: (value) => String(value || ""),
-    deserialize: (raw) => String(raw || ""),
-  });
-
+export function useSvoiRouter({ scr, setScr, user, selPlace, places, selHousing, housing }) {
   const hasActivePlace = Boolean(
     selPlace && (places || []).some((p) => String(p?.id) === String(selPlace?.id))
   );

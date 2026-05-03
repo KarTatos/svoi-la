@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 
 function toDateTimeLocal(value) {
   if (!value) return "";
@@ -217,7 +218,7 @@ export default function EventCreateModal({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
           {photos.map((ph, idx) => (
             <div key={`${ph}-${idx}`} style={{ position: "relative" }}>
-              <img src={ph} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: 10, border: `1px solid ${palette.border}` }} />
+              <Image src={ph} alt="" width={70} height={70} unoptimized style={{ width: 70, height: 70, objectFit: "cover", borderRadius: 10, border: `1px solid ${palette.border}` }} />
               <button
                 onClick={() => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
                 style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 999, border: "none", background: "rgba(0,0,0,0.72)", color: "#fff", cursor: "pointer", fontSize: 11, lineHeight: "18px", padding: 0 }}

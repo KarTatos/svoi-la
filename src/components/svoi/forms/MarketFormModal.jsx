@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
 
 const MAX_PHOTOS = 5;
 
@@ -67,7 +68,7 @@ export default function MarketFormModal({
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(form.photos || []).map((p, i) => (
               <div key={i} style={{ position: "relative", width: 72, height: 72, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
-                <img src={photoSrc(p)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <Image src={photoSrc(p)} alt="" fill sizes="72px" unoptimized style={{ objectFit: "cover" }} />
                 <button
                   onClick={() => removePhoto(i)}
                   style={{ position: "absolute", top: 3, right: 3, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 12, lineHeight: 1, padding: 0 }}

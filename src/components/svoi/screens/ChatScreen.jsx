@@ -5,7 +5,14 @@ export default function ChatScreen({
   onGoHome, onLogin, onSend,
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 120px)" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "calc(100dvh - 220px)",
+        paddingBottom: "calc(var(--bottom-nav-reserve, 90px) + 8px)",
+      }}
+    >
       <button onClick={onGoHome} style={bk}>← Главная</button>
 
       {!user ? (

@@ -1,4 +1,5 @@
 import { HomeIcon, StarIcon } from "../config";
+import Image from "next/image";
 
 export default function HousingScreen({
   T,
@@ -115,7 +116,7 @@ export default function HousingScreen({
             >
               <div style={{ position: "relative", height: 188, background: "#E9EDF2" }}>
                 {h.photo ? (
-                  <img src={h.photo} alt={h.title || h.address} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <Image src={h.photo} alt={h.title || h.address} fill sizes="(max-width: 480px) 100vw, 480px" unoptimized style={{ objectFit: "cover", display: "block" }} />
                 ) : (
                   <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: T.light, fontSize: 12 }}>Нет фото</div>
                 )}

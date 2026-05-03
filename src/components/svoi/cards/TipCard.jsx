@@ -1,4 +1,5 @@
 import { HeartIcon, ShareIcon, StarIcon, ViewIcon, limitCardText, twoLineClampStyle } from "../config";
+import Image from "next/image";
 
 export default function TipCard({
   tip,
@@ -58,10 +59,13 @@ export default function TipCard({
             }}
           >
             {tip.photos.map((ph, pi) => (
-              <img
+              <Image
                 key={pi}
                 src={ph}
                 alt=""
+                width={86}
+                height={86}
+                unoptimized
                 style={{
                   width: 86,
                   height: 86,

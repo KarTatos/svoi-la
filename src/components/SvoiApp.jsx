@@ -1,6 +1,7 @@
 ﻿'use client';
 import { useCallback, useState, useEffect, useRef } from "react";
-import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto, addJob as dbAddJob, updateJob as dbUpdateJob, deleteJob as dbDeleteJob, addMarketItem as dbAddMarket, updateMarketItem as dbUpdateMarket, deleteMarketItem as dbDeleteMarket } from "../lib/supabase";
+import Image from "next/image";
+import { addPlace as dbAddPlace, updatePlace as dbUpdatePlace, deletePlace as dbDeletePlace, addTip as dbAddTip, updateTip as dbUpdateTip, deleteTip as dbDeleteTip, addEvent as dbAddEvent, updateEvent as dbUpdateEvent, deleteEvent as dbDeleteEvent, addHousing as dbAddHousing, updateHousing as dbUpdateHousing, deleteHousing as dbDeleteHousing, addComment as dbAddComment, updateComment as dbUpdateComment, deleteComment as dbDeleteComment, toggleLike as dbToggleLike, uploadPhoto } from "../lib/supabase";
 
 import { T, DISTRICTS, PLACE_CATS, PLACE_CAT_IDS, USCIS_CATS, CIVICS_RAW, shuffleTest, TIPS_CATS, EVENT_CATS, SECTIONS, RICH_PREFIX, CARD_TEXT_MAX, limitCardText, twoLineClampStyle, encodeRichText, decodeRichText, getUscisPdfUrl, HeartIcon, HomeIcon, CalendarIcon, StarIcon, ShareIcon, decodeHousingPhotos, encodeHousingPhotos, formatPlaceAddressLabel } from "./svoi/config";
 import JobsScreen from "./svoi/screens/JobsScreen";
@@ -40,6 +41,12 @@ import EventCreateModal from "./svoi/forms/EventCreateModal";
 import UscisPdfModal from "./svoi/modals/UscisPdfModal";
 import PlacesMapModal from "./svoi/modals/PlacesMapModal";
 import PhotoViewerModal from "./svoi/modals/PhotoViewerModal";
+import CommentsBlock from "./svoi/comments/CommentsBlock";
+import { useUiStore } from "../store/uiStore";
+import { useJobsQuery } from "../hooks/queries/useJobsQuery";
+import { useMarketQuery } from "../hooks/queries/useMarketQuery";
+import { useJobMutations } from "../hooks/queries/useJobMutations";
+import { useMarketMutations } from "../hooks/queries/useMarketMutations";
 
 const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .split(",")
@@ -47,15 +54,23 @@ const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export default function App() {
+  const [scr, setScr] = useSessionState("scr", "home", {
+    serialize: (value) => String(value || ""),
+    deserialize: (raw) => String(raw || ""),
+  });
   const [selU, setSelU] = useState(null);
   const [selD, setSelD] = useSessionState("selD", null);
   const [selPC, setSelPC] = useSessionState("selPC", null);
   const [selPlace, setSelPlace] = useState(null);
   const [selTC, setSelTC] = useState(null);
-  const [tipsSearchInput, setTipsSearchInput] = useState("");
-  const [tipsSearchApplied, setTipsSearchApplied] = useState("");
-  const [housingBedsFilter, setHousingBedsFilter] = useState("all");
-  const [housingSortByFavorites, setHousingSortByFavorites] = useState(false);
+  const tipsSearchInput = useUiStore((s) => s.tipsSearchInput);
+  const setTipsSearchInput = useUiStore((s) => s.setTipsSearchInput);
+  const tipsSearchApplied = useUiStore((s) => s.tipsSearchApplied);
+  const setTipsSearchApplied = useUiStore((s) => s.setTipsSearchApplied);
+  const housingBedsFilter = useUiStore((s) => s.housingBedsFilter);
+  const setHousingBedsFilter = useUiStore((s) => s.setHousingBedsFilter);
+  const housingSortByFavorites = useUiStore((s) => s.housingSortByFavorites);
+  const setHousingSortByFavorites = useUiStore((s) => s.setHousingSortByFavorites);
   const [exp, setExp] = useState(null);
   const [expF, setExpF] = useState(null);
   const [expTip, setExpTip] = useState(null);
@@ -67,8 +82,10 @@ export default function App() {
   const [mapError, setMapError] = useState("");
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
-  const [placeSortField, setPlaceSortField] = useState("likes");
-  const [placeSortDir, setPlaceSortDir] = useState("desc");
+  const placeSortField = useUiStore((s) => s.placeSortField);
+  const setPlaceSortField = useUiStore((s) => s.setPlaceSortField);
+  const placeSortDir = useUiStore((s) => s.placeSortDir);
+  const setPlaceSortDir = useUiStore((s) => s.setPlaceSortDir);
   const [miniMapLoading, setMiniMapLoading] = useState(false);
   const [miniMapError, setMiniMapError] = useState("");
   const [miniMapPlaces, setMiniMapPlaces] = useState([]);
@@ -76,7 +93,8 @@ export default function App() {
   const [miniRouteInfo, setMiniRouteInfo] = useState(null);
   const [miniRouteLoading, setMiniRouteLoading] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
-  const [favorites, setFavorites] = useState({});
+  const favorites = useUiStore((s) => s.favorites);
+  const setFavorites = useUiStore((s) => s.setFavorites);
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn, signOut: authSignOut, isAdmin } = useAuth(ADMIN_EMAILS);
@@ -85,14 +103,13 @@ export default function App() {
     tips, setTips,
     events, setEvents,
     housing, setHousing,
-    jobs, setJobs,
-    market, setMarket,
     liked, setLiked,
-  } = useAppData({ user, authReady });
-  const [newComment, setNewComment] = useState("");
+  } = useAppData({ user, authReady, screen: scr });
+  const { data: jobs = [] } = useJobsQuery(authReady);
+  const { data: market = [] } = useMarketQuery(authReady);
+  const { addJobMutation, updateJobMutation, deleteJobMutation } = useJobMutations();
+  const { addMarketMutation, updateMarketMutation, deleteMarketMutation } = useMarketMutations();
   const [showComments, setShowComments] = useState(null);
-  const [editingComment, setEditingComment] = useState(null);
-  const [editCommentText, setEditCommentText] = useState("");
   const [selEC, setSelEC] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
@@ -110,8 +127,11 @@ export default function App() {
   const [addrLoadingHousing, setAddrLoadingHousing] = useState(false);
   const [addrValidPlace, setAddrValidPlace] = useState(false);
   const [addrValidHousing, setAddrValidHousing] = useState(false);
-  const [photoViewer, setPhotoViewer] = useState(null);
-  const [photoZoom, setPhotoZoom] = useState(1);
+  const photoViewer = useUiStore((s) => s.photoViewer);
+  const setPhotoViewer = useUiStore((s) => s.setPhotoViewer);
+  const photoZoom = useUiStore((s) => s.photoZoom);
+  const setPhotoZoom = useUiStore((s) => s.setPhotoZoom);
+  const resetUi = useUiStore((s) => s.resetUi);
   const [chat, setChat] = useState([{ role:"assistant", text:"Здравствуйте. Задайте вопрос по USCIS, местам, событиям, советам или жилью." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
@@ -120,7 +140,9 @@ export default function App() {
   const { news: uscisNews } = useUscisNews();
   const [selHousing, setSelHousing] = useState(null);
   const [housingTextCollapsed, setHousingTextCollapsed] = useState(false);
-  const { scr, setScr } = useSvoiRouter({
+  useSvoiRouter({
+    scr,
+    setScr,
     user,
     selPlace,
     places,
@@ -220,8 +242,6 @@ export default function App() {
     tips,
     canManageTip,
     setTips,
-    showComments,
-    setShowComments,
     exp,
     setExp,
     dbAddTip,
@@ -260,7 +280,7 @@ export default function App() {
     } catch {
       setFavorites({});
     }
-  }, [user?.id]);
+  }, [user?.id, setFavorites]);
 
   useEffect(() => {
     try {
@@ -316,7 +336,7 @@ export default function App() {
   }, [setSelD, setSelPC]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior:"smooth" }); }, [chat, typing]);
 
-  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); setTipsSearchInput(""); setTipsSearchApplied(""); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setEditingPlace(null); setFilterDate(null); };
+  const goHome = () => { setScr("home"); setSelU(null); setSelD(null); setSelPC(null); setSelPlace(null); setSelTC(null); setSelEC(null); setSelHousing(null); setExp(null); setExpF(null); setExpTip(null); setMapP(null); setShowMapModal(false); setMapPlaces([]); setSelectedMapPlace(null); setMiniSelectedPlaceId(null); setMiniRouteInfo(null); setMiniRouteLoading(false); setSrch(""); resetUi(); setShowAdd(false); resetTipForm(); setShowAddEvent(false); setEditingEvent(null); setShowAddHousing(false); setEditingHousing(null); setNewHousing({ address:"", district:"", type:"studio", minPrice:"", comment:"", telegram:"", messageContact:"" }); setNewHousingPhotos([]); setAddrValidHousing(false); setAddrOptionsHousing([]); setEditingPlace(null); setFilterDate(null); };
   const openExternalUrl = (url) => {
     if (!url) return;
     try {
@@ -1098,26 +1118,26 @@ export default function App() {
     if (error) console.error("Login error:", error);
   };
   const handleLogout = async () => { await authSignOut(); setLiked({}); setFavorites({}); };
-  const handleAddComment = async (tipId) => {
-    if (!newComment.trim() || !user) return;
-    const { data } = await dbAddComment({ item_id:tipId, item_type:"tip", author:user.name, user_id:user.id, text:newComment.trim() });
+  const handleAddComment = async (tipId, text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed || !user) return;
+    const { data } = await dbAddComment({ item_id:tipId, item_type:"tip", author:user.name, user_id:user.id, text:trimmed });
     const cId = data?.[0]?.id || Date.now();
-    setTips(prev => prev.map(t => t.id === tipId ? { ...t, comments: [...(t.comments||[]), { id:cId, author:user.name, text:newComment.trim(), userId:user.id }] } : t));
-    setNewComment("");
+    setTips(prev => prev.map(t => t.id === tipId ? { ...t, comments: [...(t.comments||[]), { id:cId, author:user.name, text:trimmed, userId:user.id }] } : t));
   };
-  const addPlaceComment = async (placeId) => {
-    if (!newComment.trim() || !user) return;
-    const { data } = await dbAddComment({ item_id:placeId, item_type:"place", author:user.name, user_id:user.id, text:newComment.trim() });
+  const addPlaceComment = async (placeId, text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed || !user) return;
+    const { data } = await dbAddComment({ item_id:placeId, item_type:"place", author:user.name, user_id:user.id, text:trimmed });
     const cId = data?.[0]?.id || Date.now();
-    setPlaces(prev => prev.map(p => p.id === placeId ? { ...p, comments: [...(p.comments||[]), { id:cId, author:user.name, text:newComment.trim(), userId:user.id }] } : p));
-    setNewComment("");
+    setPlaces(prev => prev.map(p => p.id === placeId ? { ...p, comments: [...(p.comments||[]), { id:cId, author:user.name, text:trimmed, userId:user.id }] } : p));
   };
-  const addEventComment = async (eventId) => {
-    if (!newComment.trim() || !user) return;
-    const { data } = await dbAddComment({ item_id:eventId, item_type:"event", author:user.name, user_id:user.id, text:newComment.trim() });
+  const addEventComment = async (eventId, text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed || !user) return;
+    const { data } = await dbAddComment({ item_id:eventId, item_type:"event", author:user.name, user_id:user.id, text:trimmed });
     const cId = data?.[0]?.id || Date.now();
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, comments: [...(e.comments||[]), { id:cId, author:user.name, text:newComment.trim(), userId:user.id }] } : e));
-    setNewComment("");
+    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, comments: [...(e.comments||[]), { id:cId, author:user.name, text:trimmed, userId:user.id }] } : e));
   };
   const deleteCommentFn = async (itemId, commentId, type) => {
     await dbDeleteComment(commentId);
@@ -1126,14 +1146,14 @@ export default function App() {
     else if (type === "tip") setTips(updater);
     else if (type === "event") setEvents(updater);
   };
-  const saveEditComment = async (itemId, commentId, type) => {
-    if (!editCommentText.trim()) return;
-    await dbUpdateComment(commentId, editCommentText.trim());
-    const updater = (items) => items.map(item => item.id === itemId ? { ...item, comments: (item.comments||[]).map(c => c.id === commentId ? { ...c, text: editCommentText.trim() } : c) } : item);
+  const saveEditComment = async (itemId, commentId, type, text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed) return;
+    await dbUpdateComment(commentId, trimmed);
+    const updater = (items) => items.map(item => item.id === itemId ? { ...item, comments: (item.comments||[]).map(c => c.id === commentId ? { ...c, text: trimmed } : c) } : item);
     if (type === "place") setPlaces(updater);
     else if (type === "tip") setTips(updater);
     else if (type === "event") setEvents(updater);
-    setEditingComment(null); setEditCommentText("");
   };
   const startEditEvent = (eventItem) => {
     if (!eventItem) return;
@@ -1571,49 +1591,20 @@ export default function App() {
     };
   }, [showAdd, showAddTip, showAddEvent, showAddHousing]);
 
-  // ─── Reusable Comments Block ───
-  const renderComments = (item, type, addFn) => {
-    const comments = item.comments || [];
-    const isOpen = showComments === `${type}-${item.id}`;
-    return (
-      <div style={{ padding:"0 16px 16px" }}>
-        <button onClick={e=>{e.stopPropagation(); setShowComments(isOpen ? null : `${type}-${item.id}`); setNewComment(""); setEditingComment(null);}}
-          style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:T.mid, padding:"4px 0", display:"flex", alignItems:"center", gap:6 }}>
-          💬 Комментарии ({comments.length}) <span style={{ fontSize:10, color:T.light, transition:"0.3s", transform:isOpen?"rotate(180deg)":"" }}>▼</span>
-        </button>
-        {isOpen && (<div style={{ marginTop:8 }}>
-          {comments.map((c) => (
-            <div key={c.id||Math.random()} style={{ padding:"10px 12px", background:T.bg, borderRadius:10, marginBottom:6, fontSize:13 }}>
-              {editingComment === c.id ? (
-                <div style={{ display:"flex", gap:6 }}>
-                  <input value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{ ...iS, flex:1, padding:"8px 12px", fontSize:13 }} />
-                  <button onClick={()=>saveEditComment(item.id, c.id, type)} style={{ ...pl(true), padding:"8px 14px", fontSize:12 }}>✓</button>
-                  <button onClick={()=>{setEditingComment(null);setEditCommentText("")}} style={{ ...pl(false), padding:"8px 14px", fontSize:12 }}>✕</button>
-                </div>
-              ) : (<div>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span style={{ fontWeight:600, color:T.text }}>{c.author}</span>
-                  {user && (user.id === c.userId || user.name === c.author) && (
-                    <div style={{ display:"flex", gap:4 }}>
-                      <button onClick={()=>{setEditingComment(c.id);setEditCommentText(c.text)}} style={{ background:"none", border:"none", color:T.light, cursor:"pointer", fontSize:11, padding:2 }}>✏️</button>
-                      <button onClick={()=>deleteCommentFn(item.id, c.id, type)} style={{ background:"none", border:"none", color:"#E74C3C", cursor:"pointer", fontSize:11, padding:2 }}>🗑</button>
-                    </div>
-                  )}
-                </div>
-                <div style={{ color:T.mid, marginTop:4 }}>{c.text}</div>
-              </div>)}
-            </div>
-          ))}
-          {user ? (
-            <div style={{ display:"flex", gap:8, marginTop:6 }}>
-              <input value={newComment} onChange={e=>setNewComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFn(item.id)} placeholder="Написать комментарий..." style={{ ...iS, flex:1, padding:"10px 14px" }} />
-              <button onClick={()=>addFn(item.id)} disabled={!newComment.trim()} style={{ ...pl(!!newComment.trim()), padding:"10px 16px", opacity:newComment.trim()?1:0.5 }}>→</button>
-            </div>
-          ) : (<button onClick={handleLogin} style={{ ...pl(false), width:"100%", fontSize:12, marginTop:4 }}>Войдите чтобы комментировать</button>)}
-        </div>)}
-      </div>
-    );
-  };
+  const renderComments = (item, type, addFn) => (
+    <CommentsBlock
+      item={item}
+      type={type}
+      T={T}
+      iS={iS}
+      pl={pl}
+      user={user}
+      onLogin={handleLogin}
+      onAddComment={addFn}
+      onEditComment={saveEditComment}
+      onDeleteComment={deleteCommentFn}
+    />
+  );
 
   // Prevent iOS pinch zoom
   useEffect(() => {
@@ -1941,10 +1932,14 @@ export default function App() {
                 {Array.isArray(p.photos) && p.photos.length > 0 && (
                   <div style={{ marginTop:10, display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6 }}>
                     {p.photos.slice(0, 3).map((ph, pi) => (
-                      <img
+                      <Image
                         key={pi}
                         src={ph}
                         alt=""
+                        width={180}
+                        height={105}
+                        sizes="(max-width: 480px) 31vw, 180px"
+                        unoptimized
                         style={{ width:"100%", height:105, objectFit:"cover", borderRadius:10, border:`1px solid ${T.borderL}`, display:"block" }}
                       />
                     ))}
@@ -1988,7 +1983,7 @@ export default function App() {
               {activePlace.photos?.length > 0 && (
                 <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:10, paddingBottom:4, scrollSnapType:"x mandatory" }}>
                   {activePlace.photos.map((ph, pi) => (
-                    <img key={pi} src={ph} alt="" style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => openPhotoViewer(activePlace.photos, pi)} />
+                    <Image key={pi} src={ph} alt="" width={120} height={120} sizes="120px" unoptimized style={{ width:120, height:120, objectFit:"cover", borderRadius:12, border:`1px solid ${T.border}`, cursor:"zoom-in", flexShrink:0, scrollSnapAlign:"start" }} onClick={() => openPhotoViewer(activePlace.photos, pi)} />
                   ))}
                 </div>
               )}
@@ -2124,16 +2119,13 @@ export default function App() {
             onRequireAuth={handleLogin}
             trackView={trackView}
             onAdd={async (payload) => {
-              const { data } = await dbAddJob(payload);
-              if (data?.[0]) setJobs((prev) => [{ ...data[0], likes: 0, views: 0 }, ...prev]);
+              await addJobMutation.mutateAsync(payload);
             }}
             onUpdate={async (id, payload) => {
-              const { data } = await dbUpdateJob(id, payload);
-              if (data?.[0]) setJobs((prev) => prev.map((j) => j.id === id ? { ...j, ...data[0] } : j));
+              await updateJobMutation.mutateAsync({ id, payload });
             }}
             onDelete={async (id) => {
-              await dbDeleteJob(id);
-              setJobs((prev) => prev.filter((j) => j.id !== id));
+              await deleteJobMutation.mutateAsync(id);
             }}
             canManage={(job) => canManageByOwnership(job?.user_id, job?.author)}
           />
@@ -2152,16 +2144,13 @@ export default function App() {
             onRequireAuth={handleLogin}
             trackView={trackView}
             onAdd={async (payload) => {
-              const { data } = await dbAddMarket(payload);
-              if (data?.[0]) setMarket((prev) => [{ ...data[0], likes: 0, views: 0, photos: data[0].photos || [] }, ...prev]);
+              await addMarketMutation.mutateAsync(payload);
             }}
             onUpdate={async (id, payload) => {
-              const { data } = await dbUpdateMarket(id, payload);
-              if (data?.[0]) setMarket((prev) => prev.map((m) => m.id === id ? { ...m, ...data[0] } : m));
+              await updateMarketMutation.mutateAsync({ id, payload });
             }}
             onDelete={async (id) => {
-              await dbDeleteMarket(id);
-              setMarket((prev) => prev.filter((m) => m.id !== id));
+              await deleteMarketMutation.mutateAsync(id);
             }}
             canManage={(item) => canManageByOwnership(item?.user_id, item?.author)}
             uploadPhoto={uploadPhoto}
@@ -2302,7 +2291,7 @@ export default function App() {
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:18 }}>
                 {newHousingPhotos.map((p, i) => (
                   <div key={`${p.preview || p.name || 'photo'}-${p.file?.lastModified || ''}-${p.file?.size || ''}`} style={{ position:"relative", width:60, height:60, borderRadius:8, overflow:"hidden", border:`1px solid ${T.border}`, flexShrink:0 }}>
-                    <img src={p.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    <Image src={p.preview} alt="" fill sizes="60px" unoptimized style={{ objectFit:"cover", display:"block" }} />
                     <button onClick={()=>setNewHousingPhotos((pr)=>pr.filter((_,j)=>j!==i))} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", cursor:"pointer", borderRadius:"50%", width:18, height:18, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>✕</button>
                   </div>
                 ))}
@@ -2393,6 +2382,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 

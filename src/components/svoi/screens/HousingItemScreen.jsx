@@ -1,4 +1,5 @@
 import { HeartIcon, ShareIcon, StarIcon } from "../config";
+import Image from "next/image";
 
 export default function HousingItemScreen({
   T,
@@ -38,7 +39,7 @@ export default function HousingItemScreen({
                 onClick={() => openPhotoViewer(galleryPhotos, i)}
                 style={{ display: "block", width: "100%", padding: 0, margin: 0, border: "none", background: "transparent", cursor: "zoom-in" }}
               >
-                <img src={src} alt="" style={{ width: "100%", minHeight: 240, maxHeight: 560, objectFit: "cover", display: "block", borderBottom: `1px solid rgba(255,255,255,0.1)` }} />
+                <Image src={src} alt="" width={1200} height={560} unoptimized style={{ width: "100%", minHeight: 240, maxHeight: 560, objectFit: "cover", display: "block", borderBottom: `1px solid rgba(255,255,255,0.1)` }} />
               </button>
             ))}
           </div>
