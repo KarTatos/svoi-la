@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   addHousing as dbAddHousing,
   addPlace as dbAddPlace,
@@ -604,13 +605,13 @@ export default function AdminPlaces() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
                 {(form.photos || []).map((src, i) => (
                   <div key={`existing-${i}`} style={thumbWrap}>
-                    <img src={src} alt="" style={thumb} />
+                    <Image src={src} alt="" width={64} height={64} unoptimized style={thumb} />
                     <button onClick={() => removeExistingPhoto(i)} style={closeBtn}>x</button>
                   </div>
                 ))}
                 {newPhotos.map((p, i) => (
                   <div key={`new-${i}`} style={thumbWrap}>
-                    <img src={p.preview} alt="" style={thumb} />
+                    <Image src={p.preview} alt="" width={64} height={64} unoptimized style={thumb} />
                     <button onClick={() => removeNewPhoto(i)} style={closeBtn}>x</button>
                   </div>
                 ))}

@@ -1,4 +1,5 @@
 import { HeartIcon } from "../config";
+import Image from "next/image";
 
 export default function MarketCard({ item, isLiked, T, cd, pl, onClick, onToggleLike }) {
   const photo = item.photos?.[0];
@@ -11,11 +12,7 @@ export default function MarketCard({ item, isLiked, T, cd, pl, onClick, onToggle
       {/* Square photo */}
       <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: T.bg, flexShrink: 0 }}>
         {photo ? (
-          <img
-            src={photo}
-            alt={item.title}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          <Image src={photo} alt={item.title} fill sizes="(max-width: 480px) 50vw, 240px" unoptimized style={{ objectFit: "cover" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>
             🏷️

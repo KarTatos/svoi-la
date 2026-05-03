@@ -1,4 +1,5 @@
 ﻿import { useRef } from "react";
+import Image from "next/image";
 import { EVENT_CATS, CalendarIcon, StarIcon, HeartIcon, ShareIcon, limitCardText } from "../config";
 
 // в”Ђв”Ђв”Ђ Pure helpers (events-only) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -36,7 +37,7 @@ function getEventTimeLabel(value) {
 
 function renderEventIcon(icon, size = 30) {
   if (typeof icon === "string" && icon.startsWith("/")) {
-    return <img src={icon} alt="" style={{ width: size, height: size, objectFit: "contain", display: "block" }} />;
+    return <Image src={icon} alt="" width={size} height={size} style={{ objectFit: "contain", display: "block" }} />;
   }
   return icon;
 }
@@ -383,7 +384,7 @@ export default function EventsScreen({
                   {ev.photos?.length > 0 && (
                     <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 10, paddingBottom: 4, scrollSnapType: "x mandatory" }}>
                       {ev.photos.map((ph, pi) => (
-                        <img key={pi} src={ph} alt="" style={{ width: 86, height: 86, objectFit: "cover", borderRadius: 10, border: `1px solid ${T.border}`, cursor: "zoom-in", flexShrink: 0, scrollSnapAlign: "start" }} onClick={(e) => { e.stopPropagation(); onOpenPhotoViewer(ev.photos, pi); }} />
+                        <Image key={pi} src={ph} alt="" width={86} height={86} unoptimized style={{ width: 86, height: 86, objectFit: "cover", borderRadius: 10, border: `1px solid ${T.border}`, cursor: "zoom-in", flexShrink: 0, scrollSnapAlign: "start" }} onClick={(e) => { e.stopPropagation(); onOpenPhotoViewer(ev.photos, pi); }} />
                       ))}
                     </div>
                   )}
@@ -437,5 +438,6 @@ export default function EventsScreen({
     </div>
   );
 }
+
 
 
