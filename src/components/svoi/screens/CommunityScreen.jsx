@@ -51,7 +51,6 @@ export default function CommunityScreen({
   const [errorText, setErrorText] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [expandedPostId, setExpandedPostId] = useState(null);
-  const [replyInputPostId, setReplyInputPostId] = useState(null);
 
   const submitPost = async () => {
     const trimmed = text.trim();
@@ -208,7 +207,6 @@ export default function CommunityScreen({
                       onClick={(e) => {
                         e.stopPropagation();
                         setExpandedPostId(post.id);
-                        setReplyInputPostId((v) => (v === post.id ? null : post.id));
                       }}
                       style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, fontSize: 14, color: "#d8d8d8", display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
@@ -233,7 +231,7 @@ export default function CommunityScreen({
                 onDeleteComment={onDeleteReply}
                 isOpen={expandedPostId === post.id}
                 showHeader={false}
-                showInput={replyInputPostId === post.id}
+                showInput={expandedPostId === post.id}
                 inputPlaceholder="Ответ..."
               />
             </div>

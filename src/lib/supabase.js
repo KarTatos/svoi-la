@@ -328,6 +328,7 @@ export async function deletePost(id) {
   const { error } = await supabase.from('posts').delete().eq('id', id);
   if (error) return { error };
   await supabase.from('comments').delete().eq('item_id', id).eq('item_type', 'post');
+  await supabase.from('comments').delete().eq('item_id', `post:${id}`).eq('item_type', 'tip');
   await supabase.from('likes').delete().eq('item_id', id).eq('item_type', 'post');
   return { error: null };
 }

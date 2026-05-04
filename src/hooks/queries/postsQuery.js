@@ -15,17 +15,26 @@ export function mapPost(row, commentsByItem) {
 function groupComments(rows) {
   const grouped = {};
   (rows || []).forEach((c) => {
-    if (!grouped[c.item_id]) grouped[c.item_id] = [];
-    grouped[c.item_id].push({ id: c.id, author: c.author, text: c.text, userId: c.user_id });
+    const rawId = String(c.item_id || "");
+    const itemId = rawId.startsWith("post:") ? rawId.slice(5) : rawId;
+    if (!itemId) return;
+    if (!grouped[itemId]) grouped[itemId] = [];
+    grouped[itemId].push({ id: c.id, author: c.author, text: c.text, userId: c.user_id });
   });
   return grouped;
 }
 
 export async function fetchPostsQuery() {
-  const [postsRes, commentsRes] = await Promise.all([getPosts(), getAllComments("post")]);
+  const [postsRes, postCommentsRes, legacyCommentsRes] = await Promise.all([
+    getPosts(),
+    getAllComments("post"),
+    getAllComments("tip"),
+  ]);
   const { data: posts, error } = postsRes;
-  const { data: postComments } = commentsRes;
+  const { data: postComments } = postCommentsRes;
+  const { data: legacyComments } = legacyCommentsRes;
   if (error) throw error;
-  const byItem = groupComments(postComments);
+  const legacyOnly = (legacyComments || []).filter((c) => String(c.item_id || "").startsWith("post:"));
+  const byItem = groupComments([...(postComments || []), ...legacyOnly]);
   return (posts || []).map((p) => mapPost(p, byItem));
 }

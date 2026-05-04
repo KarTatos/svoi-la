@@ -22,13 +22,23 @@ export default function CommentsBlock({
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const isOpen = typeof isOpenProp === "boolean" ? isOpenProp : internalOpen;
 
   const submitAdd = async () => {
     const text = newComment.trim();
-    if (!text) return;
-    await onAddComment(item.id, text);
-    setNewComment("");
+    if (!text || isSubmitting) return;
+    setSubmitError("");
+    setIsSubmitting(true);
+    try {
+      await onAddComment(item.id, text);
+      setNewComment("");
+    } catch (e) {
+      setSubmitError(e?.message || "Не удалось отправить комментарий.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const saveEdit = async (commentId) => {
@@ -108,16 +118,21 @@ export default function CommentsBlock({
           ))}
 
           {user && showInput ? (
-            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <input
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitAdd()}
-                placeholder={inputPlaceholder}
-                style={{ ...iS, flex: 1, padding: "10px 14px" }}
-              />
-              <button onClick={submitAdd} disabled={!newComment.trim()} style={{ ...pl(!!newComment.trim()), padding: "10px 16px", opacity: newComment.trim() ? 1 : 0.5 }}>{"->"}</button>
-            </div>
+            <>
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <input
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitAdd()}
+                  placeholder={inputPlaceholder}
+                  style={{ ...iS, flex: 1, padding: "10px 14px" }}
+                />
+                <button onClick={submitAdd} disabled={!newComment.trim() || isSubmitting} style={{ ...pl(!!newComment.trim() && !isSubmitting), padding: "10px 16px", opacity: newComment.trim() && !isSubmitting ? 1 : 0.5 }}>
+                  {isSubmitting ? "..." : "->"}
+                </button>
+              </div>
+              {submitError && <div style={{ marginTop: 6, color: "#C0392B", fontSize: 12 }}>{submitError}</div>}
+            </>
           ) : !user ? (
             <button onClick={onLogin} style={{ ...pl(false), width: "100%", fontSize: 12, marginTop: 4 }}>Войдите чтобы комментировать</button>
           ) : null}
