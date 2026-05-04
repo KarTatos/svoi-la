@@ -25,11 +25,25 @@ export async function POST(req) {
     const admin = getAdminClient();
     if (!admin) return NextResponse.json({ error: "Supabase service role не настроен" }, { status: 500 });
 
-    const { data, error } = await admin
+    const postInsert = await admin
       .from("comments")
       .insert([{ item_id: itemId, item_type: "post", author, user_id: userId, text }])
       .select()
       .single();
+
+    let data = postInsert.data;
+    let error = postInsert.error;
+
+    if (error?.message?.includes("comments_item_type_check")) {
+      const legacyInsert = await admin
+        .from("comments")
+        .insert([{ item_id: `post:${itemId}`, item_type: "tip", author, user_id: userId, text }])
+        .select()
+        .single();
+      data = legacyInsert.data;
+      error = legacyInsert.error;
+    }
+
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ data });
   } catch {
@@ -53,7 +67,6 @@ export async function PATCH(req) {
       .from("comments")
       .update({ text })
       .eq("id", commentId)
-      .eq("item_type", "post")
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -70,8 +83,7 @@ export async function DELETE(req) {
   const admin = getAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase service role не настроен" }, { status: 500 });
 
-  const { error } = await admin.from("comments").delete().eq("id", id).eq("item_type", "post");
+  const { error } = await admin.from("comments").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
-
