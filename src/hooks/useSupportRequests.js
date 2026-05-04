@@ -1,5 +1,4 @@
 ﻿import { useCallback, useState } from "react";
-import { addSupportRequest as dbAddSupportRequest } from "../lib/supabase";
 
 export function useSupportRequests({ user }) {
   const [sendingSupport, setSendingSupport] = useState(false);
@@ -13,26 +12,37 @@ export function useSupportRequests({ user }) {
 
   const sendSupportRequest = useCallback(async (message) => {
     const text = String(message || "").trim();
-    if (!text || !user?.id) return false;
+    if (!text) return false;
 
     setSendingSupport(true);
     setSupportDone(false);
     setSupportError("");
 
-    const payload = {
-      user_id: user.id,
-      user_name: user.name || null,
-      user_email: user.email || null,
-      message: text,
-      status: "new",
-    };
-
-    const { error } = await dbAddSupportRequest(payload);
+    let error = null;
+    try {
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user?.id || null,
+          user_name: user?.name || null,
+          user_email: user?.email || null,
+          message: text,
+          screen: "support",
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        error = new Error(payload?.error || "Не удалось отправить запрос.");
+      }
+    } catch (e) {
+      error = e;
+    }
 
     setSendingSupport(false);
     if (error) {
       setSupportDone(false);
-      setSupportError("Не удалось отправить запрос. Попробуйте еще раз.");
+      setSupportError(error?.message || "Не удалось отправить запрос. Попробуйте еще раз.");
       return false;
     }
 
@@ -49,4 +59,3 @@ export function useSupportRequests({ user }) {
     sendSupportRequest,
   };
 }
-

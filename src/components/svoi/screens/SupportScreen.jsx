@@ -34,21 +34,10 @@ export default function SupportScreen({
       <button onClick={onBack} style={bk}>← Поддержка</button>
 
       <div style={{ ...cd, padding: 16, marginBottom: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Написать в поддержку</div>
-        <div style={{ fontSize: 13, color: T.mid, marginBottom: 10 }}>
-          Опишите проблему или вопрос. Запрос отправляется напрямую в поддержку из приложения.
-        </div>
-
-        <div style={{ fontSize: 12, color: T.light, marginBottom: 6 }}>Ваш аккаунт</div>
-        <div style={{ ...iS, padding: "10px 12px", marginBottom: 10, fontSize: 13, color: T.mid }}>
-          {user?.name || "Пользователь"} {user?.email ? `(${user.email})` : ""}
-        </div>
-
-        <div style={{ fontSize: 12, color: T.light, marginBottom: 6 }}>Текст запроса</div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 1500))}
-          placeholder="Например: не могу войти через Google на iPhone..."
+          placeholder="Опишите проблему..."
           style={{ ...iS, minHeight: 140, resize: "vertical", marginBottom: 6 }}
         />
         <div style={{ textAlign: "right", fontSize: 11, color: T.light, marginBottom: 12 }}>

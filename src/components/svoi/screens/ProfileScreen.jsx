@@ -1,18 +1,15 @@
 ﻿import { useState } from "react";
+import { HeartIcon } from "../config";
 
 export default function ProfileScreen({
   T,
   cd,
-  bk,
   user,
-  profileLocation,
-  placesCount,
-  savedPlacesCount,
   myPlacesCount,
-  myReviewsCount,
+  myTipsCount,
+  myLikesCount,
   onBack,
   onOpenMyPlaces,
-  onOpenSavedPlaces,
   onOpenMyReviews,
   onOpenHelp,
   onLogout,
@@ -79,7 +76,28 @@ export default function ProfileScreen({
 
   return (
     <div>
-      <button onClick={onBack} style={bk}>← Профиль</button>
+      <button
+        onClick={onBack}
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          border: `1px solid ${T.border}`,
+          background: T.card,
+          color: T.mid,
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 12,
+          padding: 0,
+        }}
+        title="Назад"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
 
       <div style={{ ...cd, padding: 0, overflow: "hidden", marginBottom: 12 }}>
         <div style={{ padding: "16px 14px 12px", position: "relative" }}>
@@ -128,35 +146,33 @@ export default function ProfileScreen({
               <div style={{ fontSize: 12, color: T.mid, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {user?.email || ""}
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, padding: "4px 9px", borderRadius: 999, background: "#fff4ea", color: T.primary }}>📍 {profileLocation || "Локация"}</span>
-                <span style={{ fontSize: 12, padding: "4px 9px", borderRadius: 999, background: "#e8f8ef", color: "#2f855a" }}>В LA: {placesCount} мест</span>
-              </div>
             </div>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", borderTop: `1px solid ${T.borderL}` }}>
           <div style={{ padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 37, fontWeight: 800, lineHeight: 1.1 }}>{myPlacesCount}</div>
+            <div style={{ fontSize: 32, fontWeight: 600, lineHeight: 1.1 }}>{myPlacesCount}</div>
             <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Мест</div>
           </div>
           <div style={{ padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 37, fontWeight: 800, lineHeight: 1.1 }}>{savedPlacesCount}</div>
-            <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Сохранено</div>
+            <div style={{ fontSize: 32, fontWeight: 600, lineHeight: 1.1 }}>{myTipsCount}</div>
+            <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Советов</div>
           </div>
           <div style={{ padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 37, fontWeight: 800, lineHeight: 1.1 }}>{myReviewsCount}</div>
-            <div style={{ fontSize: 12, color: T.mid, marginTop: 2 }}>Отзывы</div>
+            <div style={{ fontSize: 32, fontWeight: 600, lineHeight: 1.1 }}>{myLikesCount}</div>
+            <div style={{ fontSize: 12, color: T.mid, marginTop: 2, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <HeartIcon active={true} size={14} />
+            </div>
           </div>
         </div>
       </div>
 
       <div style={{ fontSize: 12, letterSpacing: "0.06em", fontWeight: 800, color: T.light, margin: "10px 4px 8px" }}>МОЯ АКТИВНОСТЬ</div>
       <div style={{ ...cd, padding: "0 12px", marginBottom: 12 }}>
-        {row("⭐", "Сохранённые места", savedPlacesCount, onOpenSavedPlaces)}
+        {row("💡", "Мои советы", myTipsCount, onOpenMyReviews)}
         <div style={{ borderTop: `1px solid ${T.borderL}` }} />
-        {row("📝", "Мои отзывы", myReviewsCount, onOpenMyReviews)}
+        {row("❤️", "Мои лайки", myLikesCount, () => {})}
         <div style={{ borderTop: `1px solid ${T.borderL}` }} />
         {row("📍", "Мои места", myPlacesCount, onOpenMyPlaces)}
       </div>
