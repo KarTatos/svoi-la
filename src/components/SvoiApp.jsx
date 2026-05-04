@@ -2008,7 +2008,7 @@ export default function App() {
         {scr==="places-cat" && selPC && selD && (<div>
           {cPlaces.length > 0 && (
             <div style={{ margin:"calc(-1 * env(safe-area-inset-top, 0px)) -16px 0", overflow:"hidden", background:"#ECEFF3", borderBottom:`1px solid ${T.borderL}`, borderTopLeftRadius:24, borderTopRightRadius:24, position:"sticky", top:0, zIndex:0 }}>
-              <div style={{ position:"relative", height:336, background:"#ECEFF3" }}>
+              <div style={{ position:"relative", height:420, background:"#ECEFF3" }}>
                 {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
                 {!miniMapLoading && miniMapError && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"#C0392B", padding:12, textAlign:"center" }}>{miniMapError}</div>}
                 {!miniMapLoading && !miniMapError && miniMapPlaces.length === 0 && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:T.mid, padding:12, textAlign:"center" }}>Для этой категории пока нет точек с координатами.</div>}
