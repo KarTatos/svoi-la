@@ -2013,7 +2013,7 @@ export default function App() {
                 {!miniMapLoading && miniMapError && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"#C0392B", padding:12, textAlign:"center" }}>{miniMapError}</div>}
                 {!miniMapLoading && !miniMapError && miniMapPlaces.length === 0 && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:T.mid, padding:12, textAlign:"center" }}>Для этой категории пока нет точек с координатами.</div>}
                 <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>
-                  <div ref={miniMapContainerRef} style={{ width:"100%", height:"calc(100% + 26px)", transform:"translateY(26px)" }} />
+                  <div ref={miniMapContainerRef} style={{ width:"100%", height:"calc(100% + 96px)", transform:"translateY(-42px)" }} />
                 </div>
                 <div style={{ position:"absolute", left:0, right:0, top:0, zIndex:3, paddingTop:"calc(env(safe-area-inset-top, 0px) + 8px)" }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(229,226,221,0.96)", borderRadius:0, padding:"10px 16px", width:"100%" }}>
@@ -2065,7 +2065,7 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ position:"relative", zIndex:1, margin:"0 -16px", padding:"0 16px", marginTop:cPlaces.length > 0 ? -20 : 0, paddingTop:cPlaces.length > 0 ? 20 : 0, background:T.bg, borderTopLeftRadius:22, borderTopRightRadius:22 }}>
+          <div style={{ position:"relative", zIndex:1, margin:"0 -16px", padding:"0 16px", marginTop:cPlaces.length > 0 ? -8 : 0, paddingTop:cPlaces.length > 0 ? 8 : 0, background:T.bg, borderTopLeftRadius:22, borderTopRightRadius:22 }}>
           <div style={{ display:"flex", justifyContent:"center", marginBottom:10, gap:8 }}>
             <button
               onClick={() => {
