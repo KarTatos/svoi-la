@@ -1823,7 +1823,7 @@ export default function App() {
         />
       )}
 
-      <main style={{ padding:isPlacesCategoryScreen ? `12px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))` : "16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))", background:scr==="community-chat" ? "#000000" : "transparent" }}>
+      <main style={{ padding:isPlacesCategoryScreen ? `0 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))` : "16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))", background:scr==="community-chat" ? "#000000" : "transparent" }}>
 
         {scr==="home" && (
           <HomeScreen
@@ -2007,8 +2007,8 @@ export default function App() {
         {/* PLACES IN CATEGORY */}
         {scr==="places-cat" && selPC && selD && (<div>
           {cPlaces.length > 0 && (
-            <div style={{ margin:"0 -16px 12px", overflow:"hidden", background:"#ECEFF3", borderBottom:`1px solid ${T.borderL}`, borderTopLeftRadius:24, borderTopRightRadius:24 }}>
-              <div style={{ position:"relative", height:380, background:"#ECEFF3" }}>
+            <div style={{ margin:"calc(-1 * env(safe-area-inset-top, 0px)) -16px 0", overflow:"hidden", background:"#ECEFF3", borderBottom:`1px solid ${T.borderL}`, borderTopLeftRadius:24, borderTopRightRadius:24, position:"sticky", top:0, zIndex:0 }}>
+              <div style={{ position:"relative", height:336, background:"#ECEFF3" }}>
                 {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
                 {!miniMapLoading && miniMapError && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"#C0392B", padding:12, textAlign:"center" }}>{miniMapError}</div>}
                 {!miniMapLoading && !miniMapError && miniMapPlaces.length === 0 && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:T.mid, padding:12, textAlign:"center" }}>Для этой категории пока нет точек с координатами.</div>}
@@ -2065,26 +2065,27 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10, gap:8 }}>
+          <div style={{ position:"relative", zIndex:1, margin:"0 -16px", padding:"0 16px", marginTop:cPlaces.length > 0 ? -20 : 0, paddingTop:cPlaces.length > 0 ? 20 : 0, background:T.bg, borderTopLeftRadius:22, borderTopRightRadius:22 }}>
+          <div style={{ display:"flex", justifyContent:"center", marginBottom:10, gap:8 }}>
             <button
               onClick={() => {
                 if (placeSortField === "likes") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
                 else { setPlaceSortField("likes"); setPlaceSortDir("desc"); }
               }}
-              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF1F1", color:"#C0392B", fontWeight:700, fontSize:12, lineHeight:1 }}
+              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}
               title="Сортировать по лайкам"
             >
-              <HeartIcon active={true} size={13} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              <HeartIcon active={placeSortField === "likes"} size={15} /> {placeSortField === "likes" ? (placeSortDir === "asc" ? "↑" : "↓") : "0"}
             </button>
             <button
               onClick={() => {
                 if (placeSortField === "favorites") setPlaceSortDir((d) => (d === "asc" ? "desc" : "asc"));
                 else { setPlaceSortField("favorites"); setPlaceSortDir("desc"); }
               }}
-              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"4px 8px", borderRadius:999, background:"#FFF8E8", color:"#D68910", fontWeight:700, fontSize:12, lineHeight:1 }}
+              style={{ border:"none", cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4, padding:"5px 9px", borderRadius:999, background:T.bg, color:T.mid, fontWeight:700, fontSize:12, lineHeight:1 }}
               title="Сортировать по избранному"
             >
-              <StarIcon active={true} size={13} /> {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "↕"}
+              <StarIcon active={placeSortField === "favorites"} size={15} /> {placeSortField === "favorites" ? (placeSortDir === "asc" ? "↑" : "↓") : "0"}
             </button>
           </div>
 
@@ -2135,6 +2136,7 @@ export default function App() {
             </button>
           ))}
           <button onClick={() => { openAddForm(); }} style={{ ...cd, width:"100%", marginTop:4, padding:16, border:`2px dashed ${T.primary}40`, color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxShadow:"none" }}>＋ Добавить</button>
+          </div>
         </div>)}
 
         {/* PLACE ITEM PAGE */}
