@@ -1,8 +1,13 @@
-import { HeartIcon } from "../config";
+﻿import { HeartIcon } from "../config";
 import Image from "next/image";
 
 export default function MarketCard({ item, isLiked, T, cd, pl, onClick, onToggleLike }) {
   const photo = item.photos?.[0];
+  const formatPrice = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    return raw.startsWith("$") ? raw : `$${raw}`;
+  };
 
   return (
     <div
@@ -62,7 +67,7 @@ export default function MarketCard({ item, isLiked, T, cd, pl, onClick, onToggle
           {item.title}
         </div>
         {item.price
-          ? <div style={{ fontSize: 15, fontWeight: 700, color: T.primary }}>{item.price}</div>
+          ? <div style={{ fontSize: 15, fontWeight: 700, color: T.primary }}>{formatPrice(item.price)}</div>
           : <div style={{ fontSize: 13, color: T.light }}>Цена не указана</div>
         }
       </div>

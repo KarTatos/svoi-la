@@ -166,7 +166,7 @@ export default function App() {
   const [chat, setChat] = useState([{ role:"assistant", text:"Здравствуйте. Задайте вопрос по USCIS, местам, событиям, советам или жилью." }]);
   const [inp, setInp] = useState("");
   const [typing, setTyping] = useState(false);
-  const [mt, setMt] = useState(false);
+  const [mt, setMt] = useState(true);
   const { profileLocation, profileWeather, userCoords: geoCoords } = useProfileWeather();
   const { news: uscisNews } = useUscisNews();
   const [selHousing, setSelHousing] = useState(null);
