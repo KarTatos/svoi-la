@@ -16,7 +16,6 @@ import { usePlaceForm } from "../hooks/usePlaceForm";
 import { useTipForm } from "../hooks/useTipForm";
 import { useSessionState } from "../hooks/useSessionState";
 import { useSvoiRouter } from "../hooks/useSvoiRouter";
-import { useAppData } from "../hooks/useAppData";
 import { cacheGeocodeFor, ensureGoogleMapsApi, fetchAddressSuggestions, geocodePlace } from "../lib/maps";
 import { normalizeAddressText } from "../lib/text";
 import { recordView } from "../lib/views";
@@ -54,6 +53,8 @@ import CommunityScreen from "./svoi/screens/CommunityScreen";
 import { usePlacesQuery } from "../hooks/queries/usePlacesQuery";
 import { useTipsQuery } from "../hooks/queries/useTipsQuery";
 import { useEventsQuery } from "../hooks/queries/useEventsQuery";
+import { useHousingQuery } from "../hooks/queries/useHousingQuery";
+import { useLikesQuery } from "../hooks/queries/useLikesQuery";
 
 const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .split(",")
@@ -106,16 +107,15 @@ export default function App() {
   const [likedTips, setLikedTips] = useState({});
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn, signOut: authSignOut, isAdmin, updateDisplayName } = useAuth(ADMIN_EMAILS);
-  const {
-    housing, setHousing,
-    liked, setLiked,
-  } = useAppData({ user, authReady, screen: scr, enablePlacesTipsData: false, enableEventsData: false });
+  const { data: liked = {} } = useLikesQuery(user?.id, authReady);
   const placesEnabled = authReady && ["places", "district", "places-cat", "place-item", "my-places"].includes(scr);
   const tipsEnabled = authReady && scr === "tips";
   const eventsEnabled = authReady && scr === "events";
+  const housingEnabled = authReady && (scr === "housing" || scr === "housing-item");
   const { data: places = [] } = usePlacesQuery(placesEnabled);
   const { data: tips = [] } = useTipsQuery(tipsEnabled);
   const { data: events = [] } = useEventsQuery(eventsEnabled);
+  const { data: housing = [] } = useHousingQuery(housingEnabled);
   const setPlaces = useCallback((updater) => {
     queryClient.setQueryData(["places"], updater);
   }, [queryClient]);
@@ -125,6 +125,15 @@ export default function App() {
   const setEvents = useCallback((updater) => {
     queryClient.setQueryData(["events"], updater);
   }, [queryClient]);
+  const setHousing = useCallback((updater) => {
+    queryClient.setQueryData(["housing"], updater);
+  }, [queryClient]);
+  const setLiked = useCallback((updater) => {
+    if (!user?.id) return;
+    queryClient.setQueryData(["likes", user.id], (prev = {}) =>
+      (typeof updater === "function" ? updater(prev || {}) : updater)
+    );
+  }, [queryClient, user?.id]);
   const { data: jobs = [] } = useJobsQuery(authReady);
   const { data: market = [] } = useMarketQuery(authReady);
   const { data: posts = [], error: postsError } = usePostsQuery(authReady && scr === "community-chat");
@@ -1155,7 +1164,11 @@ export default function App() {
     const { error } = await signIn();
     if (error) console.error("Login error:", error);
   };
-  const handleLogout = async () => { await authSignOut(); setLiked({}); setFavorites({}); };
+  const handleLogout = async () => {
+    if (user?.id) queryClient.setQueryData(["likes", user.id], {});
+    await authSignOut();
+    setFavorites({});
+  };
   const handleUpdateDisplayName = async (nextName) => {
     await updateDisplayName(nextName);
     if (!user?.id || user.id === "local-owner") return;
