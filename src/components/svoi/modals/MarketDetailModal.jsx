@@ -8,6 +8,11 @@ export default function MarketDetailModal({
 }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const photos = item.photos?.length ? item.photos : [];
+  const formatPrice = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    return raw.startsWith("$") ? raw : `$${raw}`;
+  };
 
   // Блокируем прокрутку фона пока модал открыт (iOS-safe)
   useEffect(() => {
@@ -99,7 +104,7 @@ export default function MarketDetailModal({
         {/* Контент */}
         <div style={{ padding: "16px 16px 12px" }}>
           {item.price && (
-            <div style={{ fontSize: 26, fontWeight: 800, color: T.primary, marginBottom: 4 }}>{item.price}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: T.primary, marginBottom: 4 }}>{formatPrice(item.price)}</div>
           )}
           <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, marginBottom: 10 }}>{item.title}</div>
 
