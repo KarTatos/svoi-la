@@ -1806,21 +1806,24 @@ export default function App() {
   const bk = { background:"none", border:"none", color:T.primary, fontSize:14, fontWeight:500, cursor:"pointer", padding:"12px 0 8px", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 };
   const pl = (a) => ({ padding:"10px 20px", borderRadius:24, border:"none", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", background:a?T.primary:T.primaryLight, color:a?"#fff":T.primary });
   const iS = { width:"100%", padding:"14px 16px", background:T.card, border:`1px solid ${T.border}`, borderRadius:T.rs, color:T.text, fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
+  const isPlacesCategoryScreen = scr === "places-cat";
 
   return (
     <div style={{ minHeight:"var(--app-min-height, 100dvh)", background:scr==="community-chat" ? "#000000" : T.bg, color:T.text, maxWidth:480, margin:"0 auto", touchAction:"manipulation" }}>
-      <AppHeader
-        T={T}
-        mt={mt}
-        user={user}
-        pl={pl}
-        onGoHome={goHome}
-        onOpenProfile={() => { if (!user) { handleLogin(); return; } setScr("profile"); }}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-      />
+      {!isPlacesCategoryScreen && (
+        <AppHeader
+          T={T}
+          mt={mt}
+          user={user}
+          pl={pl}
+          onGoHome={goHome}
+          onOpenProfile={() => { if (!user) { handleLogin(); return; } setScr("profile"); }}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+        />
+      )}
 
-      <main style={{ padding:"16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))", background:scr==="community-chat" ? "#000000" : "transparent" }}>
+      <main style={{ padding:isPlacesCategoryScreen ? `12px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))` : "16px 16px calc(env(safe-area-inset-bottom) + var(--bottom-nav-reserve, 90px))", background:scr==="community-chat" ? "#000000" : "transparent" }}>
 
         {scr==="home" && (
           <HomeScreen
@@ -2003,54 +2006,53 @@ export default function App() {
         />
         {/* PLACES IN CATEGORY */}
         {scr==="places-cat" && selPC && selD && (<div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, margin:"4px 0 12px" }}>
-            <button
-              onClick={() => { setScr("district"); setSelPC(null); setSelPlace(null); }}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 13,
-                border: "none",
-                background: "#FFFFFF",
-                color: "#8E8E93",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-                flexShrink: 0,
-                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-              }}
-              title="Назад"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <h2 style={{ fontSize:19, fontWeight:700, margin:0, lineHeight:1.2 }}>{selPC.title}</h2>
-              </div>
-              <p style={{ fontSize:13, color:T.mid, margin:"2px 0 0" }}>{selD.name} · {cPlaces.length} мест</p>
-            </div>
-            <button
-              onClick={() => { openAddForm(); }}
-              style={{ width:38, height:38, borderRadius:12, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:28, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
-              title="Добавить"
-            >
-              +
-            </button>
-          </div>
           {cPlaces.length > 0 && (
-            <div style={{ ...cd, padding:0, overflow:"hidden", marginBottom:12 }}>
-              <div style={{ padding:"8px 12px", borderBottom:`1px solid ${T.borderL}`, display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
-                <button onClick={() => openAllOnMap(cPlacesDisplay)} style={{ ...pl(false), padding:"6px 10px", fontSize:12 }}>⤢ Открыть карту</button>
-              </div>
-              <div style={{ position:"relative", height:220, background:"#ECEFF3" }}>
+            <div style={{ margin:"0 -16px 12px", overflow:"hidden", background:"#ECEFF3", borderBottom:`1px solid ${T.borderL}`, borderTopLeftRadius:24, borderTopRightRadius:24 }}>
+              <div style={{ position:"relative", height:380, background:"#ECEFF3" }}>
                 {miniMapLoading && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:T.mid, background:"rgba(255,255,255,0.75)" }}>Загружаем мини-карту...</div>}
                 {!miniMapLoading && miniMapError && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"#C0392B", padding:12, textAlign:"center" }}>{miniMapError}</div>}
                 {!miniMapLoading && !miniMapError && miniMapPlaces.length === 0 && <div style={{ position:"absolute", inset:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:T.mid, padding:12, textAlign:"center" }}>Для этой категории пока нет точек с координатами.</div>}
-                <div ref={miniMapContainerRef} style={{ width:"100%", height:"100%" }} />
+                <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>
+                  <div ref={miniMapContainerRef} style={{ width:"100%", height:"calc(100% + 26px)", transform:"translateY(26px)" }} />
+                </div>
+                <div style={{ position:"absolute", left:0, right:0, top:0, zIndex:3, paddingTop:"calc(env(safe-area-inset-top, 0px) + 8px)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(229,226,221,0.96)", borderRadius:0, padding:"10px 16px", width:"100%" }}>
+                    <button
+                      onClick={() => { setScr("district"); setSelPC(null); setSelPlace(null); }}
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 13,
+                        border: "none",
+                        background: "#FFFFFF",
+                        color: "#8E8E93",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 0,
+                        flexShrink: 0,
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                      }}
+                      title="Назад"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:16, fontWeight:700, margin:0, lineHeight:1.1, color:"#1F1F22" }}>{selPC.title}</div>
+                      <p style={{ fontSize:13, color:T.mid, margin:"2px 0 0", fontWeight:600 }}>{selD.name} · {cPlaces.length} мест</p>
+                    </div>
+                    <button
+                      onClick={() => { openAddForm(); }}
+                      style={{ width:42, height:42, borderRadius:13, border:`1.5px solid ${T.primary}55`, background:T.primaryLight, color:T.primary, fontSize:30, lineHeight:1, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", padding:0, flexShrink:0 }}
+                      title="Добавить"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
               {miniSelectedPlace && (
                 <div style={{ padding:"8px 12px", borderTop:`1px solid ${T.borderL}`, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, fontSize:12 }}>
