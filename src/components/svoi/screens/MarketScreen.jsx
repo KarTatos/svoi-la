@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import MarketCard from "../cards/MarketCard";
 import MarketDetailModal from "../modals/MarketDetailModal";
 import MarketFormModal from "../forms/MarketFormModal";
@@ -8,8 +8,17 @@ const EMPTY_FORM = {
   photos: [], telegram: "", phone: "",
 };
 
+function SellIcon({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <path d="M23 8H13a2 2 0 0 0-2 2v10l11 11 13-13L23 8z" fill="#fff" stroke="#0E0E0E" strokeWidth="1.4" strokeLinejoin="round"/>
+      <circle cx="16" cy="15" r="2.5" fill="#FF8A3D" stroke="#0E0E0E" strokeWidth="1.1"/>
+    </svg>
+  );
+}
+
 export default function MarketScreen({
-  T, cd, bk, pl, iS,
+  T, cd, pl, iS,
   user, items, liked,
   onGoHome, onToggleLike, onShare, onRequireAuth,
   trackView, onAdd, onUpdate, onDelete, canManage, uploadPhoto,
@@ -98,10 +107,17 @@ export default function MarketScreen({
 
   return (
     <div>
-      <button onClick={onGoHome} style={bk}>← Главная</button>
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 14px" }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>🏷️ Продам</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "48px 48px 48px", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        <button
+          onClick={onGoHome}
+          style={{ width: 38, height: 38, borderRadius: 12, border: "none", background: "#FFFFFF", color: "#8A8680", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, fontSize: 22 }}
+          title="Назад"
+        >
+          ‹
+        </button>
+        <div style={{ width: 38, height: 38, borderRadius: 12, background: "#F2EADF", display: "flex", alignItems: "center", justifyContent: "center" }} aria-hidden="true">
+          <SellIcon />
+        </div>
         <button
           onClick={openAdd}
           style={{ width: 38, height: 38, borderRadius: 12, border: `1.5px solid ${T.primary}55`, background: T.primaryLight, color: T.primary, fontSize: 28, lineHeight: 1, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}

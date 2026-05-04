@@ -53,6 +53,7 @@ import { usePostMutations } from "../hooks/queries/usePostMutations";
 import CommunityScreen from "./svoi/screens/CommunityScreen";
 import { usePlacesQuery } from "../hooks/queries/usePlacesQuery";
 import { useTipsQuery } from "../hooks/queries/useTipsQuery";
+import { useEventsQuery } from "../hooks/queries/useEventsQuery";
 
 const ADMIN_EMAILS = String(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .split(",")
@@ -106,19 +107,23 @@ export default function App() {
   const [srch, setSrch] = useState("");
   const { user, authReady, signIn, signOut: authSignOut, isAdmin, updateDisplayName } = useAuth(ADMIN_EMAILS);
   const {
-    events, setEvents,
     housing, setHousing,
     liked, setLiked,
-  } = useAppData({ user, authReady, screen: scr, enablePlacesTipsData: false });
+  } = useAppData({ user, authReady, screen: scr, enablePlacesTipsData: false, enableEventsData: false });
   const placesEnabled = authReady && ["places", "district", "places-cat", "place-item", "my-places"].includes(scr);
   const tipsEnabled = authReady && scr === "tips";
+  const eventsEnabled = authReady && scr === "events";
   const { data: places = [] } = usePlacesQuery(placesEnabled);
   const { data: tips = [] } = useTipsQuery(tipsEnabled);
+  const { data: events = [] } = useEventsQuery(eventsEnabled);
   const setPlaces = useCallback((updater) => {
     queryClient.setQueryData(["places"], updater);
   }, [queryClient]);
   const setTips = useCallback((updater) => {
     queryClient.setQueryData(["tips"], updater);
+  }, [queryClient]);
+  const setEvents = useCallback((updater) => {
+    queryClient.setQueryData(["events"], updater);
   }, [queryClient]);
   const { data: jobs = [] } = useJobsQuery(authReady);
   const { data: market = [] } = useMarketQuery(authReady);
@@ -1205,7 +1210,15 @@ export default function App() {
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, comments: [...(e.comments||[]), { id:cId, author:user.name, text:trimmed, userId:user.id }] } : e));
   };
   const deleteCommentFn = async (itemId, commentId, type) => {
-    await dbDeleteComment(commentId);
+    if (type === "post") {
+      const res = await fetch(`/api/post-comments?id=${encodeURIComponent(String(commentId))}`, { method: "DELETE" });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || "Не удалось удалить ответ.");
+      }
+    } else {
+      await dbDeleteComment(commentId);
+    }
     const updater = (items) => items.map(item => item.id === itemId ? { ...item, comments: (item.comments||[]).filter(c => c.id !== commentId) } : item);
     if (type === "place") setPlaces(updater);
     else if (type === "tip") setTips(updater);
@@ -1215,7 +1228,19 @@ export default function App() {
   const saveEditComment = async (itemId, commentId, type, text) => {
     const trimmed = String(text || "").trim();
     if (!trimmed) return;
-    await dbUpdateComment(commentId, trimmed);
+    if (type === "post") {
+      const res = await fetch("/api/post-comments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: commentId, text: trimmed }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || "Не удалось сохранить ответ.");
+      }
+    } else {
+      await dbUpdateComment(commentId, trimmed);
+    }
     const updater = (items) => items.map(item => item.id === itemId ? { ...item, comments: (item.comments||[]).map(c => c.id === commentId ? { ...c, text: trimmed } : c) } : item);
     if (type === "place") setPlaces(updater);
     else if (type === "tip") setTips(updater);
@@ -1260,8 +1285,14 @@ export default function App() {
   const addPostReply = async (postId, text) => {
     const trimmed = String(text || "").trim();
     if (!trimmed || !user) return;
-    const { data } = await dbAddComment({ item_id: postId, item_type: "post", author: user.name, user_id: user.id, text: trimmed });
-    const cId = data?.[0]?.id || Date.now();
+    const res = await fetch("/api/post-comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: postId, author: user.name, user_id: user.id, text: trimmed }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || "Не удалось сохранить ответ.");
+    const cId = payload?.data?.id || Date.now();
     queryClient.setQueryData(["posts"], (prev = []) =>
       prev.map((post) =>
         post.id === postId
@@ -1556,11 +1587,17 @@ export default function App() {
     ...p,
     districtLabel: DISTRICTS.find((d) => d.id === p.district)?.name || p.district || "LA",
   }));
-  const savedPlacesCount = Object.entries(favorites || {}).filter(([k, v]) => v && String(k).startsWith("place-")).length;
-  const myReviewsCount = user
-    ? [...places, ...tips, ...events]
-        .flatMap((item) => item.comments || [])
-        .filter((c) => (c.userId && c.userId === user.id) || (!c.userId && c.author === user.name)).length
+  const myTipsCount = user
+    ? tips.filter((t) => (t.userId && t.userId === user.id) || (!t.userId && t.author === user.name)).length
+    : 0;
+  const myLikesCount = user
+    ? (() => {
+        const ownPlace = (item) => (item?.userId && item.userId === user.id) || (!item?.userId && item?.addedBy === user.name);
+        const ownTip = (item) => (item?.userId && item.userId === user.id) || (!item?.userId && item?.author === user.name);
+        const placesLikes = (places || []).reduce((acc, item) => acc + (ownPlace(item) ? Number(item.likes || 0) : 0), 0);
+        const tipsLikes = (tips || []).reduce((acc, item) => acc + (ownTip(item) ? Number(item.likes || 0) : 0), 0);
+        return placesLikes + tipsLikes;
+      })()
     : 0;
   const dPlaces = selD ? places.filter(p=>p.district===selD.id && PLACE_CAT_IDS.has(p.cat)) : [];
   const cPlaces = selPC ? dPlaces.filter(p=>p.cat===selPC.id) : [];
@@ -1796,9 +1833,9 @@ export default function App() {
             user={user}
             profileLocation={profileLocation}
             placesCount={places.length}
-            savedPlacesCount={savedPlacesCount}
             myPlacesCount={myPlaces.length}
-            myReviewsCount={myReviewsCount}
+            myTipsCount={myTipsCount}
+            myLikesCount={myLikesCount}
             onBack={goHome}
             onOpenMyPlaces={() => setScr("my-places")}
             onOpenSavedPlaces={() => setScr("places")}
