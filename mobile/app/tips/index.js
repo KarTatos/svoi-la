@@ -1,137 +1,121 @@
-﻿import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TIPS_CATS } from "../../src/config/tips";
-import TipsScreen from "../../src/components/tips/TipsScreen";
-import { useAuth } from "../../src/hooks/useAuth";
-import { useTipForm } from "../../src/hooks/useTipForm";
-import { useTipFavorites } from "../../src/hooks/useTipFavorites";
 import { useTipsQuery } from "../../src/hooks/useTipsQuery";
-import {
-  addTipComment,
-  deleteTipComment,
-  recordTipView,
-  updateTipComment,
-} from "../../src/lib/tipsEngagement";
 
-export default function TipsRoute() {
+export default function TipsIndexScreen() {
   const router = useRouter();
-  const { category } = useLocalSearchParams();
-  const queryClient = useQueryClient();
-  const { user, isAdmin } = useAuth();
-  const { data: tips = [], isLoading, isError, error, refetch } = useTipsQuery();
-  const { favorites, toggleFavorite } = useTipFavorites();
-
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [expandedTip, setExpandedTip] = useState(null);
-  const [commentsOpen, setCommentsOpen] = useState("");
-
-  useEffect(() => {
-    const categoryId = String(category || "").toLowerCase();
-    if (!categoryId) return;
-    const cat = TIPS_CATS.find((c) => c.id === categoryId) || null;
-    if (cat) setSelectedCategory(cat);
-  }, [category]);
-
-  const tipForm = useTipForm({
-    user,
-    selectedCategory,
-    onRequireAuth: () => router.push("/login"),
-    onSaved: (savedTip, meta) => {
-      queryClient.invalidateQueries({ queryKey: ["tips"] });
-      if (meta?.mode === "create" && savedTip?.id) setExpandedTip(savedTip.id);
-      if (meta?.mode === "delete") setExpandedTip((prev) => (prev === meta?.source?.id ? null : prev));
-    },
-  });
-
-  const viewMutation = useMutation({
-    mutationFn: ({ tipId }) => recordTipView(tipId, user?.id || null),
-    onSuccess: (_, vars) => {
-      queryClient.setQueryData(["tips"], (prev = []) =>
-        prev.map((t) => (String(t.id) === String(vars.tipId) ? { ...t, views: (t.views || 0) + 1 } : t))
-      );
-    },
-  });
-
-  const commentAddMutation = useMutation({
-    mutationFn: ({ tipId, text }) => addTipComment(tipId, user, text),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tips"] }),
-  });
-
-  const commentUpdateMutation = useMutation({
-    mutationFn: ({ commentId, text }) => updateTipComment(commentId, text),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tips"] }),
-  });
-
-  const commentDeleteMutation = useMutation({
-    mutationFn: (commentId) => deleteTipComment(commentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tips"] }),
-  });
-
-  const canManageTip = useMemo(
-    () => (tip) => {
-      if (!user || !tip) return false;
-      if (isAdmin) return true;
-      return Boolean(tip.userId && tip.userId === user.id);
-    },
-    [user, isAdmin]
-  );
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.center}><ActivityIndicator /><Text style={styles.muted}>Загрузка советов...</Text></View>
-      </SafeAreaView>
-    );
-  }
-
-  if (isError) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.center}><Text style={styles.err}>Ошибка: {error?.message || "Не удалось загрузить советы"}</Text><Text style={styles.retry} onPress={() => refetch()}>Повторить</Text></View>
-      </SafeAreaView>
-    );
-  }
+  const { data: tips = [] } = useTipsQuery();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <TipsScreen
-        tips={tips}
-        loading={isLoading}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        expandedTip={expandedTip}
-        setExpandedTip={setExpandedTip}
-        likesMap={{}}
-        favorites={favorites}
-        commentsOpen={commentsOpen}
-        setCommentsOpen={setCommentsOpen}
-        user={user}
-        isAdmin={isAdmin}
-        onGoHome={() => router.push("/")}
-        onRequireAuth={() => router.push("/login")}
-        onOpenCreate={tipForm.openCreate}
-        tipForm={tipForm}
-        onToggleFavorite={(tipId) => toggleFavorite(tipId)}
-        onToggleLike={() => {}}
-        onRecordView={(tipId) => viewMutation.mutate({ tipId })}
-        onAddComment={(tipId, text) => commentAddMutation.mutate({ tipId, text })}
-        onUpdateComment={(commentId, text) => commentUpdateMutation.mutate({ commentId, text })}
-        onDeleteComment={(commentId) => commentDeleteMutation.mutate(commentId)}
-        canManageTip={canManageTip}
-        onEditTip={tipForm.openEdit}
-        onDeleteTip={tipForm.removeTip}
-      />
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backTxt}>‹</Text>
+        </Pressable>
+        <Text style={styles.title}>Советы</Text>
+        <View style={styles.iconBox}>
+          <Text style={styles.titleIcon}>💡</Text>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.catList}>
+          {TIPS_CATS.map((cat) => {
+            const cnt = (tips || []).filter((t) => t.cat === cat.id).length;
+            return (
+              <Pressable
+                key={cat.id}
+                onPress={() => router.push(`/tips/${cat.id}`)}
+                style={styles.catCard}
+              >
+                <View style={styles.catIconWrap}>
+                  <Text style={styles.catIcon}>{cat.icon}</Text>
+                </View>
+                <View style={styles.catBody}>
+                  <Text style={styles.catTitle}>{cat.title}</Text>
+                  <Text style={styles.catDesc}>{cat.desc}</Text>
+                </View>
+                <View style={styles.catRight}>
+                  {cnt > 0 ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeTxt}>{cnt}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#EFECE6" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 16 },
-  muted: { color: "#6B6B6B", fontSize: 14 },
-  err: { color: "#B91C1C", fontSize: 14, textAlign: "center" },
-  retry: { color: "#111827", fontWeight: "700", fontSize: 14 },
+  root: { flex: 1, backgroundColor: "#EFECE6" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backTxt: { fontSize: 26, lineHeight: 26, color: "#8E8E93" },
+  title: { flex: 1, fontSize: 22, fontWeight: "800", color: "#111827" },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#FFF3E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  titleIcon: { fontSize: 20 },
+  content: { padding: 16, paddingBottom: 100 },
+  catList: { gap: 10 },
+  catCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  catIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#FFF3E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  catIcon: { fontSize: 24 },
+  catBody: { flex: 1 },
+  catTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A" },
+  catDesc: { fontSize: 12, color: "#6B6B6B", marginTop: 2 },
+  catRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badge: {
+    backgroundColor: "#FFF3E8",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgeTxt: { fontSize: 13, fontWeight: "700", color: "#F47B20" },
+  chevron: { fontSize: 20, color: "#C4C4C4", lineHeight: 24 },
 });

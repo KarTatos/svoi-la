@@ -1,13 +1,22 @@
 ﻿import * as ImagePicker from "expo-image-picker";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-export default function PlacePhotoPicker({ photos, onChange, max = 5, disabled = false }) {
+export default function PlacePhotoPicker({
+  photos,
+  onChange,
+  existingPhotos = [],
+  onRemoveExisting,
+  max = 5,
+  disabled = false,
+}) {
+  const totalCount = (existingPhotos || []).length + (photos || []).length;
+
   const pick = async () => {
     if (disabled) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") return;
 
-    const rest = Math.max(0, max - photos.length);
+    const rest = Math.max(0, max - totalCount);
     if (rest === 0) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -18,28 +27,39 @@ export default function PlacePhotoPicker({ photos, onChange, max = 5, disabled =
     });
 
     if (result.canceled) return;
-    const next = [...photos, ...result.assets].slice(0, max);
+    const next = [...photos, ...result.assets].slice(0, max - (existingPhotos || []).length);
     onChange(next);
   };
 
-  const removeAt = (idx) => {
-    const next = photos.filter((_, i) => i !== idx);
-    onChange(next);
+  const removeNewAt = (idx) => {
+    onChange(photos.filter((_, i) => i !== idx));
   };
 
   return (
     <View>
       <View style={styles.row}>
-        {photos.map((p, i) => (
-          <View key={`${p.uri}-${i}`} style={styles.thumbWrap}>
-            <Image source={{ uri: p.uri }} style={styles.thumb} />
-            <Pressable onPress={() => removeAt(i)} style={styles.removeBtn}>
+        {/* Existing photos (already uploaded URLs) */}
+        {(existingPhotos || []).map((url, i) => (
+          <View key={`existing-${i}`} style={styles.thumbWrap}>
+            <Image source={{ uri: url }} style={styles.thumb} />
+            <Pressable onPress={() => onRemoveExisting?.(url)} style={styles.removeBtn}>
               <Text style={styles.removeTxt}>✕</Text>
             </Pressable>
           </View>
         ))}
-        {photos.length < max ? (
-          <Pressable style={styles.addBtn} onPress={pick}>
+
+        {/* New photos (local assets) */}
+        {(photos || []).map((p, i) => (
+          <View key={`new-${p.uri}-${i}`} style={styles.thumbWrap}>
+            <Image source={{ uri: p.uri }} style={styles.thumb} />
+            <Pressable onPress={() => removeNewAt(i)} style={styles.removeBtn}>
+              <Text style={styles.removeTxt}>✕</Text>
+            </Pressable>
+          </View>
+        ))}
+
+        {totalCount < max ? (
+          <Pressable style={styles.addBtn} onPress={pick} disabled={disabled}>
             <Text style={styles.addBtnTxt}>＋ Фото</Text>
           </Pressable>
         ) : null}

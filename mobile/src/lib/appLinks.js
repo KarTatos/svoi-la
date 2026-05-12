@@ -1,25 +1,21 @@
 export function resolveAppLink(url) {
   const raw = String(url || "").trim();
-  const match = raw.match(/^app:\/\/(place|tip|event|housing)\/([^\s/?#]+)/i);
+  const match = raw.match(/^app:\/\/(place|tip|event|housing|job)\/([^\s/?#]+)/i);
   if (!match) return null;
 
   const type = String(match[1] || "").toLowerCase();
   const id = String(match[2] || "").trim();
   if (!id) return null;
 
-  if (type === "place") {
-    return { href: `/places/detail/${id}` };
-  }
+  const routes = {
+    place:   `/places/detail/${id}`,
+    tip:     `/tips`,
+    event:   `/events/${id}`,
+    housing: `/housing/${id}`,
+    job:     `/jobs/${id}`,
+  };
 
-  if (type === "tip") {
-    return { href: "/tips" };
-  }
-
-  if (type === "event" || type === "housing") {
-    return null;
-  }
-
-  return null;
+  return routes[type] ? { href: routes[type], type, id } : null;
 }
 
 export function openAppLink(router, url) {

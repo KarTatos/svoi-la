@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionSheetIOS, Alert, Image, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActionSheetIOS, Alert, Image, ImageBackground, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import { useAuth } from "../../../src/hooks/useAuth";
-import { usePlaceFavorites } from "../../../src/hooks/usePlaceFavorites";
+import { useLikes } from "../../../src/hooks/useLikes";
 import { deletePlace, fetchPlaces } from "../../../src/lib/places";
 import {
   addPlaceComment,
@@ -29,7 +29,7 @@ export default function PlaceDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
-  const { isFavorite, toggleFavorite } = usePlaceFavorites();
+  const { isLiked, toggle: toggleLike } = useLikes("place", user?.id, ["places"], "likes");
   const { id, district, category } = useLocalSearchParams();
   const districtId = String(district || "").toLowerCase();
   const categoryId = String(category || "").toLowerCase();
@@ -64,7 +64,7 @@ export default function PlaceDetailScreen() {
     enabled: Boolean(placeId),
   });
 
-  const favorite = isFavorite(placeId);
+  const favorite = isLiked(placeId);
 
   const viewMutation = useMutation({
     mutationFn: () => recordPlaceView(placeId, user?.id || null),
@@ -211,14 +211,17 @@ export default function PlaceDetailScreen() {
 
   if (!place) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}><Text style={styles.empty}>Место не найдено.</Text></View>
-      </SafeAreaView>
+      <ImageBackground source={require("../../../assets/bg-pattern.png")} style={styles.safeArea} imageStyle={{ opacity: 0.13 }} resizeMode="repeat">
+        <SafeAreaView style={styles.safeAreaInner}>
+          <View style={styles.content}><Text style={styles.empty}>Место не найдено.</Text></View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ImageBackground source={require("../../../assets/bg-pattern.png")} style={styles.safeArea} imageStyle={{ opacity: 0.13 }} resizeMode="repeat">
+      <SafeAreaView style={styles.safeAreaInner}>
       <ScrollView contentContainerStyle={styles.content}>
 
         {/* Top bar: back ‹ left, three dots ⋯ right */}
@@ -243,16 +246,21 @@ export default function PlaceDetailScreen() {
               <Text style={styles.author}>от {place.addedBy || "пользователь"}</Text>
             </View>
 
-            {/* Heart (placeholder for likes system) */}
             <View style={styles.pillCol}>
               <Pressable
-                onPress={() => toggleFavorite(placeId)}
+                onPress={() => {
+                  if (!user) { router.push("/login"); return; }
+                  toggleLike(placeId);
+                }}
                 style={[styles.pillBtn, favorite ? styles.heartActiveBg : styles.pillInactiveBg]}
               >
                 <Text style={[styles.pillIcon, favorite ? styles.heartActiveColor : styles.pillInactiveColor]}>
                   {favorite ? "♥" : "♡"}
                 </Text>
               </Pressable>
+              {place?.likes > 0 && (
+                <Text style={styles.likesCount}>{place.likes}</Text>
+              )}
             </View>
           </View>
 
@@ -383,12 +391,14 @@ export default function PlaceDetailScreen() {
         index={viewerIndex}
         onRequestClose={() => setViewerOpen(false)}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#EFECE6" },
+  safeArea: { flex: 1 },
+  safeAreaInner: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 16, paddingBottom: 130 },
 
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
@@ -403,7 +413,8 @@ const styles = StyleSheet.create({
   addr: { marginTop: 5, fontSize: 13, color: "#6B6B6B", textDecorationLine: "underline" },
   author: { marginTop: 5, fontSize: 12, color: "#999" },
 
-  pillCol: { flexDirection: "row", justifyContent: "flex-end", gap: 6 },
+  pillCol: { alignItems: "center", gap: 4 },
+  likesCount: { fontSize: 11, color: "#AAAAAA", fontWeight: "600" },
   pillBtn: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center" },
   pillIcon: { fontSize: 20 },
   heartActiveBg: { backgroundColor: "#FFF1F1" },

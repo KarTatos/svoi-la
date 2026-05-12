@@ -1,6 +1,7 @@
 ﻿import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import Svg, { Circle, Text as SvgText } from "react-native-svg";
 import * as Location from "expo-location";
 import { GlassContainer, GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 
@@ -225,13 +226,42 @@ export default function PlacesCategoryMap({
                 zIndex={999}
               />
             ) : null}
-            {places.map((p) => (
-              <Marker key={p.id} coordinate={{ latitude: p.lat, longitude: p.lng }} onPress={() => buildRoute(p)}>
-                <View style={[styles.pinWrap, String(selectedPlaceId) === String(p.id) && styles.pinWrapActive]}>
-                  <Text style={styles.pinText}>{p.markerIndex}</Text>
-                </View>
-              </Marker>
-            ))}
+            {places.map((p) => {
+              const isSelected = String(selectedPlaceId) === String(p.id);
+              const size = isSelected ? 34 : 28;
+              const r = size / 2 - 1.5;
+              const cx = size / 2;
+              const cy = size / 2;
+              const fontSize = String(p.markerIndex).length > 1 ? 10 : 12;
+              return (
+                <Marker
+                  key={p.id}
+                  coordinate={{ latitude: p.lat, longitude: p.lng }}
+                  onPress={() => buildRoute(p)}
+                  tracksViewChanges={false}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                >
+                  <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                    <Circle
+                      cx={cx} cy={cy} r={r}
+                      fill={isSelected ? "#B71C1C" : "#D7261E"}
+                      stroke="#FFFFFF"
+                      strokeWidth="2"
+                    />
+                    <SvgText
+                      x={cx} y={cy + fontSize * 0.38}
+                      textAnchor="middle"
+                      fill="#FFFFFF"
+                      fontSize={fontSize}
+                      fontWeight="bold"
+                      fontFamily="Arial"
+                    >
+                      {p.markerIndex}
+                    </SvgText>
+                  </Svg>
+                </Marker>
+              );
+            })}
           </MapView>
         )}
 

@@ -1,5 +1,6 @@
 ﻿import { useRouter } from "expo-router";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileScreen from "../../src/components/profile/ProfileScreen";
 import { useAuth } from "../../src/hooks/useAuth";
 import { useProfileData } from "../../src/hooks/useProfileData";

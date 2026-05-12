@@ -1,10 +1,11 @@
-﻿import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Animated,
   ActivityIndicator,
   Image,
+  ImageBackground,
   PanResponder,
   Pressable,
   ScrollView,
@@ -13,6 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { useAuth } from "../../../src/hooks/useAuth";
@@ -39,7 +41,6 @@ function formatPlaceAddressLabel(address = "") {
   const noState = raw.replace(/,\s*CA(?:\s+\d{5}(?:-\d{4})?)?$/i, "").trim();
   return noState.split(",")[0].trim();
 }
-
 
 export default function PlacesCategoryScreen() {
   const router = useRouter();
@@ -138,7 +139,6 @@ export default function PlacesCategoryScreen() {
     [data, districtId, categoryId]
   );
 
-
   const placesWithCoords = useMemo(
     () => places.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)),
     [places]
@@ -151,7 +151,6 @@ export default function PlacesCategoryScreen() {
         const cmp = (a.likes || 0) - (b.likes || 0);
         return sortDir === "asc" ? cmp : -cmp;
       }
-      // Default: by distance from user
       if (userLocation) {
         const dA = Number.isFinite(a.lat) && Number.isFinite(a.lng)
           ? haversineKm(userLocation.latitude, userLocation.longitude, a.lat, a.lng)
@@ -175,7 +174,12 @@ export default function PlacesCategoryScreen() {
   }, [sortedPlaces, placesWithCoords]);
 
   return (
-    <View style={styles.root}>
+    <ImageBackground
+      source={require("../../../assets/bg-pattern.png")}
+      style={styles.root}
+      imageStyle={{ opacity: 0.13 }}
+      resizeMode="repeat"
+    >
       <PlacesCategoryMap
         places={indexedCoords}
         selectedPlaceId={selectedMapPlaceId}
@@ -220,45 +224,50 @@ export default function PlacesCategoryScreen() {
 
             {isSupabaseConfigured && !isLoading && !isError && sortedPlaces.length > 0 && (
               <View>
-                {sortedPlaces.map((p, idx) => {
-                  return (
-                    <Pressable
-                      key={p.id}
-                      style={styles.card}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/places/detail/[id]",
-                          params: { id: String(p.id), district: districtId, category: categoryId },
-                        })
-                      }
-                    >
-                        <View style={styles.cardBody}>
-                          <View style={styles.headRow}>
-                            <View style={styles.headLeft}>
-                              <View style={styles.nameRow}><Text style={styles.idx}>{idx + 1}</Text><Text style={styles.name}>{p.name}</Text></View>
-                              <Text style={styles.addr}>{formatPlaceAddressLabel(p.address || selD?.name || "")}</Text>
-                            </View>
+                {sortedPlaces.map((p, idx) => (
+                  <Pressable
+                    key={p.id}
+                    style={styles.card}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/places/detail/[id]",
+                        params: { id: String(p.id), district: districtId, category: categoryId },
+                      })
+                    }
+                  >
+                    <View style={styles.cardBody}>
+                      <View style={styles.headRow}>
+                        <View style={styles.headLeft}>
+                          <View style={styles.nameRow}>
+                            <Text style={styles.idx}>{idx + 1}</Text>
+                            <Text style={styles.name}>{p.name}</Text>
                           </View>
-
-                          <View style={[styles.tipBox, { borderLeftColor: selPC?.color || "#F47B20" }]}><Text numberOfLines={2} style={styles.tip}>{p.tip || ""}</Text></View>
-
-                          {Array.isArray(p.photos) && p.photos.length > 0 && (
-                            <View style={styles.photos}>
-                              {p.photos.slice(0, 3).map((ph, i) => (<Image key={`${p.id}-${i}`} source={{ uri: ph }} style={styles.photo} />))}
-                            </View>
-                          )}
-
-                          <Text style={styles.author}>от {p.addedBy || "пользователь"}</Text>
+                          <Text style={styles.addr}>{formatPlaceAddressLabel(p.address || selD?.name || "")}</Text>
                         </View>
-                    </Pressable>
-                  );
-                })}
+                      </View>
+
+                      <View style={[styles.tipBox, { borderLeftColor: selPC?.color || "#F47B20" }]}>
+                        <Text numberOfLines={2} style={styles.tip}>{p.tip || ""}</Text>
+                      </View>
+
+                      {Array.isArray(p.photos) && p.photos.length > 0 && (
+                        <View style={styles.photos}>
+                          {p.photos.slice(0, 3).map((ph, i) => (
+                            <Image key={`${p.id}-${i}`} source={{ uri: ph }} style={styles.photo} />
+                          ))}
+                        </View>
+                      )}
+
+                      <Text style={styles.author}>от {p.addedBy || "пользователь"}</Text>
+                    </View>
+                  </Pressable>
+                ))}
               </View>
             )}
           </View>
         </ScrollView>
       </Animated.View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -268,11 +277,6 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: "#EFECE6", borderTopLeftRadius: 22, borderTopRightRadius: 22, minHeight: 200 },
   handleWrap: { alignItems: "center", paddingTop: 10, paddingBottom: 4 },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(0,0,0,0.18)" },
-  sortRow: { marginBottom: 10, flexDirection: "row", justifyContent: "center", gap: 8, paddingHorizontal: 16 },
-  sortChip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: "#EFECE6" },
-  sortChipActive: { backgroundColor: "#1A1A1A" },
-  sortText: { color: "#6B6B6B", fontWeight: "700", fontSize: 12 },
-  sortTextActive: { color: "#FFFFFF", fontWeight: "700", fontSize: 12 },
   card: { backgroundColor: "#FFF", borderRadius: 16, borderWidth: 1, borderColor: "#F0F0F0", marginHorizontal: 16, marginBottom: 12, overflow: "hidden" },
   cardBody: { padding: 16 },
   headRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
@@ -281,18 +285,6 @@ const styles = StyleSheet.create({
   idx: { color: "#D7261E", fontWeight: "800", fontSize: 16 },
   name: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", flexShrink: 1 },
   addr: { marginTop: 3, fontSize: 12, color: "#6B6B6B" },
-  pillCol: { minWidth: 118, flexDirection: "row", justifyContent: "flex-end", gap: 6 },
-  pillBtn: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 },
-  likePillWide: { minWidth: 48, justifyContent: "center" },
-  pillIcon: { fontSize: 13, fontWeight: "700" },
-  pillIconHeart: { fontSize: 14 },
-  pillCount: { fontSize: 12, fontWeight: "700" },
-  starActiveBg: { backgroundColor: "#FFF8E8" },
-  starActiveColor: { color: "#D68910" },
-  likeActiveBg: { backgroundColor: "#FFF1F1" },
-  likeActiveColor: { color: "#C0392B" },
-  pillInactiveBg: { backgroundColor: "#F7F7F8" },
-  pillInactiveColor: { color: "#6B6B6B" },
   tipBox: { marginTop: 12, padding: 12, backgroundColor: "#EFECE6", borderRadius: 10, borderLeftWidth: 3 },
   tip: { fontSize: 13, color: "#6B6B6B" },
   photos: { marginTop: 10, flexDirection: "row", gap: 6 },
@@ -304,6 +296,3 @@ const styles = StyleSheet.create({
   retryButton: { alignSelf: "flex-start", marginTop: 4, backgroundColor: "#111827", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
   retryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });
-
-
-

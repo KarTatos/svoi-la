@@ -1,5 +1,5 @@
-﻿import { useEffect, useRef } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+﻿import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Keyboard, ScrollView, StyleSheet, Text, View } from "react-native";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 
@@ -17,6 +17,13 @@ export default function ChatScreen({
   onLogin,
 }) {
   const scrollRef = useRef(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -46,7 +53,7 @@ export default function ChatScreen({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingBottom: keyboardVisible ? 8 : 98 }]}>
       <ScrollView
         ref={scrollRef}
         style={styles.list}
@@ -93,7 +100,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 98,
   },
   list: { flex: 1 },
   listContent: { paddingBottom: 12 },

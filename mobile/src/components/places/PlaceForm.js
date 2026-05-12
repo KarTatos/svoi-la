@@ -1,6 +1,5 @@
-﻿import { useRef, useState } from "react";
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { GlassContainer, GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { useActionSheet } from "@expo/react-native-action-sheet";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DISTRICTS, PLACE_CATS } from "../../config/places";
 import PlacePhotoPicker from "./PlacePhotoPicker";
 
@@ -17,75 +16,41 @@ function SuggestList({ items, onSelect }) {
   );
 }
 
-function PickerList({ children, scrollY }) {
-  const pulseScale = scrollY.interpolate({
-    inputRange: [0, 20, 60, 120],
-    outputRange: [1, 1.08, 1.14, 1.18],
-    extrapolate: "clamp",
-  });
-  const pulseOpacity = scrollY.interpolate({
-    inputRange: [0, 10, 40],
-    outputRange: [0.45, 0.7, 0.9],
-    extrapolate: "clamp",
-  });
+export default function PlaceForm({ form, actions, loading, error, editMode }) {
+  const { showActionSheetWithOptions } = useActionSheet();
 
-  return (
-    <View style={styles.pickerWrap}>
-      <View style={styles.scrollHintRow}>
-        <Animated.View
-          style={[
-            styles.scrollHintDot,
-            {
-              transform: [{ scale: pulseScale }],
-              opacity: pulseOpacity,
-            },
-          ]}
-        />
-        <Text style={styles.scrollHintText}>Потяните вверх/вниз</Text>
-      </View>
-
-      <Animated.ScrollView
-        style={styles.pickerScroll}
-        contentContainerStyle={styles.pickerContent}
-        showsVerticalScrollIndicator
-        bounces
-        decelerationRate="fast"
-        scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-          useNativeDriver: false,
-        })}
-      >
-        {children}
-      </Animated.ScrollView>
-    </View>
-  );
-}
-
-function GlassPicker({ children, scrollY }) {
-  const liquidGlass = isLiquidGlassAvailable();
-
-  if (liquidGlass) {
-    return (
-      <GlassContainer style={styles.modalGlassWrap}>
-        <GlassView glassEffectStyle="regular" style={styles.modalCardGlass}>
-          <PickerList scrollY={scrollY}>{children}</PickerList>
-        </GlassView>
-      </GlassContainer>
+  const openCategoryPicker = () => {
+    const options = [...PLACE_CATS.map((c) => `${c.icon}  ${c.title}`), "Отмена"];
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: options.length - 1,
+        title: "Категория",
+      },
+      (index) => {
+        if (index == null || index === options.length - 1) return;
+        actions.onChangeField("cat", PLACE_CATS[index].id);
+      }
     );
-  }
+  };
 
-  return (
-    <View style={styles.modalCard}>
-      <PickerList scrollY={scrollY}>{children}</PickerList>
-    </View>
-  );
-}
+  const openDistrictPicker = () => {
+    const options = [...DISTRICTS.map((d) => `${d.emoji}  ${d.name}`), "Отмена"];
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: options.length - 1,
+        title: "Район",
+      },
+      (index) => {
+        if (index == null || index === options.length - 1) return;
+        actions.onChangeField("district", DISTRICTS[index].id);
+      }
+    );
+  };
 
-export default function PlaceForm({ form, actions, loading, error }) {
-  const [catOpen, setCatOpen] = useState(false);
-  const [districtOpen, setDistrictOpen] = useState(false);
-  const catScrollY = useRef(new Animated.Value(0)).current;
-  const districtScrollY = useRef(new Animated.Value(0)).current;
+  const selectedCat = PLACE_CATS.find((c) => c.id === form.cat);
+  const selectedDistrict = DISTRICTS.find((d) => d.id === form.district);
 
   return (
     <View style={styles.wrap}>
@@ -101,17 +66,23 @@ export default function PlaceForm({ form, actions, loading, error }) {
       <SuggestList items={form.nameOptions} onSelect={actions.onSelectNameSuggestion} />
 
       <Text style={styles.label}>Категория *</Text>
-      <Pressable style={styles.selectBtn} onPress={() => setCatOpen(true)}>
-        <Text style={[styles.selectText, !form.cat && styles.selectPlaceholder]}>
-          {PLACE_CATS.find((c) => c.id === form.cat)?.title || "Выберите категорию"}
+      <Pressable style={styles.selectBtn} onPress={openCategoryPicker}>
+        <Text style={styles.selectBtnLeft}>
+          {selectedCat
+            ? <Text style={styles.selectText}>{selectedCat.icon}  {selectedCat.title}</Text>
+            : <Text style={styles.selectPlaceholder}>Выберите категорию</Text>}
         </Text>
+        <Text style={styles.selectChevron}>›</Text>
       </Pressable>
 
       <Text style={styles.label}>Район *</Text>
-      <Pressable style={styles.selectBtn} onPress={() => setDistrictOpen(true)}>
-        <Text style={[styles.selectText, !form.district && styles.selectPlaceholder]}>
-          {DISTRICTS.find((d) => d.id === form.district)?.name || "Выберите район"}
+      <Pressable style={styles.selectBtn} onPress={openDistrictPicker}>
+        <Text style={styles.selectBtnLeft}>
+          {selectedDistrict
+            ? <Text style={styles.selectText}>{selectedDistrict.emoji}  {selectedDistrict.name}</Text>
+            : <Text style={styles.selectPlaceholder}>Выберите район</Text>}
         </Text>
+        <Text style={styles.selectChevron}>›</Text>
       </Pressable>
 
       <Text style={styles.label}>Адрес *</Text>
@@ -123,7 +94,9 @@ export default function PlaceForm({ form, actions, loading, error }) {
       />
       {form.addrLoading ? <Text style={styles.hint}>Searching...</Text> : null}
       <SuggestList items={form.addrOptions} onSelect={actions.onSelectAddressSuggestion} />
-      {form.address && !form.addrValidPlace ? <Text style={styles.error}>Выберите адрес из подсказок.</Text> : null}
+      {form.address && !form.addrValidPlace
+        ? <Text style={styles.error}>Выберите адрес из подсказок.</Text>
+        : null}
 
       <Text style={styles.label}>Комментарий *</Text>
       <TextInput
@@ -132,66 +105,48 @@ export default function PlaceForm({ form, actions, loading, error }) {
         placeholder="Ваш отзыв, совет, рекомендация..."
         style={[styles.input, styles.textarea]}
         multiline
+        textAlignVertical="top"
       />
       <Text style={styles.count}>{form.tip.length}/280</Text>
 
-      <PlacePhotoPicker photos={form.photos} onChange={actions.onPhotosChange} disabled={loading} max={5} />
+      <PlacePhotoPicker
+        photos={form.photos}
+        onChange={actions.onPhotosChange}
+        existingPhotos={form.existingPhotos || []}
+        onRemoveExisting={actions.onRemoveExistingPhoto}
+        disabled={loading}
+        max={5}
+      />
 
       {error ? <Text style={[styles.error, styles.errorBlock]}>{error}</Text> : null}
 
       <View style={styles.actionsRow}>
-        <Pressable style={[styles.btn, styles.btnGhost]} onPress={actions.onCancel} disabled={loading}>
+        <Pressable
+          style={[styles.btn, styles.btnGhost]}
+          onPress={actions.onCancel}
+          disabled={loading}
+        >
           <Text style={styles.btnGhostText}>Отмена</Text>
         </Pressable>
-        <Pressable style={[styles.btn, styles.btnPrimary, loading ? styles.btnDisabled : null]} onPress={actions.onSubmit} disabled={loading}>
-          <Text style={styles.btnPrimaryText}>{loading ? "Загрузка..." : "Опубликовать"}</Text>
+        <Pressable
+          style={[styles.btn, styles.btnPrimary, loading && styles.btnDisabled]}
+          onPress={actions.onSubmit}
+          disabled={loading}
+        >
+          <Text style={styles.btnPrimaryText}>
+            {loading ? "Сохранение..." : editMode ? "Сохранить" : "Опубликовать"}
+          </Text>
         </Pressable>
       </View>
-
-      <Modal visible={catOpen} transparent animationType="fade" onRequestClose={() => setCatOpen(false)}>
-        <Pressable style={styles.modalBg} onPress={() => setCatOpen(false)}>
-          <GlassPicker scrollY={catScrollY}>
-            {PLACE_CATS.map((c) => (
-              <Pressable
-                key={c.id}
-                style={styles.modalItem}
-                onPress={() => {
-                  actions.onChangeField("cat", c.id);
-                  setCatOpen(false);
-                }}
-              >
-                <Text style={styles.modalItemText}>{c.icon} {c.title}</Text>
-              </Pressable>
-            ))}
-          </GlassPicker>
-        </Pressable>
-      </Modal>
-
-      <Modal visible={districtOpen} transparent animationType="fade" onRequestClose={() => setDistrictOpen(false)}>
-        <Pressable style={styles.modalBg} onPress={() => setDistrictOpen(false)}>
-          <GlassPicker scrollY={districtScrollY}>
-            {DISTRICTS.map((d) => (
-              <Pressable
-                key={d.id}
-                style={styles.modalItem}
-                onPress={() => {
-                  actions.onChangeField("district", d.id);
-                  setDistrictOpen(false);
-                }}
-              >
-                <Text style={styles.modalItemText}>{d.name}</Text>
-              </Pressable>
-            ))}
-          </GlassPicker>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
+
   label: { marginTop: 6, fontSize: 12, fontWeight: "700", color: "#8A8680" },
+
   input: {
     borderWidth: 1,
     borderColor: "#DFD8C8",
@@ -204,49 +159,51 @@ const styles = StyleSheet.create({
   },
   inputInvalid: { borderColor: "#F5B7B1" },
   textarea: { minHeight: 90, textAlignVertical: "top" },
+
   hint: { fontSize: 12, color: "#8A8680" },
   error: { fontSize: 12, color: "#E74C3C" },
   errorBlock: { marginTop: 4 },
   count: { fontSize: 11, color: "#A1A1AA", textAlign: "right" },
-  suggestBox: { borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, overflow: "hidden", backgroundColor: "#fff" },
-  suggestItem: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
-  suggestText: { fontSize: 12, color: "#4B5563" },
-  selectBtn: { borderWidth: 1, borderColor: "#DFD8C8", backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12 },
-  selectText: { color: "#111827", fontSize: 14, fontWeight: "600" },
-  selectPlaceholder: { color: "#9CA3AF", fontWeight: "500" },
-  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "center", padding: 20 },
-  modalGlassWrap: { borderRadius: 18, overflow: "hidden", maxHeight: "76%" },
-  modalCardGlass: {
-    borderRadius: 18,
+
+  suggestBox: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
     overflow: "hidden",
-    maxHeight: "76%",
-    backgroundColor: "rgba(255,255,255,0.66)",
+    backgroundColor: "#fff",
   },
-  modalCard: { backgroundColor: "#fff", borderRadius: 14, maxHeight: "76%", overflow: "hidden" },
-  pickerWrap: { maxHeight: 520 },
-  pickerScroll: { maxHeight: 472 },
-  pickerContent: { paddingBottom: 8 },
-  scrollHintRow: {
-    height: 38,
+  suggestItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  suggestText: { fontSize: 12, color: "#4B5563" },
+
+  selectBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.35)",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#DFD8C8",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
-  scrollHintDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "#F47B20",
-  },
-  scrollHintText: { color: "#F3F4F6", fontSize: 12, fontWeight: "700" },
-  modalItem: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(241,245,249,0.85)" },
-  modalItemText: { color: "#111827", fontSize: 14, fontWeight: "600" },
+  selectBtnLeft: { flex: 1 },
+  selectText: { color: "#111827", fontSize: 14, fontWeight: "600" },
+  selectPlaceholder: { color: "#9CA3AF", fontSize: 14, fontWeight: "500" },
+  selectChevron: { fontSize: 20, color: "#C4BFBA", marginLeft: 8 },
+
   actionsRow: { marginTop: 10, flexDirection: "row", gap: 10 },
-  btn: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  btn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   btnGhost: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB" },
   btnGhostText: { color: "#111827", fontWeight: "700" },
   btnPrimary: { backgroundColor: "#111827" },

@@ -1,5 +1,16 @@
-﻿import { useState } from "react";
-import { Image, Pressable, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useState } from "react";
+import {
+  ActionSheetIOS,
+  Alert,
+  Image,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { Heart, MessageCircle, MoreHorizontal, Send, Share2 } from "lucide-react-native";
 
 function canManageComment(comment, user, isAdmin) {
   if (!user) return false;
@@ -10,17 +21,14 @@ function canManageComment(comment, user, isAdmin) {
 export default function TipCard({
   tip,
   isExpanded,
-  isLiked,
   isFavorited,
   canEdit,
-  categoryLabel,
   showComments,
   user,
   isAdmin,
   onToggleExpand,
   onOpenPhoto,
   onToggleFavorite,
-  onToggleLike,
   onOpenComments,
   onAddComment,
   onUpdateComment,
@@ -32,101 +40,204 @@ export default function TipCard({
   const [editingId, setEditingId] = useState("");
   const [editingText, setEditingText] = useState("");
 
+  const handleThreeDots = useCallback(() => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ["Отмена", "Редактировать", "Удалить"],
+        destructiveButtonIndex: 2,
+        cancelButtonIndex: 0,
+      },
+      (idx) => {
+        if (idx === 1) onEdit?.();
+        if (idx === 2) {
+          Alert.alert(
+            "Удалить совет?",
+            "Это действие нельзя отменить.",
+            [
+              { text: "Отмена", style: "cancel" },
+              { text: "Удалить", style: "destructive", onPress: () => onDelete?.() },
+            ]
+          );
+        }
+      }
+    );
+  }, [onEdit, onDelete]);
+
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({
+        title: tip.title || "Совет",
+        message: `${tip.title || ""}\n${tip.text || ""}`,
+      });
+    } catch {}
+  }, [tip]);
+
+  const likesCount = tip.likes || 0;
+  const commentsCount = (tip.comments || []).length;
+
   return (
     <View style={[styles.card, isExpanded && styles.cardExpanded]}>
-      <Pressable style={styles.header} onPress={() => onToggleExpand(!isExpanded)}>
-        {categoryLabel ? <Text style={styles.categoryLabel}>{categoryLabel}</Text> : null}
-        <Text style={styles.title}>{tip.title}</Text>
-        <Text style={styles.text} numberOfLines={isExpanded ? undefined : 2}>{tip.text}</Text>
+      {/* Body — tap to expand */}
+      <Pressable onPress={() => onToggleExpand(!isExpanded)} style={styles.body}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{tip.title}</Text>
+          {canEdit ? (
+            <Pressable
+              onPress={(e) => { e.stopPropagation(); handleThreeDots(); }}
+              style={styles.dotsBtn}
+              hitSlop={10}
+            >
+              <MoreHorizontal size={18} color="#C4C4C4" />
+            </Pressable>
+          ) : null}
+        </View>
 
-        {isExpanded && Array.isArray(tip.photos) && tip.photos.length > 0 ? (
+        <Text style={styles.text} numberOfLines={isExpanded ? undefined : 3}>
+          {tip.text}
+        </Text>
+
+        {isExpanded && Array.isArray(tip.photos) && tip.photos.length > 0 && (
           <View style={styles.photosRow}>
             {tip.photos.map((ph, pi) => (
-              <Pressable key={`${tip.id}-${pi}`} onPress={(e) => { e.stopPropagation(); onOpenPhoto(tip.photos, pi); }}>
+              <Pressable
+                key={`${tip.id}-${pi}`}
+                onPress={(e) => { e.stopPropagation(); onOpenPhoto?.(tip.photos, pi); }}
+              >
                 <Image source={{ uri: ph }} style={styles.photo} />
               </Pressable>
             ))}
           </View>
-        ) : null}
-
-        <View style={styles.metaRow}>
-          <Text style={styles.author}>от {tip.author}</Text>
-          <View style={styles.inlineStats}>
-            <Pressable onPress={(e) => { e.stopPropagation(); onToggleFavorite(); }}><Text style={[styles.metaIcon, isFavorited && styles.favorite]}>★</Text></Pressable>
-            <Text style={styles.metaStat}>👁 {tip.views || 0}</Text>
-            <Text style={[styles.metaStat, isLiked && styles.like]}>♥ {tip.likes || 0}</Text>
-            <Text style={styles.metaStat}>💬 {(tip.comments || []).length}</Text>
-          </View>
-        </View>
+        )}
       </Pressable>
 
-      {isExpanded ? (
-        <View style={styles.actionsPanel}>
-          <View style={styles.actionsRow}>
-            <Pressable onPress={onToggleFavorite}><Text style={[styles.actionText, isFavorited && styles.favorite]}>★</Text></Pressable>
-            <Pressable onPress={onToggleLike}><Text style={[styles.actionText, isLiked && styles.like]}>♥ {tip.likes || 0}</Text></Pressable>
-            <Pressable onPress={onOpenComments}><Text style={styles.actionText}>◍ {(tip.comments || []).length}</Text></Pressable>
-            <Pressable
-              onPress={async () => {
-                await Share.share({ title: tip.title || "Совет", message: `${tip.title}\n${tip.text}` });
-              }}
-              style={{ marginLeft: "auto" }}
-            >
-              <Text style={styles.actionText}>Поделиться</Text>
-            </Pressable>
-          </View>
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.footerLeft}>
+          <Pressable style={styles.footerAction} onPress={() => onOpenComments?.()}>
+            <MessageCircle size={15} color="#9CA3AF" strokeWidth={1.8} />
+            <Text style={styles.footerCount}>{commentsCount}</Text>
+          </Pressable>
 
-          {showComments ? (
-            <View style={styles.commentsWrap}>
-              {(tip.comments || []).map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  <View style={styles.commentHead}>
-                    <Text style={styles.commentAuthor}>{comment.author}</Text>
-                    {canManageComment(comment, user, isAdmin) ? (
-                      <View style={styles.commentActions}>
-                        <Pressable onPress={() => { setEditingId(comment.id); setEditingText(comment.text || ""); }}><Text style={styles.commentAction}>Редактировать</Text></Pressable>
-                        <Pressable onPress={() => onDeleteComment(comment.id)}><Text style={[styles.commentAction, styles.delete]}>Удалить</Text></Pressable>
-                      </View>
-                    ) : null}
-                  </View>
-                  {editingId === comment.id ? (
-                    <View style={styles.editRow}>
-                      <TextInput value={editingText} onChangeText={setEditingText} style={styles.input} placeholder="Текст комментария" />
-                      <Pressable onPress={() => { onUpdateComment(comment.id, editingText); setEditingId(""); setEditingText(""); }} style={styles.saveBtn}><Text style={styles.saveBtnText}>Сохранить</Text></Pressable>
-                    </View>
-                  ) : (
-                    <Text style={styles.commentText}>{comment.text}</Text>
-                  )}
-                </View>
-              ))}
+          <Pressable style={styles.footerAction} onPress={() => onToggleFavorite?.()}>
+            <Heart
+              size={15}
+              color={isFavorited ? "#E74C3C" : "#9CA3AF"}
+              fill={isFavorited ? "#E74C3C" : "none"}
+              strokeWidth={1.8}
+            />
+            <Text style={[styles.footerCount, isFavorited && styles.likedCount]}>
+              {likesCount}
+            </Text>
+          </Pressable>
 
-              {user ? (
-                <View style={styles.addRow}>
-                  <TextInput value={commentText} onChangeText={setCommentText} style={styles.input} placeholder="Оставьте комментарий" />
+          <Pressable style={styles.footerAction} onPress={handleShare}>
+            <Share2 size={15} color="#9CA3AF" strokeWidth={1.8} />
+          </Pressable>
+        </View>
+
+        <Text style={styles.author}>от {tip.author || "пользователь"}</Text>
+      </View>
+
+      {/* Comments — only when expanded and open */}
+      {isExpanded && showComments ? (
+        <View style={styles.commentsSection}>
+          {(tip.comments || []).map((comment) => (
+            <View key={comment.id} style={styles.commentItem}>
+              <View style={styles.commentHead}>
+                <Text style={styles.commentAuthor}>{comment.author}</Text>
+                {canManageComment(comment, user, isAdmin) ? (
                   <Pressable
+                    hitSlop={10}
                     onPress={() => {
-                      const clean = commentText.trim();
-                      if (!clean) return;
-                      onAddComment(clean);
-                      setCommentText("");
+                      ActionSheetIOS.showActionSheetWithOptions(
+                        {
+                          options: ["Отмена", "Редактировать", "Удалить"],
+                          destructiveButtonIndex: 2,
+                          cancelButtonIndex: 0,
+                        },
+                        (idx) => {
+                          if (idx === 1) {
+                            setEditingId(comment.id);
+                            setEditingText(comment.text || "");
+                          }
+                          if (idx === 2) {
+                            Alert.alert("Удалить мнение?", "", [
+                              { text: "Отмена", style: "cancel" },
+                              {
+                                text: "Удалить",
+                                style: "destructive",
+                                onPress: () => onDeleteComment?.(comment.id),
+                              },
+                            ]);
+                          }
+                        }
+                      );
                     }}
-                    style={[styles.sendBtn, !commentText.trim() && styles.disabled]}
                   >
-                    <Text style={styles.sendBtnText}>Отправить</Text>
+                    <MoreHorizontal size={16} color="#C4C4C4" />
                   </Pressable>
+                ) : null}
+              </View>
+
+              {editingId === comment.id ? (
+                <View style={styles.editBlock}>
+                  <TextInput
+                    value={editingText}
+                    onChangeText={setEditingText}
+                    style={styles.input}
+                    placeholder="Текст мнения"
+                    multiline
+                  />
+                  <View style={styles.editBtns}>
+                    <Pressable
+                      style={styles.saveBtn}
+                      onPress={() => {
+                        onUpdateComment?.(comment.id, editingText);
+                        setEditingId("");
+                        setEditingText("");
+                      }}
+                    >
+                      <Text style={styles.saveBtnText}>Сохранить</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.cancelBtn}
+                      onPress={() => { setEditingId(""); setEditingText(""); }}
+                    >
+                      <Text style={styles.cancelBtnText}>Отмена</Text>
+                    </Pressable>
+                  </View>
                 </View>
               ) : (
-                <Text style={styles.loginHint}>Войдите, чтобы оставить комментарий</Text>
+                <Text style={styles.commentText}>{comment.text}</Text>
               )}
             </View>
-          ) : null}
+          ))}
 
-          {canEdit ? (
-            <View style={styles.manageRow}>
-              <Pressable style={styles.manageBtn} onPress={onEdit}><Text style={styles.manageTxt}>Редактировать</Text></Pressable>
-              <Pressable style={[styles.manageBtn, styles.deleteBtn]} onPress={onDelete}><Text style={[styles.manageTxt, styles.delete]}>Удалить</Text></Pressable>
+          {user ? (
+            <View style={styles.addRow}>
+              <TextInput
+                value={commentText}
+                onChangeText={setCommentText}
+                style={styles.input}
+                placeholder="Оставьте мнение..."
+                multiline
+              />
+              <Pressable
+                onPress={() => {
+                  const clean = commentText.trim();
+                  if (!clean) return;
+                  onAddComment?.(clean);
+                  setCommentText("");
+                }}
+                disabled={!commentText.trim()}
+                style={[styles.sendBtn, !commentText.trim() && styles.disabled]}
+              >
+                <Send size={18} color="#FFF" strokeWidth={2} />
+              </Pressable>
             </View>
-          ) : null}
+          ) : (
+            <Text style={styles.loginHint}>Войдите, чтобы оставить мнение</Text>
+          )}
         </View>
       ) : null}
     </View>
@@ -134,43 +245,177 @@ export default function TipCard({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: "#F0F0F0", marginBottom: 12, overflow: "hidden" },
-  cardExpanded: { borderColor: "#F47B2055" },
-  header: { padding: 16 },
-  categoryLabel: { fontSize: 11, color: "#A0A0A0", marginBottom: 4 },
-  title: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", marginBottom: 6 },
-  text: { fontSize: 13, lineHeight: 21, color: "#6B6B6B" },
-  photosRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  photo: { width: 86, height: 86, borderRadius: 10, borderWidth: 1, borderColor: "#E5E5E5" },
-  metaRow: { marginTop: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  author: { fontSize: 11, color: "#999" },
-  inlineStats: { flexDirection: "row", alignItems: "center", gap: 10 },
-  metaIcon: { fontSize: 14, color: "#9CA3AF" },
-  metaStat: { fontSize: 12, color: "#6B6B6B" },
-  favorite: { color: "#D68910" },
-  like: { color: "#E74C3C" },
-  actionsPanel: { borderTopWidth: 1, borderTopColor: "#F0F0F0", padding: 14 },
-  actionsRow: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 8 },
-  actionText: { fontSize: 14, color: "#6B6B6B" },
-  commentsWrap: { gap: 8 },
-  commentItem: { backgroundColor: "#F7F6F2", borderRadius: 10, padding: 10 },
-  commentHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  commentAuthor: { fontSize: 13, fontWeight: "700", color: "#1A1A1A" },
-  commentActions: { flexDirection: "row", gap: 10 },
-  commentAction: { fontSize: 12, color: "#6B6B6B" },
-  delete: { color: "#B91C1C" },
-  commentText: { marginTop: 4, fontSize: 13, color: "#4B5563" },
-  editRow: { marginTop: 8, gap: 8 },
-  input: { borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, backgroundColor: "#FFF", paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: "#111827" },
-  saveBtn: { alignSelf: "flex-start", backgroundColor: "#111827", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  saveBtnText: { color: "#FFF", fontWeight: "700", fontSize: 12 },
-  addRow: { gap: 8 },
-  sendBtn: { alignSelf: "flex-start", backgroundColor: "#F47B20", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
-  sendBtnText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
-  loginHint: { fontSize: 12, color: "#6B6B6B" },
-  disabled: { opacity: 0.5 },
-  manageRow: { marginTop: 6, flexDirection: "row", gap: 8 },
-  manageBtn: { flex: 1, minHeight: 40, borderRadius: 10, borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
-  deleteBtn: { borderColor: "#FECACA", backgroundColor: "#FFF5F5" },
-  manageTxt: { fontSize: 12, fontWeight: "700", color: "#374151" },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  cardExpanded: {
+    borderColor: "#E5E5E5",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  body: {
+    padding: 16,
+    paddingBottom: 12,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginBottom: 8,
+  },
+  title: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    lineHeight: 22,
+  },
+  dotsBtn: {
+    paddingTop: 2,
+  },
+  text: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#4B5563",
+  },
+  photosRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  photo: {
+    width: 88,
+    height: 88,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: "#F5F5F5",
+  },
+  footerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  footerAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  footerCount: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  likedCount: {
+    color: "#E74C3C",
+  },
+  author: {
+    fontSize: 12,
+    color: "#9CA3AF",
+  },
+  commentsSection: {
+    borderTopWidth: 1,
+    borderTopColor: "#F5F5F5",
+    padding: 14,
+    gap: 10,
+  },
+  commentItem: {
+    backgroundColor: "#F7F6F2",
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  commentHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  commentAuthor: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  commentText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#374151",
+  },
+  editBlock: {
+    gap: 8,
+    marginTop: 6,
+  },
+  editBtns: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    backgroundColor: "#FFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#111827",
+  },
+  saveBtn: {
+    backgroundColor: "#111827",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  saveBtnText: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  cancelBtn: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  cancelBtnText: {
+    color: "#374151",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  addRow: {
+    gap: 8,
+  },
+  sendBtn: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F47B20",
+    borderRadius: 12,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loginHint: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    textAlign: "center",
+    paddingVertical: 4,
+  },
+  disabled: {
+    opacity: 0.45,
+  },
 });

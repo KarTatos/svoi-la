@@ -1,11 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
-const RSS_URL = "https://www.uscis.gov/news/rss-feed/23269";
-const MAX_ITEMS = 10;
+// USCIS RSS feeds — alerts + policy updates
+const RSS_URLS = [
+  "https://www.uscis.gov/news/rss-feed/23269", // News Alerts
+  "https://www.uscis.gov/news/rss-feed/23268", // Policy & Regulations
+];
+const MAX_ITEMS = 15;
 
-// Lazy-init: clients created on first request, not at module load time
-// (avoids build-time crash when env vars aren't available)
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -17,8 +19,6 @@ function getAnthropic() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 function parseRSS(xml) {
   const items = [];
   const itemBlocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
@@ -28,11 +28,11 @@ function parseRSS(xml) {
         || block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
       return m ? m[1].trim() : "";
     };
-    const title    = get("title");
-    const link     = get("link");
-    const guid     = get("guid") || link;
-    const pubDate  = get("pubDate");
-    const desc     = get("description").replace(/<[^>]+>/g, "").trim();
+    const title   = get("title");
+    const link    = get("link");
+    const guid    = get("guid") || link;
+    const pubDate = get("pubDate");
+    const desc    = get("description").replace(/<[^>]+>/g, "").trim();
     if (!title || !link) continue;
     items.push({
       guid,
@@ -45,24 +45,74 @@ function parseRSS(xml) {
   return items;
 }
 
-async function translateItems(items) {
+async function fetchAllFeeds() {
+  const allItems = [];
+  const seenGuids = new Set();
+
+  for (const url of RSS_URLS) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 LA-Guide-Bot/1.0" },
+        next: { revalidate: 0 },
+      });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      const items = parseRSS(xml);
+      for (const item of items) {
+        if (!seenGuids.has(item.guid)) {
+          seenGuids.add(item.guid);
+          allItems.push(item);
+        }
+      }
+    } catch {
+      // skip failed feed
+    }
+  }
+
+  return allItems;
+}
+
+// Tags used in the prompt and UI
+// "SKIP" means irrelevant — will be filtered out
+const TAG_LABELS = {
+  "Форма":    "📄 Форма",
+  "Политика": "📋 Политика",
+  "Сборы":    "💰 Сборы",
+  "Сроки":    "⏱ Сроки",
+  "Визы":     "🛂 Визы",
+  "SKIP":     "SKIP",
+};
+
+async function processItems(items) {
   if (!items.length) return [];
 
-  // Build one prompt for all items to save API calls
   const payload = items.map((it, i) =>
     `${i + 1}. TITLE: ${it.title_en}\nSUMMARY: ${it.summary_en || "(no description)"}`
   ).join("\n\n");
 
   const msg = await getAnthropic().messages.create({
     model:      "claude-haiku-4-5-20251001",
-    max_tokens: 2048,
+    max_tokens: 3000,
     messages: [{
       role: "user",
-      content: `Переведи на русский язык следующие новости USCIS. Для каждого пункта верни JSON-объект в массиве:
-[{"title_ru":"...","summary_ru":"..."}]
-Перевод должен быть точным и профессиональным. summary_ru — не более 150 слов.
-Верни ТОЛЬКО валидный JSON-массив, без пояснений.
+      content: `Ты помощник для мигрантов в США. Тебе нужно обработать новости с сайта USCIS.
 
+ЗАДАЧА:
+1. Для каждой новости реши — РЕЛЕВАНТНА ли она для мигрантов (изменения форм, требований, виз, сборов, сроков обработки, политики USCIS).
+2. НЕРЕЛЕВАНТНЫЕ новости (церемонии натурализации, награды сотрудникам, общие PR-объявления, новости про бюджет агентства) — пометь тегом "SKIP".
+3. Для РЕЛЕВАНТНЫХ новостей: переведи на русский и присвой тег:
+   - "Форма" — изменения в формах, требованиях к документам
+   - "Политика" — изменения в правилах, политике, законах
+   - "Сборы" — изменения в стоимости, сборах
+   - "Сроки" — изменения в сроках обработки
+   - "Визы" — визы, статусы, гринкарта, гражданство
+
+Верни ТОЛЬКО JSON-массив без пояснений:
+[{"title_ru":"...","summary_ru":"...","tag":"Форма|Политика|Сборы|Сроки|Визы|SKIP"}]
+
+summary_ru — краткое и чёткое, не более 100 слов.
+
+НОВОСТИ:
 ${payload}`,
     }],
   });
@@ -70,37 +120,32 @@ ${payload}`,
   try {
     const raw  = msg.content[0].text.trim();
     const json = raw.startsWith("[") ? raw : raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1);
-    const translations = JSON.parse(json);
-    return items.map((it, i) => ({
-      ...it,
-      title_ru:   translations[i]?.title_ru   || it.title_en,
-      summary_ru: translations[i]?.summary_ru || it.summary_en,
-    }));
+    const results = JSON.parse(json);
+    return items
+      .map((it, i) => ({
+        ...it,
+        title_ru:   results[i]?.title_ru   || it.title_en,
+        summary_ru: results[i]?.summary_ru || it.summary_en,
+        tag:        results[i]?.tag        || "Общее",
+      }))
+      .filter((it) => it.tag !== "SKIP");
   } catch {
-    // Fallback: return English if parsing fails
-    return items.map((it) => ({ ...it, title_ru: it.title_en, summary_ru: it.summary_en }));
+    return items.map((it) => ({
+      ...it,
+      title_ru:   it.title_en,
+      summary_ru: it.summary_en,
+      tag:        "Общее",
+    }));
   }
 }
-
-// ─── Core logic (shared by GET cron + POST manual) ──────────────────────────
 
 async function runRefresh() {
   const supabase = getSupabase();
 
   try {
-    // 1. Fetch RSS
-    const rssRes = await fetch(RSS_URL, {
-      headers: { "User-Agent": "Mozilla/5.0 LA-Guide-Bot/1.0" },
-      next: { revalidate: 0 },
-    });
-    if (!rssRes.ok) throw new Error(`RSS fetch failed: ${rssRes.status}`);
-    const xml = await rssRes.text();
+    const items = await fetchAllFeeds();
+    if (!items.length) return Response.json({ ok: true, inserted: 0, message: "No items in feeds" });
 
-    // 2. Parse
-    const items = parseRSS(xml);
-    if (!items.length) return Response.json({ ok: true, inserted: 0, message: "No items in feed" });
-
-    // 3. Check which guids are new
     const guids = items.map((i) => i.guid);
     const { data: existing } = await supabase
       .from("uscis_news")
@@ -113,28 +158,25 @@ async function runRefresh() {
       return Response.json({ ok: true, inserted: 0, message: "All items already stored" });
     }
 
-    // 4. Translate
-    const translated = await translateItems(newItems);
+    const processed = await processItems(newItems);
+    if (!processed.length) {
+      return Response.json({ ok: true, inserted: 0, message: "All new items were irrelevant" });
+    }
 
-    // 5. Upsert into Supabase
     const { error: upsertErr } = await supabase
       .from("uscis_news")
-      .upsert(translated, { onConflict: "guid" });
+      .upsert(processed, { onConflict: "guid" });
     if (upsertErr) throw upsertErr;
 
-    // 6. Trim to 10 most recent
     await supabase.rpc("trim_uscis_news");
 
-    return Response.json({ ok: true, inserted: translated.length });
+    return Response.json({ ok: true, inserted: processed.length });
   } catch (err) {
     console.error("[uscis-news/refresh] error:", err);
     return Response.json({ error: String(err.message) }, { status: 500 });
   }
 }
 
-// ─── Route handlers ──────────────────────────────────────────────────────────
-
-// GET — called by Vercel cron (sends Authorization: Bearer <CRON_SECRET>)
 export async function GET(req) {
   const auth = req.headers.get("authorization") || "";
   const cronSecret = process.env.CRON_SECRET || "";
@@ -144,7 +186,6 @@ export async function GET(req) {
   return runRefresh();
 }
 
-// POST — manual trigger (curl -H "x-refresh-secret: ..." POST)
 export async function POST(req) {
   const secret = req.headers.get("x-refresh-secret") || "";
   if (secret !== (process.env.USCIS_REFRESH_SECRET || "")) {

@@ -12,13 +12,13 @@ function getActiveTab(pathname) {
   if (!pathname || pathname === "/") return "home";
   if (pathname.startsWith("/places")) return "places";
   if (pathname.startsWith("/profile")) return "profile";
+  if (pathname.startsWith("/uscis")) return "uscis";
   if (
-    pathname.startsWith("/uscis") ||
     pathname.startsWith("/tips") ||
     pathname.startsWith("/housing") ||
     pathname.startsWith("/market") ||
     pathname.startsWith("/sections")
-  ) return "uscis";
+  ) return null;
   return "home";
 }
 
@@ -43,7 +43,10 @@ export default function BottomNav() {
       pathname.startsWith("/tips") ||
       pathname.startsWith("/chat") ||
       pathname.startsWith("/housing") ||
-      pathname.startsWith("/market"),
+      pathname.startsWith("/market") ||
+      pathname.startsWith("/events") ||
+      pathname.startsWith("/jobs") ||
+      pathname === "/feed",
     [pathname]
   );
 
@@ -62,7 +65,7 @@ export default function BottomNav() {
                 const isActive = tab.id === active;
                 return (
                   <Pressable key={tab.id} onPress={() => router.push(tab.href)} style={[styles.tab, isActive && styles.tabActive]}>
-                    <Icon size={19} color={isActive ? "#0E0E0E" : "rgba(255,255,255,0.62)"} strokeWidth={2.1} />
+                    <Icon size={19} color={isActive ? "#0E0E0E" : "rgba(255,255,255,0.75)"} strokeWidth={2.1} />
                     {isActive ? <Text style={styles.tabLabelActive}>{tab.label}</Text> : null}
                   </Pressable>
                 );
@@ -76,7 +79,7 @@ export default function BottomNav() {
               const isActive = tab.id === active;
               return (
                 <Pressable key={tab.id} onPress={() => router.push(tab.href)} style={[styles.tab, isActive && styles.tabActiveFallback]}>
-                  <Icon size={19} color={isActive ? "#0E0E0E" : "rgba(255,255,255,0.55)"} strokeWidth={2.1} />
+                  <Icon size={19} color={isActive ? "#0E0E0E" : "#8E8E93"} strokeWidth={2.1} />
                   {isActive ? <Text style={styles.tabLabelActive}>{tab.label}</Text> : null}
                 </Pressable>
               );
@@ -128,11 +131,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "#1C1C1E",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
     shadowColor: "#000000",
-    shadowOpacity: 0.24,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    shadowOpacity: 0.40,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
   tab: {
     minHeight: 40,

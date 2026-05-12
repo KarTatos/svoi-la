@@ -13,7 +13,7 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from("uscis_news")
-      .select("id, title_ru, summary_ru, url, published_at")
+      .select("id, title_ru, summary_ru, url, published_at, tag")
       .order("published_at", { ascending: false })
       .limit(5);
 

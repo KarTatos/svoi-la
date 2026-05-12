@@ -2,6 +2,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../src/components/AppHeader";
+import SectionIcon from "../../src/components/SectionIcon";
 import WeatherCard from "../../src/components/WeatherCard";
 import { sections } from "../../src/config/sections";
 import { useProfileWeather } from "../../src/hooks/useProfileWeather";
@@ -78,7 +79,7 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                <SectionEmoji id={section.id} />
+                <SectionIcon id={section.id} size={34} />
                 <View>
                   <Text style={styles.cardTitle} numberOfLines={1}>
                     {section.title}

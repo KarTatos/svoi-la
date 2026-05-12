@@ -87,18 +87,24 @@ export async function updatePlaceComment(commentId, text) {
   const clean = String(text || "").trim();
   if (!clean) throw new Error("Введите текст мнения");
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("comments")
-    .update({ text: clean })
+    .update({ text: clean }, { count: "exact" })
     .eq("id", commentId);
 
   if (error) throw new Error(error.message);
+  if (count === 0) throw new Error("Нет доступа. Нужна UPDATE политика в Supabase (таблица comments).");
   return true;
 }
 
 export async function deletePlaceComment(commentId) {
-  const { error } = await supabase.from("comments").delete().eq("id", commentId);
+  const { error, count } = await supabase
+    .from("comments")
+    .delete({ count: "exact" })
+    .eq("id", commentId);
+
   if (error) throw new Error(error.message);
+  if (count === 0) throw new Error("Нет доступа. Нужна DELETE политика в Supabase (таблица comments).");
   return true;
 }
 

@@ -1,52 +1,157 @@
-﻿import { Pressable, StyleSheet, Text, View, Image } from "react-native";
+import { Dimensions, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Heart } from "lucide-react-native";
 
-function formatHousingPrice(value) {
-  const n = Number(value || 0);
-  if (!n) return "0";
-  return n.toLocaleString("en-US");
+const SCREEN_W = Dimensions.get("window").width;
+const CARD_W = SCREEN_W - 32;
+const PHOTO_H = 200;
+
+function formatPrice(v) {
+  const n = Number(v || 0);
+  return n > 0 ? "$" + n.toLocaleString("en-US") + "/mo" : "Цена не указана";
 }
 
-function formatHousingType(type) {
-  const t = String(type || "").toLowerCase();
-  if (t === "room") return "Комната";
-  if (t === "studio") return "Студия";
-  if (t === "1bd") return "1 bd";
-  if (t === "2bd") return "2 bd";
-  return type || "Жильё";
+function getTypeLabel(type) {
+  const map = { studio: "Studio", room: "Комната", "1bd": "1 bd", "2bd": "2 bd", "3bd": "3+ bd" };
+  return map[String(type || "").toLowerCase()] || type || "Жильё";
 }
 
 export default function HousingCard({ item, isFavorite, onToggleFavorite, onOpen }) {
+  const photos =
+    Array.isArray(item && item.photos) && item.photos.length
+      ? item.photos
+      : item && item.photo
+      ? [item.photo]
+      : [];
+
   return (
     <Pressable style={styles.card} onPress={onOpen}>
       <View style={styles.photoWrap}>
-        {item.photo ? <Image source={{ uri: item.photo }} style={styles.photo} /> : <View style={styles.noPhoto}><Text style={styles.noPhotoText}>Нет фото</Text></View>}
-        {item.updatedLabel ? <View style={styles.updated}><Text style={styles.updatedText}>{item.updatedLabel}</Text></View> : null}
-        <Pressable onPress={onToggleFavorite} style={styles.starBtn}><Text style={[styles.star, isFavorite && styles.starActive]}>★</Text></Pressable>
+        {photos.length > 0 ? (
+          <FlatList
+            data={photos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, i) => String(i)}
+            renderItem={({ item: uri }) => (
+              <Image source={{ uri: uri }} style={styles.photo} resizeMode="cover" />
+            )}
+            style={styles.photoList}
+            nestedScrollEnabled
+          />
+        ) : (
+          <View style={styles.noPhoto}>
+            <Text style={styles.noPhotoIcon}>🏠</Text>
+            <Text style={styles.noPhotoText}>Нет фото</Text>
+          </View>
+        )}
+
+        <Pressable style={styles.heartBtn} onPress={onToggleFavorite} hitSlop={12}>
+          <Heart
+            size={18}
+            color={isFavorite ? "#F47B20" : "#fff"}
+            fill={isFavorite ? "#F47B20" : "none"}
+            strokeWidth={2.5}
+          />
+        </Pressable>
+
+        {photos.length > 1 ? (
+          <View style={styles.photoBadge}>
+            <Text style={styles.photoBadgeText}>{photos.length} фото</Text>
+          </View>
+        ) : null}
       </View>
+
       <View style={styles.body}>
-        <Text style={styles.price}>${formatHousingPrice(item.minPrice)}</Text>
-        <Text style={styles.address} numberOfLines={2}>{item.address}</Text>
-        <Text style={styles.meta}>{formatHousingType(item.type)} · {item.district || "LA"}</Text>
-        {item.comment ? <Text style={styles.comment} numberOfLines={2}>{item.comment}</Text> : null}
+        <View style={styles.topRow}>
+          <Text style={styles.price}>{formatPrice(item.minPrice)}</Text>
+          <View style={styles.typeChip}>
+            <Text style={styles.typeText}>{getTypeLabel(item.type)}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.address} numberOfLines={1}>
+          {item.title || item.address || "Los Angeles"}
+        </Text>
+
+        <View style={styles.detailRow}>
+          {item.beds > 0 ? (
+            <View style={styles.detailChip}>
+              <Text style={styles.detailText}>{item.beds} bd</Text>
+            </View>
+          ) : null}
+          {item.baths > 0 ? (
+            <View style={styles.detailChip}>
+              <Text style={styles.detailText}>{item.baths} ba</Text>
+            </View>
+          ) : null}
+          {item.district ? (
+            <View style={styles.detailChip}>
+              <Text style={styles.detailText} numberOfLines={1}>{item.district}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#E8E4DB", overflow: "hidden" },
-  photoWrap: { width: "100%", height: 188, backgroundColor: "#E9EDF2", position: "relative" },
-  photo: { width: "100%", height: "100%" },
-  noPhoto: { flex: 1, alignItems: "center", justifyContent: "center" },
-  noPhotoText: { color: "#9CA3AF", fontSize: 12 },
-  updated: { position: "absolute", top: 10, left: 10, borderRadius: 999, backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 10, paddingVertical: 6 },
-  updatedText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  starBtn: { position: "absolute", right: 10, top: 10, width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center" },
-  star: { fontSize: 20, color: "#1E4D97" },
-  starActive: { color: "#D68910" },
-  body: { paddingHorizontal: 12, paddingVertical: 10 },
-  price: { fontSize: 24, fontWeight: "900", color: "#111827" },
-  address: { marginTop: 4, color: "#2E2E3A", fontSize: 15 },
-  meta: { marginTop: 3, color: "#8A8680", fontSize: 12 },
-  comment: { marginTop: 6, color: "#8A8680", fontSize: 12, lineHeight: 18 },
+  card: {
+    backgroundColor: "#1C1C1E",
+    borderRadius: 18,
+    overflow: "hidden",
+    width: CARD_W,
+  },
+  photoWrap: {
+    width: CARD_W,
+    height: PHOTO_H,
+    backgroundColor: "#2C2C2E",
+    position: "relative",
+  },
+  photoList: { width: CARD_W, height: PHOTO_H },
+  photo: { width: CARD_W, height: PHOTO_H },
+  noPhoto: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
+  noPhotoIcon: { fontSize: 36 },
+  noPhotoText: { color: "#636366", fontSize: 12 },
+  heartBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.50)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoBadge: {
+    position: "absolute",
+    bottom: 8,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  photoBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  body: { paddingHorizontal: 14, paddingVertical: 12 },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  price: { fontSize: 22, fontWeight: "900", color: "#FFFFFF", flex: 1 },
+  typeChip: {
+    backgroundColor: "#F47B20",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  typeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  address: { marginTop: 5, color: "#AEAEB2", fontSize: 14 },
+  detailRow: { marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  detailChip: {
+    backgroundColor: "#2C2C2E",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  detailText: { color: "#8E8E93", fontSize: 12, fontWeight: "600" },
 });

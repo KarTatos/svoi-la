@@ -8,8 +8,9 @@ import { useUscisNews } from "../../src/hooks/useUscisNews";
 
 export default function UscisScreen() {
   const [search, setSearch] = useState("");
+  const [newsExpanded, setNewsExpanded] = useState(false);
   const [caseNumber, setCaseNumber] = useState("");
-  const { news, loading, hasApiBase } = useUscisNews();
+  const { news, loading } = useUscisNews();
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -36,19 +37,38 @@ export default function UscisScreen() {
         </View>
 
         <View style={styles.newsCard}>
-          <Text style={styles.newsTitle}>📰 Новости USCIS</Text>
-          {!hasApiBase ? (
-            <Text style={styles.newsHint}>Добавьте EXPO_PUBLIC_WEB_API_BASE_URL для загрузки новостей.</Text>
-          ) : loading ? (
-            <Text style={styles.newsHint}>Загрузка новостей...</Text>
-          ) : news.length === 0 ? (
-            <Text style={styles.newsHint}>Новости пока недоступны.</Text>
-          ) : (
-            news.map((item) => (
-              <Pressable key={item.id} style={styles.newsItem} onPress={() => WebBrowser.openBrowserAsync(item.url)}>
-                <Text style={styles.newsItemText}>{item.title_ru}</Text>
-              </Pressable>
-            ))
+          <Pressable style={styles.newsHeader} onPress={() => setNewsExpanded((v) => !v)}>
+            <View style={styles.newsHeaderLeft}>
+              <Text style={styles.newsTitle}>📰 Новости USCIS</Text>
+              {!loading && news.length > 0 && (
+                <View style={styles.newsBadge}>
+                  <Text style={styles.newsBadgeText}>{news.length}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.newsChevron}>{newsExpanded ? "▴" : "▾"}</Text>
+          </Pressable>
+
+          {newsExpanded && (
+            loading ? (
+              <Text style={styles.newsHint}>Загрузка...</Text>
+            ) : news.length === 0 ? (
+              <Text style={styles.newsHint}>Нет актуальных изменений.</Text>
+            ) : (
+              news.map((item) => (
+                <Pressable key={item.id} style={styles.newsItem} onPress={() => WebBrowser.openBrowserAsync(item.url)}>
+                  {item.tag && item.tag !== "Общее" && (
+                    <View style={styles.newsTag}>
+                      <Text style={styles.newsTagText}>{item.tag}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.newsItemText}>{item.title_ru}</Text>
+                  {item.summary_ru ? (
+                    <Text style={styles.newsItemSummary} numberOfLines={2}>{item.summary_ru}</Text>
+                  ) : null}
+                </Pressable>
+              ))
+            )
           )}
         </View>
 
@@ -143,10 +163,18 @@ const styles = StyleSheet.create({
   noteCard: { backgroundColor: "#FFF8F1", borderColor: "#FDE2C7", borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 12 },
   noteText: { fontSize: 12, color: "#6B6B6B", lineHeight: 18 },
   newsCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#F0F0F0" },
-  newsTitle: { fontSize: 14, fontWeight: "700", marginBottom: 8, color: "#0E0E0E" },
-  newsHint: { fontSize: 12, color: "#8A8680" },
-  newsItem: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: "#F0F0F0" },
-  newsItemText: { fontSize: 13, color: "#0E0E0E", fontWeight: "600" },
+  newsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  newsHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  newsTitle: { fontSize: 14, fontWeight: "700", color: "#0E0E0E" },
+  newsChevron: { fontSize: 11, color: "#8A8680" },
+  newsBadge: { backgroundColor: "#F47B20", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  newsBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  newsHint: { fontSize: 12, color: "#8A8680", marginTop: 10 },
+  newsItem: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: "#F0F0F0", marginTop: 4 },
+  newsTag: { alignSelf: "flex-start", backgroundColor: "#F0F7FF", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginBottom: 5 },
+  newsTagText: { fontSize: 11, color: "#3B5FFF", fontWeight: "700" },
+  newsItemText: { fontSize: 13, color: "#0E0E0E", fontWeight: "600", lineHeight: 18 },
+  newsItemSummary: { fontSize: 12, color: "#8A8680", marginTop: 3, lineHeight: 17 },
   searchInput: { backgroundColor: "#FFFFFF", borderRadius: 14, borderWidth: 1, borderColor: "#E5E5E5", paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
   list: { gap: 8 },
   catCard: { backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: "#F0F0F0", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 },
