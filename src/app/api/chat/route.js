@@ -56,6 +56,8 @@ function classifyQuery(query) {
   const localKeywords = [
     "ресторан", "бар", "кафе", "кофе", "хайк", "поесть", "погулять", "куда", "мест",
     "район", "событи", "мероприяти", "совет", "жиль", "аренд", "работ", "вакан",
+    "услуг", "уборк", "ремонт", "нян", "сантех", "электрик", "программист", "бухгалтер",
+    "job", "vacancy", "service", "nanny", "cleaner", "plumber",
   ];
   const uScore = uscisKeywords.filter((k) => q.includes(k)).length;
   const lScore = localKeywords.filter((k) => q.includes(k)).length;
@@ -91,6 +93,13 @@ function scoreByQuery(item, query) {
 
 function formatPlaceLine(place) {
   return `- ${place.name} (${place.district || "unknown district"}, ${place.cat || place.category || "category"}) — ${place.tip || "без описания"} | Адрес: ${place.address || "не указан"} | link: app://place/${place.id}`;
+}
+
+function formatJobLine(item) {
+  const price = item.price ? `$${item.price}` : "цена не указана";
+  const contact = item.telegram ? `tg: @${String(item.telegram).replace(/^@/, "")}` : (item.phone ? `тел: ${item.phone}` : "контакт не указан");
+  const type = item.type === "vacancy" ? "Вакансия" : "Услуга";
+  return `- [${type}] ${item.title || "Без названия"} (${item.district || "LA"}) — ${price} | ${String(item.description || "").slice(0, 120)} | Контакт: ${contact} | link: app://job/${item.id}`;
 }
 
 function formatHousingLine(item) {
@@ -226,6 +235,9 @@ async function fetchSupabaseDataFallback(query) {
     const housingCond = words.length
       ? words.map((w) => `title.ilike.%${w}%,address.ilike.%${w}%,district.ilike.%${w}%,type.ilike.%${w}%`).join(",")
       : null;
+    const jobCond = words.length
+      ? words.map((w) => `title.ilike.%${w}%,description.ilike.%${w}%,district.ilike.%${w}%,type.ilike.%${w}%`).join(",")
+      : null;
 
     // Base text-search query
     const textPlacesQuery = placeCond
@@ -246,24 +258,46 @@ async function fetchSupabaseDataFallback(query) {
       { data: textPlaces },
       { data: districtPlaces },
       { data: categoryPlaces },
-      { data: tips },
-      { data: events },
-      { data: housing },
+      { data: tipsFiltered },
+      { data: tipsBase },
+      { data: eventsFiltered },
+      { data: eventsBase },
+      { data: housingFiltered },
+      { data: housingBase },
+      { data: jobs },
     ] = await Promise.all([
       textPlacesQuery,
       districtPlacesQuery,
       categoryPlacesQuery,
+      // Tips: keyword filter + always fallback baseline
       tipCond ? supabase.from("tips").select("*").or(tipCond).limit(20) : Promise.resolve({ data: [] }),
+      supabase.from("tips").select("*").order("created_at", { ascending: false }).limit(15),
+      // Events: keyword filter + always upcoming events
       eventCond ? supabase.from("events").select("*").or(eventCond).limit(20) : Promise.resolve({ data: [] }),
+      supabase.from("events").select("*").order("date", { ascending: true }).limit(10),
+      // Housing: keyword filter + always latest
       housingCond ? supabase.from("housing").select("*").or(housingCond).limit(20) : Promise.resolve({ data: [] }),
+      supabase.from("housing").select("*").order("created_at", { ascending: false }).limit(10),
+      // Jobs: always fetch latest — no keyword filter needed
+      supabase.from("jobs").select("*").order("created_at", { ascending: false }).limit(20),
     ]);
 
-    // Merge places, deduplicate by id
-    const seenIds = new Set();
-    const places = [];
-    for (const p of [...(textPlaces || []), ...(districtPlaces || []), ...(categoryPlaces || [])]) {
-      if (!seenIds.has(p.id)) { seenIds.add(p.id); places.push(p); }
-    }
+    // Merge + deduplicate by id helper
+    const mergeDedup = (...arrays) => {
+      const seen = new Set();
+      const result = [];
+      for (const arr of arrays) {
+        for (const item of arr || []) {
+          if (!seen.has(item.id)) { seen.add(item.id); result.push(item); }
+        }
+      }
+      return result;
+    };
+
+    const places = mergeDedup(textPlaces, districtPlaces, categoryPlaces);
+    const tips = mergeDedup(tipsFiltered, tipsBase);
+    const events = mergeDedup(eventsFiltered, eventsBase);
+    const housing = mergeDedup(housingFiltered, housingBase);
 
     return {
       places: (places || []).map((p) => ({
@@ -310,10 +344,21 @@ async function fetchSupabaseDataFallback(query) {
           messageContact: String(msgTag).replace("contact_msg:", ""),
         };
       }),
+      jobs: (jobs || []).map((j) => ({
+        id: j.id,
+        title: j.title || "",
+        type: j.type || "vacancy",
+        district: j.district || "",
+        description: j.description || "",
+        price: j.price || "",
+        schedule: j.schedule || "",
+        telegram: j.telegram || "",
+        phone: j.phone || "",
+      })),
     };
   } catch (error) {
     logError("chat.fallback_query.error", error, { query: String(query || "").slice(0, 120) });
-    return { places: [], tips: [], events: [], housing: [] };
+    return { places: [], tips: [], events: [], housing: [], jobs: [] };
   }
 }
 
@@ -350,6 +395,11 @@ function buildLocalContext(message, data) {
     .sort((a, b) => b._score - a._score)
     .slice(0, 8);
 
+  const jobs = (data.jobs || [])
+    .map((j) => ({ ...j, _score: scoreByQuery(j, message) }))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 10);
+
   const parts = [];
   if (bestPlaces.length) {
     parts.push(`Места (${bestPlaces.length}):\n${bestPlaces.map(formatPlaceLine).join("\n")}`);
@@ -362,6 +412,9 @@ function buildLocalContext(message, data) {
   }
   if (housing.length) {
     parts.push(`Жильё:\n${housing.map(formatHousingLine).join("\n")}`);
+  }
+  if (jobs.length) {
+    parts.push(`Работа / Услуги:\n${jobs.map(formatJobLine).join("\n")}`);
   }
 
   return {
@@ -410,14 +463,19 @@ export async function POST(request) {
 
 Правила:
 1. Никогда не используй слово "русскоязычные" или его формы.
-2. Отвечай только по темам: USCIS/иммиграция, места в LA, события, советы, жильё, работа.
-3. Если вопрос про места/события/советы — отвечай СТРОГО на основе данных приложения ниже. Перечисли ВСЕ подходящие записи, не выбирай только одну.
-4. Если данных недостаточно, честно скажи об этом и предложи добавить запись в соответствующий раздел.
-5. Отвечай на русском языке. Понимай запросы на русском — "голивуд" = Hollywood, "рестораны" = restaurants, "бары" = bars и т.д.
+2. Отвечай только по темам: USCIS/иммиграция, места в LA, события, советы, жильё, работа/услуги.
+3. Если вопрос про места/события/советы/работу/жильё — отвечай СТРОГО на основе данных приложения ниже. Перечисли ВСЕ подходящие записи.
+4. Если данных недостаточно, честно скажи об этом.
+5. Отвечай на русском языке. Понимай запросы на русском — "голивуд" = Hollywood, "рестораны" = restaurants, "бары" = bars, "работа" = jobs, "вакансии" = vacancies и т.д.
 6. Для USCIS добавляй дисклеймер: "Это информационная помощь, не юридическая консультация. Проверяйте актуальные правила на uscis.gov".
-7. Пиши кратко и по делу. Без эмодзи. Без markdown-форматирования. Без звёздочек (*).
-8. Для каждой записи из данных приложения обязательно добавляй ссылку: app://place/<id>, app://tip/<id>, app://event/<id>, app://housing/<id>.
-9. Если найдено несколько мест — перечисли все, не ограничивайся одним.${localDataBlock}`;
+7. ФОРМАТ ОТВЕТА — строго соблюдай:
+   - Вступительное предложение (без эмодзи, без звёздочек, без заголовков с #).
+   - Каждый пункт списка начинай с "- " (дефис и пробел).
+   - В конце каждого пункта добавляй " | link: app://тип/id" — например " | link: app://event/abc123".
+   - Дату пиши в самом тексте пункта (например: "19 сентября 2026").
+   - Никаких **жирных**, _курсивов_, #заголовков.
+8. Типы ссылок: места → app://place/id, советы → app://tip/id, события → app://event/id, жильё → app://housing/id, работа/услуги → app://job/id.
+9. Если найдено несколько записей — перечисли все, не ограничивайся одной.${localDataBlock}`;
 
     const messages = [
       ...history
